@@ -1,0 +1,59 @@
+; Test memcpy / memset via syscall mailbox
+    LDI R0, src
+    LDI R1, 0x1234
+    STR [R0], R1
+
+    LDI R0, dst
+    LDI R1, src
+    LDI R2, 1
+    LDI R3, 0xFFE1
+    LDI R4, 0xFFE2
+    LDI R5, 0xFFE3
+    LDI R6, 0xFFE0
+    STR [R3], R0
+    STR [R4], R1
+    STR [R5], R2
+    LDI R2, 10
+    STR [R6], R2
+
+    LDI R0, dst
+    LDR R3, [R0]
+    LDI R6, 0xFFF2
+    STR [R6], R3
+    LDI R7, 32
+    LDI R6, 0xFFF0
+    STR [R6], R7
+
+    LDI R0, dst
+    LDI R1, 0xAB
+    LDI R2, 2
+    LDI R3, 0xFFE1
+    LDI R4, 0xFFE2
+    LDI R5, 0xFFE3
+    LDI R6, 0xFFE0
+    STR [R3], R0
+    STR [R4], R1
+    STR [R5], R2
+    LDI R2, 11
+    STR [R6], R2
+
+    LDI R0, dst
+    LDR R3, [R0]
+    LDI R6, 0xFFF2
+    STR [R6], R3
+    LDI R7, 32
+    LDI R6, 0xFFF0
+    STR [R6], R7
+    LDI R0, dst1
+    LDR R3, [R0]
+    LDI R6, 0xFFF2
+    STR [R6], R3
+    LDI R7, 10
+    LDI R6, 0xFFF0
+    STR [R6], R7
+
+    HALT
+
+src:  DT 0
+dst:  DT 0
+dst1: DT 0

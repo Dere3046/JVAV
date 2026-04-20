@@ -1,0 +1,61 @@
+# ============================
+# JVAV Project - Git Ignore
+# ============================
+
+# CMake build directory
+/build/
+build/
+/cmake-build-*/
+/out/
+/CMakeUserPresets.json
+
+# Compiled binaries & generated files
+*.exe
+*.out
+*.bin
+!tests/samples/*.bin
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dll
+
+# Generated assembly files (frontend output)
+*.jvav
+!tests/samples/*.jvav
+
+# IDE configurations
+.vscode/
+.idea/
+*.user
+*.suo
+*.sln
+*.vcxproj
+*.vcxproj.filters
+
+# Test artifacts
+test_*.out
+test_*.bin
+!tests/samples/*.bin
+test_*.jvav
+!tests/samples/*.jvav
+
+# Temporary / backup files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+._*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Core dumps
+core
+core.*
+*.stackdump
