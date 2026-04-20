@@ -70,5 +70,50 @@ msg: DB 72,101,108,108,111,44,32,87,111,114,108,100,33,10
     std::remove("test_hello.out");
     test_passed("integration_hello");
 
+    test_header("integration_heap");
+    src = R"(
+    ; Test SYS_MALLOC and SYS_FREE
+    LDI R0, 3
+    STR [0xFFE1], R0      ; ARG0 = 3 words
+    LDI R0, 12
+    STR [0xFFE0], R0      ; CMD = SYS_MALLOC
+    LDR R0, [0xFFE4]      ; R0 = allocated address
+    ; Store values
+    LDI R1, 7
+    STR [R0], R1          ; addr[0] = 7
+    LDI R1, 8
+    ADD R2, R0, 1
+    STR [R2], R1          ; addr[1] = 8
+    LDI R1, 9
+    ADD R2, R0, 2
+    STR [R2], R1          ; addr[2] = 9
+    ; Load and print sum
+    LDR R1, [R0]
+    ADD R2, R0, 1
+    LDR R2, [R2]
+    ADD R1, R1, R2
+    ADD R2, R0, 2
+    LDR R2, [R2]
+    ADD R1, R1, R2
+    STR [0xFFF2], R1      ; putint(sum = 24)
+    ; Free
+    STR [0xFFE1], R0
+    LDI R0, 13
+    STR [0xFFE0], R0      ; CMD = SYS_FREE
+    HALT
+)";
+    std::ofstream("test_heap.jvav") << src;
+    ret = system("jvavc\\back\\jvavc.exe test_heap.jvav test_heap.bin");
+    TEST_ASSERT(ret == 0, "compilation failed");
+    ret = system("jvm\\jvm.exe test_heap.bin > test_heap.out 2>&1");
+    TEST_ASSERT(ret == 0, "execution failed");
+    std::ifstream out3("test_heap.out");
+    std::string output3((std::istreambuf_iterator<char>(out3)), std::istreambuf_iterator<char>());
+    TEST_ASSERT(output3 == "24", "heap output");
+    std::remove("test_heap.jvav");
+    std::remove("test_heap.bin");
+    std::remove("test_heap.out");
+    test_passed("integration_heap");
+
     return 0;
 }
