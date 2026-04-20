@@ -1,5 +1,12 @@
 # JVAV 程序设计语言
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CI](https://img.shields.io/badge/CI-通过-brightgreen.svg)](https://github.com/Dere3046/JVAV/actions)
+[![Stars](https://img.shields.io/github/stars/Dere3046/JVAV?style=social)](https://github.com/Dere3046/JVAV)
+![JVAV](https://img.shields.io/badge/JVAV-128--位-ff69b4.svg)
+![C](https://img.shields.io/badge/C-99-blue.svg)
+![C++](https://img.shields.io/badge/C%2B%2B-17-blue.svg)
+
 > **声明：** 本项目仅为玩笑/恶搞性质。JVAV 由「张浩杨博士」提出，由 **Dere3046** 实现。请不要对张浩杨或任何与 JVAV 相关的人进行骚扰、攻击或恶意中伤。本项目纯粹为了娱乐和教育目的而存在。
 
 JVAV 是一个从零开始构建的完整自定义程序设计语言及工具链，包含 128 位指令集架构、类 C 前端语言（JVL）、类 ARM 后端汇编（JVAV）、虚拟机与反汇编器。
