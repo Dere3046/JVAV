@@ -17,7 +17,7 @@ func main(): int {
 }
 )";
         std::ofstream("test_putint.jvl") << src;
-        int ret = run_cmd("jvavc\\front\\jvavc-front.exe test_putint.jvl test_putint.jvav");
+        int ret = run_cmd("jvavc\\front\\jvlc.exe test_putint.jvl test_putint.jvav");
         TEST_ASSERT(ret == 0, "front compile failed");
         ret = run_cmd("jvavc\\back\\jvavc.exe test_putint.jvav test_putint.bin");
         TEST_ASSERT(ret == 0, "back compile failed");
@@ -51,7 +51,7 @@ func main(): int {
 )";
         std::ofstream("test_imp_lib.jvl") << lib;
         std::ofstream("test_imp_main.jvl") << main;
-        int ret = run_cmd("jvavc\\front\\jvavc-front.exe test_imp_main.jvl test_imp_main.jvav");
+        int ret = run_cmd("jvavc\\front\\jvlc.exe test_imp_main.jvl test_imp_main.jvav");
         TEST_ASSERT(ret == 0, "front compile failed");
         ret = run_cmd("jvavc\\back\\jvavc.exe test_imp_main.jvav test_imp_main.bin");
         TEST_ASSERT(ret == 0, "back compile failed");

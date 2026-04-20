@@ -10,7 +10,7 @@ extern int g_tests_passed;
 extern int g_tests_failed;
 
 int main() {
-    printf("Running JVAVC Front tests...\n");
+    printf("Running JVLC Front tests...\n");
     test_lexer_main();
     test_parser_main();
     test_sema_main();

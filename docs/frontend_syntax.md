@@ -1,6 +1,6 @@
 # JVL Frontend Language Syntax
 
-JVL (JVAV Language) is the high-level frontend language of the JVAV platform. It compiles to JVAV assembly (`.jvav`) via the `jvavc-front` compiler.
+JVL (JVAV Language) is the high-level frontend language of the JVAV platform. It compiles to JVAV assembly (`.jvav`) via the `jvlc` compiler.
 
 ## Basic Types
 
