@@ -1,5 +1,12 @@
 # JVAV Programming Language
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CI](https://img.shields.io/badge/CI-passing-brightgreen.svg)](https://github.com/Dere3046/JVAV/actions)
+[![Stars](https://img.shields.io/github/stars/Dere3046/JVAV?style=social)](https://github.com/Dere3046/JVAV)
+![JVAV](https://img.shields.io/badge/JVAV-128--bit-ff69b4.svg)
+![C](https://img.shields.io/badge/C-99-blue.svg)
+![C++](https://img.shields.io/badge/C%2B%2B-17-blue.svg)
+
 > **Disclaimer:** This is a joke / parody project. JVAV was "proposed by Dr. Zhang Haoyang" and implemented by **Dere3046**. Please do not harass, attack, or send hate to Zhang Haoyang or anyone associated with JVAV. This project exists purely for fun and educational purposes.
 
 JVAV is a complete custom programming language and toolchain built from scratch, featuring a 128-bit instruction set architecture, a C-like frontend language (JVL), an ARM-like assembly backend (JVAV), a virtual machine, and a disassembler.
