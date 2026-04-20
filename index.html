@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JVAV</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+            color: #1c1c1c;
+            line-height: 1.6;
+            background: #fff;
+        }
+
+        .navbar {
+            background: #fff;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 0 24px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 800;
+            color: #0077cc;
+            text-decoration: none;
+            letter-spacing: -0.5px;
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 32px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: #4b5563;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: #0077cc;
+        }
+
+        .nav-cta {
+            background: #0077cc;
+            color: #fff !important;
+            padding: 8px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+
+        .nav-cta:hover {
+            background: #005fa3;
+        }
+
+        .lang-switch {
+            background: none;
+            border: 1px solid #e5e7eb;
+            color: #4b5563;
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .lang-switch:hover {
+            border-color: #0077cc;
+            color: #0077cc;
+        }
+
+        .hero {
+            background: linear-gradient(180deg, #f0f9ff 0%, #ffffff 100%);
+            padding: 100px 24px 80px;
+            text-align: center;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .hero-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .hero h1 {
+            font-size: 72px;
+            font-weight: 800;
+            color: #0077cc;
+            margin-bottom: 16px;
+            letter-spacing: -2px;
+        }
+
+        .hero-subtitle {
+            font-size: 28px;
+            color: #1e40af;
+            font-weight: 400;
+            margin-bottom: 20px;
+            letter-spacing: 2px;
+        }
+
+        .disclaimer {
+            font-size: 13px;
+            color: rgba(107, 114, 128, 0.7);
+            max-width: 640px;
+            margin: 0 auto 16px;
+            line-height: 1.6;
+        }
+
+        .disclaimer-link {
+            font-size: 13px;
+            color: rgba(0, 119, 204, 0.6);
+            text-decoration: underline;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
+            font-family: inherit;
+            transition: color 0.2s;
+        }
+
+        .disclaimer-link:hover {
+            color: #0077cc;
+        }
+
+        .hero-desc {
+            font-size: 18px;
+            color: #4b5563;
+            max-width: 600px;
+            margin: 24px auto 40px;
+            line-height: 1.7;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 32px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .btn-primary {
+            background: #0077cc;
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: #005fa3;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 119, 204, 0.3);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #0077cc;
+            border-color: #0077cc;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(0, 119, 204, 0.05);
+        }
+
+        .features-bar {
+            background: #fff;
+            padding: 60px 24px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .features-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 40px;
+            text-align: center;
+        }
+
+        .feature-item h3 {
+            color: #0077cc;
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+
+        .feature-item p {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .toolchain-section {
+            padding: 80px 24px;
+            background: #fff;
+        }
+
+        .section-container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .section-header {
+            margin-bottom: 48px;
+        }
+
+        .section-header h2 {
+            font-size: 36px;
+            color: #1c1c1c;
+            margin-bottom: 12px;
+            font-weight: 700;
+        }
+
+        .section-header p {
+            color: #6b7280;
+            font-size: 18px;
+        }
+
+        .toolchain-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 48px;
+            max-width: 600px;
+            margin: 0 auto;
+            transition: all 0.3s;
+            background: #fff;
+        }
+
+        .toolchain-card:hover {
+            border-color: #0077cc;
+            box-shadow: 0 4px 20px rgba(0, 119, 204, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .toolchain-card h3 {
+            color: #0077cc;
+            font-size: 24px;
+            margin-bottom: 16px;
+        }
+
+        .toolchain-card p {
+            color: #4b5563;
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        .toolchain-card a {
+            color: #0077cc;
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .toolchain-card a:hover {
+            text-decoration: underline;
+        }
+
+        .footer {
+            background: #0f172a;
+            color: #94a3b8;
+            padding: 40px 24px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .footer a {
+            color: #60a5fa;
+            text-decoration: none;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 24px;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: #fff;
+            border-radius: 16px;
+            max-width: 520px;
+            width: 100%;
+            padding: 32px;
+            position: relative;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            animation: modalIn 0.3s ease;
+        }
+
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #9ca3af;
+            cursor: pointer;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        .modal h3 {
+            font-size: 20px;
+            color: #0077cc;
+            margin-bottom: 16px;
+            padding-right: 40px;
+        }
+
+        .modal p {
+            color: #4b5563;
+            font-size: 15px;
+            line-height: 1.7;
+            margin-bottom: 12px;
+        }
+
+        .modal-tag {
+            display: inline-block;
+            background: #f0f9ff;
+            color: #0077cc;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        [data-lang] {
+            display: none;
+        }
+
+        [data-lang].active {
+            display: block;
+        }
+
+        span[data-lang].active, a span[data-lang].active {
+            display: inline;
+        }
+
+        a[data-lang].active {
+            display: inline-flex;
+        }
+
+        p[data-lang].active {
+            display: block;
+        }
+
+        button[data-lang].active {
+            display: inline-block;
+        }
+
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .hero h1 { font-size: 48px; }
+            .hero-subtitle { font-size: 22px; }
+            .features-container { grid-template-columns: 1fr; }
+            .toolchain-card { padding: 32px 24px; }
+            .modal { padding: 24px; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="#" class="logo">JVAV</a>
+            <div class="nav-right">
+                <ul class="nav-links">
+                    <li><a href="https://github.com/Dere3046/JVAV/blob/main/docs/frontend_syntax.md" target="_blank" data-lang="zh">文档</a><a href="https://github.com/Dere3046/JVAV/blob/main/docs/frontend_syntax.md" target="_blank" data-lang="en">Docs</a></li>
+                    <li><a href="https://github.com/Dere3046/JVAV/blob/main/docs/jvm_features.md" target="_blank">JVM</a></li>
+                    <li><a href="https://github.com/Dere3046/JVAV#key-features" target="_blank" data-lang="zh">特性</a><a href="https://github.com/Dere3046/JVAV#key-features" target="_blank" data-lang="en">Features</a></li>
+                    <li><a href="https://github.com/Dere3046/JVAV" class="nav-cta" target="_blank">GitHub →</a></li>
+                </ul>
+                <button class="lang-switch" onclick="toggleLang()" data-lang="zh">EN</button>
+                <button class="lang-switch" onclick="toggleLang()" data-lang="en">中文</button>
+            </div>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="hero-container">
+            <h1>JVAV</h1>
+            <p class="hero-subtitle active" data-lang="zh">一次编写，到处运行</p>
+            <p class="hero-subtitle" data-lang="en">Write Once, Run Anywhere</p>
+            
+            <p class="disclaimer active" data-lang="zh">
+                免责声明：这是一个玩笑/恶搞项目。JVAV 由"张浩杨博士"提出，由 Dere3046 实现。请不要骚扰、攻击或发送仇恨给张浩杨或任何与 JVAV 有关的人。本项目纯粹是为了娱乐和教育目的而存在。
+                <button class="disclaimer-link" onclick="openModal()">了解详情</button>
+            </p>
+            <p class="disclaimer" data-lang="en">
+                Disclaimer: This is a joke/parody project. JVAV was "proposed by Dr. Zhang Haoyang" and implemented by Dere3046. Please do not harass, attack, or send hate to Zhang Haoyang or anyone associated with JVAV. This project exists purely for fun and educational purposes.
+                <button class="disclaimer-link" onclick="openModal()">Learn more</button>
+            </p>
+
+            <p class="hero-desc active" data-lang="zh">
+                由张浩杨博士于公元 1025 年构想，现由 JVAV 开源社区维护。
+                包含完整的编译器、汇编器、虚拟机和创新的 MimiWorld 所有权系统。
+            </p>
+            <p class="hero-desc" data-lang="en">
+                Conceived by Dr. Zhang Haoyang in 1025 AD, now maintained by the JVAV open source community.
+                Features a complete compiler, assembler, virtual machine, and the innovative MimiWorld ownership system.
+            </p>
+            <div class="hero-buttons">
+                <a href="https://github.com/Dere3046/JVAV" class="btn btn-primary" target="_blank">
+                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24" style="vertical-align: middle;">
+                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                    <span class="active" data-lang="zh">前往 GitHub 仓库</span>
+                    <span data-lang="en">Go to GitHub</span>
+                </a>
+                <a href="https://github.com/Dere3046/JVAV#quick-start" class="btn btn-secondary" target="_blank">
+                    <span class="active" data-lang="zh">快速开始 →</span>
+                    <span data-lang="en">Quick Start →</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <section class="features-bar">
+        <div class="features-container">
+            <div class="feature-item">
+                <h3>128-bit ISA</h3>
+                <p class="active" data-lang="zh">128-bit 指令集；这是一个先进的构思设计</p>
+                <p data-lang="en">128-bit instruction set; an advanced architectural design</p>
+            </div>
+            <div class="feature-item">
+                <h3>JVL</h3>
+                <p class="active" data-lang="zh">类 C 语法，直觉编程体验</p>
+                <p data-lang="en">C-like syntax for intuitive programming</p>
+            </div>
+            <div class="feature-item">
+                <h3>MimiWorld</h3>
+                <p class="active" data-lang="zh">Rust 风格所有权与借用检查</p>
+                <p data-lang="en">Rust-inspired ownership and borrow checking</p>
+            </div>
+            <div class="feature-item">
+                <h3>Cross-Platform VM</h3>
+                <p class="active" data-lang="zh">C99 实现，随处运行</p>
+                <p data-lang="en">C99 implementation, runs everywhere</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="toolchain-section">
+        <div class="section-container">
+            <div class="section-header">
+                <h2 class="active" data-lang="zh">完整工具链</h2>
+                <h2 data-lang="en">Complete Toolchain</h2>
+                <p class="active" data-lang="zh">从源码到执行，一站式解决方案</p>
+                <p data-lang="en">From source to execution, all in one</p>
+            </div>
+            <div class="toolchain-card">
+                <h3 class="active" data-lang="zh">编译 → 汇编 → 运行</h3>
+                <h3 data-lang="en">Compile → Assemble → Run</h3>
+                <p class="active" data-lang="zh">
+                    <strong>jvlc</strong> 将 JVL 源码编译为 JVAV 汇编，
+                    <strong>jvavc</strong> 将汇编汇编为二进制，
+                    <strong>jvm</strong> 直接执行。支持多文件链接与模块导入。
+                </p>
+                <p data-lang="en">
+                    <strong>jvlc</strong> compiles JVL source to JVAV assembly,
+                    <strong>jvavc</strong> assembles to binary,
+                    <strong>jvm</strong> executes directly. Supports multi-file linking and module imports.
+                </p>
+                <a href="https://github.com/Dere3046/JVAV#project-structure" target="_blank">
+                    <span class="active" data-lang="zh">了解架构 →</span>
+                    <span data-lang="en">Learn More →</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <p class="active" data-lang="zh">JVAV 语言由 <strong>张浩杨博士</strong> 提出，<a href="https://github.com/Dere3046" target="_blank">Dere3046</a> 与社区实现</p>
+        <p data-lang="en">JVAV language proposed by <strong>Dr. Zhang Haoyang</strong>, implemented by <a href="https://github.com/Dere3046" target="_blank">Dere3046</a> and the community</p>
+        <p style="margin-top: 8px;" class="active" data-lang="zh">MIT License · 仅供娱乐与教育目的</p>
+        <p style="margin-top: 8px;" data-lang="en">MIT License · For fun and educational purposes only</p>
+    </footer>
+
+    <div class="modal-overlay" id="modal" onclick="closeModalOutside(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="closeModal()">×</button>
+            <h3 class="active" data-lang="zh">关于这个梗</h3>
+            <h3 data-lang="en">About This Meme</h3>
+            <p class="active" data-lang="zh">
+                这是一个源自 <strong>China2B2T</strong> Minecraft 服务器交流群的梗。源于 JAVA 的错误拼写。
+            </p>
+            <p data-lang="en">
+                This is a meme originating from the <strong>China2B2T</strong> Minecraft server community. Born from a misspelling of JAVA.
+            </p>
+            <span class="modal-tag">China2B2T</span>
+            <span class="modal-tag">Minecraft</span>
+            <span class="modal-tag" data-lang="zh" style="display:none">梗</span>
+            <span class="modal-tag" data-lang="en" style="display:none">Meme</span>
+        </div>
+    </div>
+
+    <script>
+        let currentLang = 'zh';
+        function toggleLang() {
+            currentLang = currentLang === 'zh' ? 'en' : 'zh';
+            document.querySelectorAll('[data-lang]').forEach(el => {
+                if (el.getAttribute('data-lang') === currentLang) {
+                    el.classList.add('active');
+                } else {
+                    el.classList.remove('active');
+                }
+            });
+        }
+        
+        function openModal() {
+            document.getElementById('modal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+        
+        function closeModalOutside(event) {
+            if (event.target === document.getElementById('modal')) {
+                closeModal();
+            }
+        }
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeModal();
+        });
+        
+        document.querySelectorAll('[data-lang="zh"]').forEach(el => el.classList.add('active'));
+    </script>
+
+</body>
+</html>
