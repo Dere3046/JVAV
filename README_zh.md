@@ -79,8 +79,8 @@ JVAV/
 ## 测试
 
 ```bash
-./test_back    # 12 项后端测试
-./test_front   # 25 项前端测试
+./test_back    # 13 项后端测试
+./test_front   # 28 项前端测试
 ```
 
 ---
