@@ -1,0 +1,11 @@
+; Test dynamic memory auto-grow
+    LDI R0, 0x5000
+    LDI R1, 0x1234
+    STR [R0], R1
+    LDR R2, [R0]
+    LDI R3, 0xFFF2
+    STR [R3], R2
+    LDI R7, 10
+    LDI R3, 0xFFF0
+    STR [R3], R7
+    HALT

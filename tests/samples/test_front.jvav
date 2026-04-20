@@ -1,0 +1,52 @@
+    CALL main
+    HALT
+add:
+    PUSH R7
+    MOV R7, SP
+    LDI R4, 2
+    ADD R4, R7, R4
+    STR [R4], R0
+    LDI R4, 3
+    ADD R4, R7, R4
+    STR [R4], R1
+    LDI R0, 2
+    ADD R0, R7, R0
+    LDR R0, [R0]
+    LDI R1, 3
+    ADD R1, R7, R1
+    LDR R1, [R1]
+    ADD R0, R0, R1
+    JMP add_epilogue_0
+add_epilogue_0:
+    MOV SP, R7
+    POP R7
+    RET
+main:
+    PUSH R7
+    MOV R7, SP
+    LDI R4, 3
+    SUB SP, SP, R4
+    LDI R0, 5
+    LDI R1, -1
+    ADD R1, R7, R1
+    STR [R1], R0
+    LDI R0, 3
+    LDI R1, -2
+    ADD R1, R7, R1
+    STR [R1], R0
+    LDI R0, -1
+    ADD R0, R7, R0
+    LDR R0, [R0]
+    LDI R1, -2
+    ADD R1, R7, R1
+    LDR R1, [R1]
+    CALL add
+    LDI R1, -3
+    ADD R1, R7, R1
+    STR [R1], R0
+main_epilogue_1:
+    MOV SP, R7
+    POP R7
+    RET
+
+; Data section
