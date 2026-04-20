@@ -31,8 +31,10 @@ int main(int argc, char *argv[]) {
     Sema sema;
     string basePath = fs::path(src).parent_path().string();
     if (!sema.analyze(parser.getProgram(), basePath)) {
-        cerr << "Semantic error: " << sema.getError() << "\n";
+        sema.printErrors(cerr);
         return 1;
+    } else if (!sema.getErrors().empty()) {
+        sema.printErrors(cout);
     }
 
     CodeGenerator codegen;
