@@ -351,6 +351,22 @@ void CodeGenerator::genExpr(shared_ptr<Expr> e, int destReg) {
             }
             break;
         }
+        case Expr::EXPR_BORROW: {
+            auto b = dynamic_pointer_cast<BorrowExpr>(e);
+            if (b->operand->kind == Expr::EXPR_IDENT) {
+                auto id = dynamic_pointer_cast<IdentExpr>(b->operand);
+                auto it = localOffsets.find(id->name);
+                if (it != localOffsets.end()) {
+                    emit("    LDI R" + to_string(destReg) + ", " + to_string(it->second));
+                    emit("    ADD R" + to_string(destReg) + ", R6, R" + to_string(destReg));
+                } else {
+                    emit("    ; unknown borrow target " + id->name);
+                }
+            } else {
+                emit("    ; borrow of non-ident not supported");
+            }
+            break;
+        }
         case Expr::EXPR_INDEX: {
             auto i = dynamic_pointer_cast<IndexExpr>(e);
             genExpr(i->base, destReg);
