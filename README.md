@@ -85,6 +85,18 @@ JVAV/
 
 ---
 
+## Contributors
+
+| Name | Contribution |
+|------|-------------|
+| Dr.zhanghaoyang | Proposed the JVAV language |
+| Dere | Initial implementation |
+| Derry | Massive improvements based on the prototype (using Claude AI) |
+| Claude AI | Assisted Derry in rapid development and improvements |
+| Moonshot AI (Kimi) | Documentation assistance |
+
+---
+
 ## License
 
 MIT License

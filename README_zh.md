@@ -85,6 +85,18 @@ JVAV/
 
 ---
 
+## 贡献者
+
+| 名称 | 贡献 |
+|------|------|
+| Dr.zhanghaoyang | 提出 JVAV 语言 |
+| Dere | 初始实现 |
+| Derry | 基于原型使用 Claude AI 快速做出大量改进 |
+| Claude AI | 协助 Derry 进行快速开发与改进 |
+| Moonshot AI (Kimi) | 文档协助 |
+
+---
+
 ## 许可证
 
 MIT License
