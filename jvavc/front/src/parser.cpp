@@ -258,6 +258,13 @@ shared_ptr<Expr> FrontParser::parseUnary() {
         if (!e) return nullptr;
         return make_shared<UnaryExpr>("~", e, CURRENT.line);
     }
+    if (match(TOK_BITAND)) {
+        bool mut_ = false;
+        if (match(TOK_KW_MUT)) mut_ = true;
+        auto e = parseUnary();
+        if (!e) return nullptr;
+        return make_shared<BorrowExpr>(e, mut_, CURRENT.line);
+    }
     return parsePostfix();
 }
 

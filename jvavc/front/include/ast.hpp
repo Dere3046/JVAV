@@ -29,7 +29,7 @@ struct Expr {
     enum Kind {
         EXPR_NUMBER, EXPR_STRING, EXPR_CHAR, EXPR_BOOL,
         EXPR_IDENT, EXPR_BINARY, EXPR_UNARY,
-        EXPR_CALL, EXPR_INDEX, EXPR_ASSIGN
+        EXPR_CALL, EXPR_INDEX, EXPR_ASSIGN, EXPR_BORROW
     };
     Kind kind;
     std::shared_ptr<Type> type;
@@ -94,6 +94,13 @@ struct AssignExpr : Expr {
     std::shared_ptr<Expr> left, right;
     AssignExpr(std::shared_ptr<Expr> L, std::shared_ptr<Expr> R, int l)
         : Expr(EXPR_ASSIGN, l), left(L), right(R) {}
+};
+
+struct BorrowExpr : Expr {
+    std::shared_ptr<Expr> operand;
+    bool mutableBorrow;
+    BorrowExpr(std::shared_ptr<Expr> e, bool mut_, int l)
+        : Expr(EXPR_BORROW, l), operand(e), mutableBorrow(mut_) {}
 };
 
 // Statement

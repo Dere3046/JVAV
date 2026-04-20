@@ -17,6 +17,7 @@ enum TokenType {
     TOK_KW_PTR, TOK_KW_ARRAY,
     TOK_KW_TRUE, TOK_KW_FALSE,
     TOK_KW_IMPORT,
+    TOK_KW_MUT,
     // Symbols
     TOK_PLUS, TOK_MINUS, TOK_STAR, TOK_SLASH, TOK_PERCENT,
     TOK_ASSIGN,
