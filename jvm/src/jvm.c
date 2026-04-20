@@ -235,13 +235,19 @@ static void syscall_dispatch(JVM *vm, var cmd) {
             if (size <= 0) { vm->syscall_ret = 0; break; }
             var addr = vm->heap_ptr;
             var end = addr + size;
-            // Check stack/heap collision
+            // Try to grow memory if heap would collide with stack
+            if (end >= vm->reg[SP] - STACK_GUARD) {
+                var need = end + STACK_GUARD + 1024;
+                if (ensure_mem(vm, need) == 0) {
+                    vm->reg[SP] = vm->mem_capacity - 1;
+                }
+            }
+            // Final check after potential grow
             if (end >= vm->reg[SP] - STACK_GUARD) {
                 fprintf(stderr, "Heap overflow: heap end %lld >= SP guard %lld\n",
                     (long long)end, (long long)(vm->reg[SP] - STACK_GUARD));
                 vm->syscall_ret = 0; break;
             }
-            // Ensure memory is allocated
             if (ensure_mem(vm, end - 1) < 0) {
                 vm->syscall_ret = 0; break;
             }
