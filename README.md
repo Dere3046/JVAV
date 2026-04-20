@@ -79,8 +79,8 @@ JVAV/
 ## Testing
 
 ```bash
-./test_back    # 12 backend tests
-./test_front   # 25 frontend tests
+./test_back    # 13 backend tests
+./test_front   # 28 frontend tests
 ```
 
 ---

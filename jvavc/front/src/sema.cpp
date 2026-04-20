@@ -230,6 +230,10 @@ bool Sema::analyze(shared_ptr<Program> prog, const string &bp) {
     auto voidType = make_shared<Type>(Type{TYPE_VOID});
     declare("putint", Symbol::SYM_FUNC, intType, 0, true);
     declare("putchar", Symbol::SYM_FUNC, voidType, 0, true);
+    auto ptrIntType = make_shared<Type>(Type{TYPE_PTR});
+    ptrIntType->sub = make_shared<Type>(Type{TYPE_INT});
+    declare("alloc", Symbol::SYM_FUNC, ptrIntType, 0, true);
+    declare("free", Symbol::SYM_FUNC, voidType, 0, true);
 
     for (auto &d : prog->decls) {
         checkDecl(d);
@@ -359,7 +363,7 @@ bool Sema::checkStmt(shared_ptr<Stmt> s) {
         }
         case Stmt::STMT_EXPR: {
             auto e = dynamic_pointer_cast<ExprStmt>(s);
-            checkExpr(e->expr);
+            if (!checkExpr(e->expr)) return false;
             break;
         }
         case Stmt::STMT_IF: {
@@ -532,7 +536,14 @@ bool Sema::checkExpr(shared_ptr<Expr> e) {
 
 bool Sema::checkAssignTarget(shared_ptr<Expr> e) {
     if (e->kind == Expr::EXPR_IDENT) return true;
-    if (e->kind == Expr::EXPR_INDEX) return true;
+    if (e->kind == Expr::EXPR_INDEX) {
+        auto idx = dynamic_pointer_cast<IndexExpr>(e);
+        if (idx->base->kind == Expr::EXPR_IDENT) {
+            auto id = dynamic_pointer_cast<IdentExpr>(idx->base);
+            return checkUsable(id->name, e->line);
+        }
+        return true;
+    }
     report(SEM_ERROR, "Invalid assignment target", e->line,
            "only variables and index expressions can be assigned to");
     return false;

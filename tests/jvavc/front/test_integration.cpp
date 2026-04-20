@@ -68,5 +68,33 @@ func main(): int {
     }
     test_passed("integration_import");
 
+    test_header("integration_alloc");
+    {
+        const char* src = R"(
+func main(): int {
+    var p: ptr<int> = alloc(1);
+    p[0] = 42;
+    putint(p[0]);
+    free(p);
+    return 0;
+}
+)";
+        std::ofstream("test_alloc.jvl") << src;
+        int ret = run_cmd("jvavc\\front\\jvlc.exe test_alloc.jvl test_alloc.jvav");
+        TEST_ASSERT(ret == 0, "front compile failed");
+        ret = run_cmd("jvavc\\back\\jvavc.exe test_alloc.jvav test_alloc.bin");
+        TEST_ASSERT(ret == 0, "back compile failed");
+        ret = run_cmd("jvm\\jvm.exe test_alloc.bin > test_alloc.out 2>&1");
+        TEST_ASSERT(ret == 0, "execution failed");
+        std::ifstream out("test_alloc.out");
+        std::string output((std::istreambuf_iterator<char>(out)), std::istreambuf_iterator<char>());
+        TEST_ASSERT(output == "42", "alloc output");
+        std::remove("test_alloc.jvl");
+        std::remove("test_alloc.jvav");
+        std::remove("test_alloc.bin");
+        std::remove("test_alloc.out");
+    }
+    test_passed("integration_alloc");
+
     return 0;
 }

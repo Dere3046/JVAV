@@ -230,6 +230,36 @@ static void syscall_dispatch(JVM *vm, var cmd) {
             vm->syscall_ret = 0;
             break;
         }
+        case SYS_MALLOC: {
+            var size = a0;
+            if (size <= 0) { vm->syscall_ret = 0; break; }
+            var addr = vm->heap_ptr;
+            var end = addr + size;
+            // Check stack/heap collision
+            if (end >= vm->reg[SP] - STACK_GUARD) {
+                fprintf(stderr, "Heap overflow: heap end %lld >= SP guard %lld\n",
+                    (long long)end, (long long)(vm->reg[SP] - STACK_GUARD));
+                vm->syscall_ret = 0; break;
+            }
+            // Ensure memory is allocated
+            if (ensure_mem(vm, end - 1) < 0) {
+                vm->syscall_ret = 0; break;
+            }
+            vm->heap_ptr = end;
+            vm->syscall_ret = addr;
+            break;
+        }
+        case SYS_FREE: {
+            var addr = a0;
+            if (addr < vm->heap_base || addr >= vm->heap_ptr) {
+                fprintf(stderr, "Invalid free address %lld\n", (long long)addr);
+                vm->syscall_ret = -1; break;
+            }
+            // Tombstone the first word for debugging
+            vm->mem[(size_t)addr] = (var)0xDEAD;
+            vm->syscall_ret = 0;
+            break;
+        }
         default:
             vm->syscall_ret = -1;
             break;
@@ -268,6 +298,9 @@ void jvm_init(JVM *vm) {
     memset(vm->reg, 0, sizeof(vm->reg));
     vm->reg[SP] = MEM_INITIAL - 1;
     vm->running = 0;
+    vm->mem_code_end = 0;
+    vm->heap_base = 0;
+    vm->heap_ptr = 0;
     memset(vm->mmap_table, 0, sizeof(vm->mmap_table));
     memset(vm->fd_table, 0, sizeof(vm->fd_table));
 }
@@ -297,6 +330,8 @@ int jvm_load_program(JVM *vm, const char *filename) {
     fclose(f);
     if (cnt == 0 && sz > 0) { fprintf(stderr, "Read error\n"); return -1; }
     vm->mem_code_end = words;
+    vm->heap_base = words + STACK_GUARD;
+    vm->heap_ptr = vm->heap_base;
     vm->reg[PC] = 0;
     return 0;
 }

@@ -81,10 +81,12 @@ func main(): int {
 
 ## Built-in Functions
 
-| Function | Description |
-|----------|-------------|
-| `putint(x)` | Print integer to stdout |
-| `putchar(c)` | Print character to stdout |
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `putint(x)` | `func putint(x: int): int` | Print integer to stdout |
+| `putchar(c)` | `func putchar(c: int): void` | Print character to stdout |
+| `alloc(n)` | `func alloc(size: int): ptr<int>` | Allocate `size` words on the heap |
+| `free(p)` | `func free(p: ptr<int>): void` | Release heap allocation (consumes ownership) |
 
 ---
 

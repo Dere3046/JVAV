@@ -102,5 +102,21 @@ int test_sema_main() {
     }
     test_passed("sema_func_as_value");
 
+    test_header("sema_alloc");
+    {
+        string err;
+        TEST_ASSERT(sema_ok("func main(): int { var p = alloc(1); p[0] = 1; free(p); return 0; }", err), err.c_str());
+    }
+    test_passed("sema_alloc");
+
+    test_header("sema_alloc_move");
+    {
+        string err;
+        // ptr<int> is non-Copy; after free(p), p is moved and cannot be used
+        TEST_ASSERT(!sema_ok("func main(): int { var p: ptr<int> = alloc(1); free(p); p[0] = 1; return 0; }", err), "should fail");
+        TEST_ASSERT(err.find("moved") != string::npos || err.find("Moved") != string::npos, "move msg after free");
+    }
+    test_passed("sema_alloc_move");
+
     return 0;
 }

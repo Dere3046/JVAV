@@ -318,13 +318,35 @@ void CodeGenerator::genExpr(shared_ptr<Expr> e, int destReg) {
                 name = dynamic_pointer_cast<IdentExpr>(c->callee)->name;
             }
 
-            // Special handling for putint / putchar
+            // Special handling for built-in I/O
             if (name == "putint" || name == "putchar") {
                 if (!c->args.empty()) {
                     genExpr(c->args[0], 0);
                 }
                 string addr = (name == "putint") ? "0xFFF2" : "0xFFF0";
                 emit("    STR [" + addr + "], R0");
+                break;
+            }
+            // Special handling for alloc / free (heap syscalls)
+            if (name == "alloc") {
+                if (!c->args.empty()) {
+                    genExpr(c->args[0], 0);
+                } else {
+                    emit("    LDI R0, 1");  // default alloc 1 word
+                }
+                emit("    STR [0xFFE1], R0");   // SYSCALL_ARG0
+                emit("    LDI R0, 12");          // SYS_MALLOC
+                emit("    STR [0xFFE0], R0");   // SYSCALL_CMD
+                emit("    LDR R0, [0xFFE4]");   // SYSCALL_RET -> R0
+                break;
+            }
+            if (name == "free") {
+                if (!c->args.empty()) {
+                    genExpr(c->args[0], 0);
+                }
+                emit("    STR [0xFFE1], R0");   // SYSCALL_ARG0
+                emit("    LDI R0, 13");          // SYS_FREE
+                emit("    STR [0xFFE0], R0");   // SYSCALL_CMD
                 break;
             }
 
