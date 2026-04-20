@@ -35,7 +35,9 @@ bool Lexer::tokenize(const string &filename) {
         char c = src[pos];
         if (c == '"') { if (!readString()) return false; }
         else if (c == '\'') { if (!readChar()) return false; }
-        else if (isdigit(c) || (c == '-' && pos + 1 < src.size() && isdigit(src[pos + 1]))) { if (!readNumber()) return false; }
+        else if (isdigit(c) || (c == '-' && pos + 1 < src.size() && isdigit(src[pos + 1]) &&
+                 (pos == 0 || isspace((unsigned char)src[pos-1]) || src[pos-1] == '(' || src[pos-1] == '[' || src[pos-1] == '{' ||
+                  src[pos-1] == ';' || src[pos-1] == ',' || src[pos-1] == '='))) { if (!readNumber()) return false; }
         else if (isIdentStart(c)) { if (!readIdentOrKeyword()) return false; }
         else { if (!readSymbol()) return false; }
     }
