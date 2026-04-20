@@ -9,8 +9,8 @@
 Every value (of a non-Copy type) has exactly **one owner** at any time.
 
 ```jvl
-var p: ptr<int> = alloc_int();   // p owns the pointer
-var q = p;                        // ownership moves from p to q
+var p: ptr<int> = alloc(1);   // p owns the heap allocation
+var q = p;                     // ERROR: p has been moved
 // p is now invalid; using p is a compile error
 ```
 
@@ -35,7 +35,7 @@ You can borrow a value instead of taking ownership:
 
 ```jvl
 func print_int(p: &int) {
-    putint(*p);   // read through borrow
+    putint(p[0]);   // read through borrow
 }
 
 func main(): int {
@@ -46,14 +46,51 @@ func main(): int {
 }
 ```
 
+## Heap Allocation
+
+JVAV provides a simple bump allocator via built-in functions:
+
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `alloc(n)` | `func alloc(size: int): ptr<int>` | Allocate `size` 128-bit words on the heap |
+| `free(p)` | `func free(p: ptr<int>): void` | Release ownership of `p` (tombstone in VM) |
+
+### Example
+
+```jvl
+func main(): int {
+    var p: ptr<int> = alloc(3);
+    p[0] = 7;
+    p[1] = 8;
+    p[2] = 9;
+    putint(p[0] + p[1] + p[2]);   // prints 24
+    free(p);
+    return 0;
+}
+```
+
+### Use-After-Free Detection
+
+MimiWorld tracks ownership at compile time. Using a pointer after `free()` is a **compile error**:
+
+```jvl
+func main(): int {
+    var p: ptr<int> = alloc(1);
+    free(p);
+    p[0] = 42;   // [MimiWorld Error] Use of moved value 'p'
+    return 0;
+}
+```
+
 ## Ownership Rules
 
 1. **One owner** — Each non-Copy value has exactly one owner
 2. **Move on assignment** — Assigning a non-Copy value transfers ownership
-3. **Move on call** — Passing a non-Copy value as an argument transfers ownership
+3. **Move on call** — Passing a non-Copy value as an argument transfers ownership (including to `free()`)
 4. **Borrow conflicts** — Cannot borrow mutably while any borrow exists
 5. **Use after move** — Using a moved value is a compile error
 6. **Uninitialized use** — Using an uninitialized variable is a compile error
+7. **Heap safety** — `alloc()` returns a unique owner; `free()` consumes it
 
 ## Error Messages
 
@@ -70,23 +107,40 @@ MimiWorld provides detailed, Rust-style error messages:
   --> hint: remove the declaration or prefix with _ to suppress
 ```
 
+## VM Heap Implementation
+
+The JVAV virtual machine implements a simple bump allocator:
+
+- **Heap base**: `mem_code_end + STACK_GUARD`
+- **Allocation**: `heap_ptr` grows upward
+- **Stack guard**: Prevents heap/stack collision
+- **Free**: Writes `0xDEAD` tombstone to first word; detects invalid access
+- **Syscalls**: `SYS_MALLOC (12)` / `SYS_FREE (13)` via syscall mailbox
+
+Memory layout:
+```
+[ code/data | stack_guard | heap (grows up) | ...free... | stack (grows down) ]
+0           code_end      heap_base       heap_ptr                  SP
+```
+
 ## Limitations
 
 MimiWorld is a **simplified** ownership system compared to Rust:
 
 - No lifetimes annotations (all borrows end at scope exit)
-- No `Drop` trait (JVAV has no heap allocator in the VM)
+- No `Drop` trait (JVAV does not auto-insert `free()` on scope exit)
 - No pattern matching / destructuring
-- Control flow merging is conservative (if a variable is moved in any branch, it is considered moved after the branch)
+- Control flow merging is conservative
+- Bump allocator does not reclaim freed memory (fragments over time)
 - Borrow checker operates at the semantic analysis level; runtime behavior is unchanged
 
 ## Example: Safe Pointer Usage
 
 ```jvl
 func swap(a: &mut int, b: &mut int) {
-    var tmp = *a;
-    *a = *b;
-    *b = tmp;
+    var tmp = a[0];
+    a[0] = b[0];
+    b[0] = tmp;
 }
 
 func main(): int {

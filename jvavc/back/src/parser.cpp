@@ -151,7 +151,10 @@ static bool parseDataItems(const string &args, vector<DataItem> &items, int widt
 
 bool Parser::parseLine(const string &line, int lineNum) {
     string l = trim(line);
-    if (l.empty() || l.substr(0,2)=="//" || l[0]==';') return true;
+    // Strip inline comments
+    size_t sc = l.find(';');
+    if (sc != string::npos) l = trim(l.substr(0, sc));
+    if (l.empty() || l.substr(0,2)=="//") return true;
     if (l.substr(0,5)==".data" || l.substr(0,5)==".text") return true;
     if (l.substr(0,7)==".global") {
         string rest = trim(l.substr(7));

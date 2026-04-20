@@ -70,7 +70,9 @@ enum {
     SYS_FSEEK,           /* ARG0=fd, ARG1=offset, ARG2=whence -> RET=pos or -1 */
     SYS_FTELL,           /* ARG0=fd -> RET=pos or -1 */
     SYS_MEMCPY,          /* ARG0=dst, ARG1=src, ARG2=count_words */
-    SYS_MEMSET           /* ARG0=dst, ARG1=value, ARG2=count_words */
+    SYS_MEMSET,          /* ARG0=dst, ARG1=value, ARG2=count_words */
+    SYS_MALLOC,          /* ARG0=size_words -> RET=addr or 0 */
+    SYS_FREE             /* ARG0=addr -> RET=0 or -1 */
 };
 
 typedef struct {
@@ -89,6 +91,9 @@ typedef struct {
     var reg[NUM_REGS + 3];
     int running;
     var mem_code_end;    /* end of loaded code+data (stack guard starts here) */
+    /* heap allocator (bump allocator) */
+    var heap_base;
+    var heap_ptr;
     /* syscall mailbox */
     var syscall_arg0;
     var syscall_arg1;
