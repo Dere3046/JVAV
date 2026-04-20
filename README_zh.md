@@ -20,7 +20,7 @@ mingw32-make -j$(nproc)
 
 ```bash
 # 前端：.jvl -> .jvav
-./jvavc-front hello.jvl hello.jvav
+./jvlc hello.jvl hello.jvav
 
 # 后端：.jvav -> .bin
 ./jvavc hello.jvav hello.bin
