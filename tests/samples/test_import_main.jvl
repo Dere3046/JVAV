@@ -1,0 +1,7 @@
+import "test_import_lib.jvl";
+
+func main(): int {
+    var z: int = add(3, 5);
+    putint(z);
+    return 0;
+}

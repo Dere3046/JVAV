@@ -1,0 +1,21 @@
+; Fibonacci test
+    LDI R0, 0
+    LDI R1, 1
+    LDI R2, 10
+    LDI R3, 1
+    LDI R4, 0
+    LDI R5, 0xFFF2
+    LDI R6, 0xFFF0
+fib:
+    STR [R5], R0
+    LDI R7, 32
+    STR [R6], R7
+    ADD R7, R0, R1
+    MOV R0, R1
+    MOV R1, R7
+    SUB R2, R2, R3
+    CMP R2, R4
+    JNZ fib
+    LDI R7, 10
+    STR [R6], R7
+    HALT

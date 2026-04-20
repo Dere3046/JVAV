@@ -1,0 +1,8 @@
+#include "test_inc_header.jvh"
+    LDI R0, 42
+    LDI R1, PUTINT
+    STR [R1], R0
+    LDI R7, 10
+    LDI R1, PUTCHAR
+    STR [R1], R7
+    HALT

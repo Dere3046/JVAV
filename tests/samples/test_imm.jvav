@@ -1,0 +1,9 @@
+    LDI R0, 0x1234
+    STR [0x8000], R0
+    LDR R1, [0x8000]
+    LDI R2, 0xFFF2
+    STR [R2], R1
+    LDI R7, 10
+    LDI R3, 0xFFF0
+    STR [R3], R7
+    HALT
