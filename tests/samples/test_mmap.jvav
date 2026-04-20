@@ -1,0 +1,67 @@
+; Test memory-mapped file I/O
+    LDI R3, 0xFFE1
+    LDI R4, 0xFFE2
+    LDI R5, 0xFFE3
+    LDI R6, 0xFFE0
+    LDI R7, 0xFFE4
+
+    LDI R0, fname
+    LDI R1, mode_w
+    STR [R3], R0
+    STR [R4], R1
+    LDI R2, 4
+    STR [R6], R2
+    LDR R5, [R7]
+
+    LDI R0, hello
+    LDI R1, 5
+    STR [R3], R5
+    STR [R4], R0
+    LDI R2, 0xFFE3
+    STR [R2], R1
+    LDI R2, 7
+    STR [R6], R2
+
+    STR [R3], R5
+    LDI R2, 5
+    STR [R6], R2
+
+    LDI R0, fname
+    LDI R1, 0x8000
+    LDI R2, 8
+    STR [R3], R0
+    STR [R4], R1
+    LDI R1, 0xFFE3
+    STR [R1], R2
+    LDI R2, 1
+    STR [R6], R2
+    LDR R5, [R7]
+
+    LDI R0, 0x8000
+    LDI R1, 5
+    LDI R2, 1
+    LDI R4, 0
+print:
+    LDR R7, [R0]
+    LDI R3, 0xFFF0
+    STR [R3], R7
+    ADD R0, R0, R2
+    SUB R1, R1, R2
+    CMP R1, R4
+    JNZ print
+
+    LDI R7, 10
+    LDI R3, 0xFFF0
+    STR [R3], R7
+
+    LDI R3, 0xFFE1
+    STR [R3], R5
+    LDI R2, 2
+    LDI R3, 0xFFE0
+    STR [R3], R2
+
+    HALT
+
+fname:  DB "test_mmap.txt", 0
+mode_w: DB "w", 0
+hello:  DB 72,101,108,108,111

@@ -1,0 +1,20 @@
+    .global add
+add:
+    PUSH R6
+    MOV R6, SP
+    LDI R4, 2
+    ADD R4, R6, R4
+    STR [R4], R0
+    LDI R4, 3
+    ADD R4, R6, R4
+    STR [R4], R1
+    LDI R4, 2
+    ADD R4, R6, R4
+    LDR R0, [R4]
+    LDI R4, 3
+    ADD R4, R6, R4
+    LDR R1, [R4]
+    ADD R0, R0, R1
+    MOV SP, R6
+    POP R6
+    RET
