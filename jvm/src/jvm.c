@@ -368,10 +368,10 @@ void jvm_run(JVM *vm) {
 
         var val1 = 0, val2 = 0, addr = 0;
         if (op == OP_LDR || op == OP_STR || op == OP_ADD || op == OP_SUB ||
-            op == OP_MUL || op == OP_DIV || op == OP_CMP || op == OP_PUSH) {
+            op == OP_MUL || op == OP_DIV || op == OP_MOD || op == OP_CMP || op == OP_PUSH) {
             val1 = (src1 < NUM_REGS) ? vm->reg[src1] : 0;
         }
-        if (op == OP_ADD || op == OP_SUB || op == OP_MUL || op == OP_DIV || op == OP_CMP) {
+        if (op == OP_ADD || op == OP_SUB || op == OP_MUL || op == OP_DIV || op == OP_MOD || op == OP_CMP) {
             val2 = (src2 < NUM_REGS) ? vm->reg[src2] : 0;
         }
 
@@ -414,6 +414,10 @@ void jvm_run(JVM *vm) {
             case OP_DIV:
                 if (val2 == 0) { fprintf(stderr, "Div by zero\n"); vm->running = 0; }
                 else vm->reg[dst] = val1 / val2;
+                break;
+            case OP_MOD:
+                if (val2 == 0) { fprintf(stderr, "Div by zero\n"); vm->running = 0; }
+                else vm->reg[dst] = val1 % val2;
                 break;
             case OP_CMP: vm->reg[FLAGS] = (val1 == val2) ? 1 : (val1 < val2) ? 2 : 0; break;
             case OP_JMP: vm->reg[PC] = vm->reg[dst]; break;

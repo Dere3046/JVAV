@@ -2,6 +2,7 @@
 #include "lexer.hpp"
 #include "parser.hpp"
 #include <filesystem>
+#include <iomanip>
 namespace fs = std::filesystem;
 using namespace std;
 
@@ -22,15 +23,20 @@ void Sema::printErrors(ostream &os) const {
     int errCount = 0, warnCount = 0;
     for (auto &e : errors) {
         if (e.level == SEM_ERROR) {
-            os << "[MimiWorld Error] line " << e.line << ": " << e.msg << "\n";
+            os << "error[E" << setw(4) << setfill('0') << (1000 + errCount) << "]: " << e.msg << "\n";
             errCount++;
         } else {
-            os << "[MimiWorld Warning] line " << e.line << ": " << e.msg << "\n";
+            os << "warning[W" << setw(4) << setfill('0') << (2000 + warnCount) << "]: " << e.msg << "\n";
             warnCount++;
         }
-        if (!e.hint.empty()) os << "  --> hint: " << e.hint << "\n";
+        if (e.line > 0) {
+            os << " --> line " << e.line << "\n";
+        }
+        if (!e.hint.empty()) {
+            os << "   = help: " << e.hint << "\n";
+        }
     }
-    os << "\n" << errCount << " error(s), " << warnCount << " warning(s)\n";
+    os << "\n" << errCount << " error(s) and " << warnCount << " warning(s) generated\n";
 }
 
 // ------------------------------------------------------------------
@@ -49,7 +55,7 @@ void Sema::exitScope() {
 
 bool Sema::declare(const string &name, Symbol::Kind k, shared_ptr<Type> type, int level, bool global) {
     if (scopes[level].find(name) != scopes[level].end()) {
-        report(SEM_ERROR, "Redeclaration of '" + name + "'", 0,
+        report(SEM_ERROR, "the name `" + name + "` is defined multiple times", 0,
                "'" + name + "' was already declared in this scope");
         return false;
     }
@@ -121,12 +127,12 @@ void Sema::markMoved(const string &name, int line) {
     if (!sym) return;
     if (sym->isCopy) return;  // Copy types are never moved
     if (sym->mutBorrowed) {
-        report(SEM_ERROR, "Cannot move '" + name + "' because it is mutably borrowed", line,
+        report(SEM_ERROR, "cannot move out of `" + name + "` because it is mutably borrowed", line,
                "drop the mutable borrow before moving '" + name + "'");
         return;
     }
     if (sym->borrowCount > 0) {
-        report(SEM_ERROR, "Cannot move '" + name + "' because it is borrowed", line,
+        report(SEM_ERROR, "cannot move out of `" + name + "` because it is borrowed", line,
                "drop the borrow before moving '" + name + "'");
         return;
     }
@@ -142,17 +148,17 @@ bool Sema::checkUsable(const string &name, int line) {
     Symbol *sym = lookup(name);
     if (!sym) return true;
     if (!sym->initialized) {
-        report(SEM_ERROR, "Use of possibly uninitialized variable '" + name + "'", line,
+        report(SEM_ERROR, "use of possibly-uninitialized variable `" + name + "`", line,
                "assign a value to '" + name + "' before using it");
         return false;
     }
     if (sym->moved) {
-        report(SEM_ERROR, "Use of moved value '" + name + "'", line,
+        report(SEM_ERROR, "use of moved value `" + name + "`", line,
                "reassign '" + name + "' or use a borrow (&" + name + ") instead");
         return false;
     }
     if (sym->mutBorrowed) {
-        report(SEM_ERROR, "Cannot use '" + name + "' while mutably borrowed", line,
+        report(SEM_ERROR, "cannot use `" + name + "` because it is mutably borrowed", line,
                "wait until the mutable borrow ends");
         return false;
     }
@@ -163,30 +169,30 @@ bool Sema::checkBorrow(const string &name, bool mut_, int line) {
     Symbol *sym = lookup(name);
     if (!sym) return true;
     if (!sym->initialized) {
-        report(SEM_ERROR, "Cannot borrow '" + name + "' because it is not initialized", line,
+        report(SEM_ERROR, "cannot borrow uninitialized variable `" + name + "`", line,
                "assign a value to '" + name + "' before borrowing");
         return false;
     }
     if (sym->moved) {
-        report(SEM_ERROR, "Cannot borrow '" + name + "' because it has been moved", line,
+        report(SEM_ERROR, "cannot borrow moved value `" + name + "`", line,
                "reassign '" + name + "' before borrowing");
         return false;
     }
     if (mut_) {
         if (sym->borrowCount > 0) {
-            report(SEM_ERROR, "Cannot mutably borrow '" + name + "' because it is already borrowed", line,
+            report(SEM_ERROR, "cannot mutably borrow `" + name + "` because it is already borrowed", line,
                    "drop existing borrows before taking &mut");
             return false;
         }
         if (sym->mutBorrowed) {
-            report(SEM_ERROR, "Cannot mutably borrow '" + name + "' because it is already mutably borrowed", line,
+            report(SEM_ERROR, "cannot mutably borrow `" + name + "` because it is already mutably borrowed", line,
                    "only one &mut borrow is allowed at a time");
             return false;
         }
         sym->mutBorrowed = true;
     } else {
         if (sym->mutBorrowed) {
-            report(SEM_ERROR, "Cannot borrow '" + name + "' because it is mutably borrowed", line,
+            report(SEM_ERROR, "cannot borrow `" + name + "` because it is mutably borrowed", line,
                    "wait until the &mut borrow ends");
             return false;
         }
@@ -245,6 +251,26 @@ bool Sema::analyze(shared_ptr<Program> prog, const string &bp) {
 // ------------------------------------------------------------------
 // Declarations
 // ------------------------------------------------------------------
+static bool hasReturn(shared_ptr<Stmt> s) {
+    if (!s) return false;
+    if (s->kind == Stmt::STMT_RETURN) return true;
+    if (s->kind == Stmt::STMT_BLOCK) {
+        for (auto &st : dynamic_pointer_cast<BlockStmt>(s)->stmts)
+            if (hasReturn(st)) return true;
+    }
+    if (s->kind == Stmt::STMT_IF) {
+        auto i = dynamic_pointer_cast<IfStmt>(s);
+        return hasReturn(i->thenBranch) || hasReturn(i->elseBranch);
+    }
+    if (s->kind == Stmt::STMT_WHILE) {
+        return hasReturn(dynamic_pointer_cast<WhileStmt>(s)->body);
+    }
+    if (s->kind == Stmt::STMT_FOR) {
+        return hasReturn(dynamic_pointer_cast<ForStmt>(s)->body);
+    }
+    return false;
+}
+
 bool Sema::checkDecl(shared_ptr<Decl> d) {
     if (d->kind == Decl::DECL_FUNC) {
         auto fd = dynamic_pointer_cast<FuncDecl>(d);
@@ -256,10 +282,20 @@ bool Sema::checkDecl(shared_ptr<Decl> d) {
         enterScope();
         for (auto &p : fd->params) {
             auto pt = p.ptype ? p.ptype : make_shared<Type>(Type{TYPE_INT});
+            if (pt->kind == TYPE_VOID) {
+                report(SEM_ERROR, "cannot use `void` as a parameter type", fd->line,
+                       "use a concrete type such as `int`, `char`, or `bool`");
+                return false;
+            }
             if (!declare(p.name, Symbol::SYM_VAR, pt, scopeLevel, false)) return false;
             markInitialized(p.name);  // parameters are initialized
         }
         checkStmt(fd->body);
+        if (retType->kind != TYPE_VOID && !hasReturn(fd->body)) {
+            report(SEM_ERROR, "missing return statement in function returning `" + typeStr(retType) + "`", fd->line,
+                   "add a return statement at the end of the function");
+            return false;
+        }
         exitScope();
         curRetType = prevRet;
     } else if (d->kind == Decl::DECL_VAR) {
@@ -282,29 +318,44 @@ bool Sema::checkDecl(shared_ptr<Decl> d) {
 
 bool Sema::processImport(shared_ptr<ImportDecl> id) {
     fs::path p = id->path;
-    if (!basePath.empty() && p.is_relative()) {
-        p = fs::path(basePath) / p;
+    string absPath;
+    if (p.is_absolute()) {
+        absPath = fs::weakly_canonical(p).string();
+    } else {
+        bool found = false;
+        vector<string> paths = importPaths;
+        if (!basePath.empty()) paths.insert(paths.begin(), basePath);
+        for (auto &dir : paths) {
+            fs::path cand = fs::path(dir) / p;
+            if (fs::exists(cand)) {
+                absPath = fs::weakly_canonical(cand).string();
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            absPath = fs::weakly_canonical(fs::path(basePath.empty() ? "." : basePath) / p).string();
+        }
     }
-    string absPath = fs::weakly_canonical(p).string();
     if (importedFiles.find(absPath) != importedFiles.end()) return true;
     importedFiles.insert(absPath);
 
     Lexer lex;
     if (!lex.tokenize(absPath)) {
-        report(SEM_ERROR, "Import failed: cannot read '" + id->path + "'", id->line,
+        report(SEM_ERROR, "cannot read import file `" + id->path + "`", id->line,
                "check that the file exists and is readable");
         return false;
     }
     FrontParser par;
     if (!par.parse(lex.getTokens())) {
-        report(SEM_ERROR, "Import parse error in '" + id->path + "': " + par.getError(), id->line, "");
+        report(SEM_ERROR, "parse error in imported file `" + id->path + "`: " + par.getError(), id->line, "");
         return false;
     }
 
     Sema subSema;
     string subBase = fs::path(absPath).parent_path().string();
     if (!subSema.analyze(par.getProgram(), subBase)) {
-        report(SEM_ERROR, "Import semantic error in '" + id->path + "': " + subSema.getError(), id->line, "");
+        report(SEM_ERROR, "semantic error in imported file `" + id->path + "`: " + subSema.getError(), id->line, "");
         return false;
     }
 
@@ -400,12 +451,12 @@ bool Sema::checkStmt(shared_ptr<Stmt> s) {
             if (r->value) {
                 checkExpr(r->value);
                 if (curRetType && curRetType->kind == TYPE_VOID) {
-                    report(SEM_ERROR, "Cannot return a value from a void function", r->line,
+                    report(SEM_ERROR, "cannot return a value from a function with `void` return type", r->line,
                            "remove the return value or change the function return type");
                 }
             } else {
                 if (curRetType && curRetType->kind != TYPE_VOID) {
-                    report(SEM_ERROR, "Missing return value in non-void function", r->line,
+                    report(SEM_ERROR, "missing return value in function with non-void return type", r->line,
                            "add a return value of type " + typeStr(curRetType));
                 }
             }
@@ -434,12 +485,12 @@ bool Sema::checkExpr(shared_ptr<Expr> e) {
             auto id = dynamic_pointer_cast<IdentExpr>(e);
             auto sym = lookup(id->name);
             if (!sym) {
-                report(SEM_ERROR, "Undefined identifier '" + id->name + "'", id->line,
+                report(SEM_ERROR, "cannot find value `" + id->name + "` in this scope", id->line,
                        "declare '" + id->name + "' before use");
                 return false;
             }
             if (sym->kind == Symbol::SYM_FUNC) {
-                report(SEM_ERROR, "Cannot use function '" + id->name + "' as a value", id->line,
+                report(SEM_ERROR, "cannot use function `" + id->name + "` as a value", id->line,
                        "call the function with () instead");
                 return false;
             }
@@ -469,12 +520,12 @@ bool Sema::checkExpr(shared_ptr<Expr> e) {
             }
             auto sym = lookup(fname);
             if (!sym) {
-                report(SEM_ERROR, "Undefined function '" + fname + "'", c->line,
+                report(SEM_ERROR, "cannot find function `" + fname + "` in this scope", c->line,
                        "declare '" + fname + "' before calling");
                 return false;
             }
             if (sym->kind != Symbol::SYM_FUNC) {
-                report(SEM_ERROR, "'" + fname + "' is not a function", c->line,
+                report(SEM_ERROR, "`" + fname + "` is not a function", c->line,
                        "use a function name for the call");
                 return false;
             }
@@ -519,7 +570,7 @@ bool Sema::checkExpr(shared_ptr<Expr> e) {
         case Expr::EXPR_BORROW: {
             auto b = dynamic_pointer_cast<BorrowExpr>(e);
             if (b->operand->kind != Expr::EXPR_IDENT) {
-                report(SEM_ERROR, "Borrow expression must target a variable", b->line,
+                report(SEM_ERROR, "borrow expression must target a variable", b->line,
                        "use &name or &mut name");
                 return false;
             }
@@ -535,16 +586,22 @@ bool Sema::checkExpr(shared_ptr<Expr> e) {
 }
 
 bool Sema::checkAssignTarget(shared_ptr<Expr> e) {
-    if (e->kind == Expr::EXPR_IDENT) return true;
+    if (e->kind == Expr::EXPR_IDENT) {
+        auto id = dynamic_pointer_cast<IdentExpr>(e);
+        markUsed(id->name);
+        return true;
+    }
     if (e->kind == Expr::EXPR_INDEX) {
         auto idx = dynamic_pointer_cast<IndexExpr>(e);
         if (idx->base->kind == Expr::EXPR_IDENT) {
             auto id = dynamic_pointer_cast<IdentExpr>(idx->base);
-            return checkUsable(id->name, e->line);
+            bool ok = checkUsable(id->name, e->line);
+            markUsed(id->name);
+            return ok;
         }
         return true;
     }
-    report(SEM_ERROR, "Invalid assignment target", e->line,
+    report(SEM_ERROR, "invalid assignment target", e->line,
            "only variables and index expressions can be assigned to");
     return false;
 }

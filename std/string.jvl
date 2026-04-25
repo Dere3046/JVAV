@@ -1,0 +1,7 @@
+func str_putn(s: ptr<char>, n: int): void {
+    var i = 0;
+    while (i < n) {
+        putchar(s[i]);
+        i = i + 1;
+    }
+}

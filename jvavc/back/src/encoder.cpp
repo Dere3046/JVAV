@@ -16,6 +16,7 @@ static int opCode(const string& mnem) {
     if (mnem=="SUB")  return 0x05;
     if (mnem=="MUL")  return 0x06;
     if (mnem=="DIV")  return 0x07;
+    if (mnem=="MOD")  return 0x17;
     if (mnem=="CMP")  return 0x08;
     if (mnem=="JMP")  return 0x09;
     if (mnem=="JZ")   return 0x0A;
@@ -143,8 +144,8 @@ bool Encoder::encodeInstruction(const Instruction& instr) {
     } else if (op==0x09||op==0x0A||op==0x0B||op==0x0E) {
         if (ops.size()!=1||ops[0].type!=OP_REG) { error=instr.mnemonic+" requires register operand"; return false; }
         dst = ops[0].reg;
-    } else if (op==0x04||op==0x05||op==0x06||op==0x07) {
-        // ADD / SUB / MUL / DIV with possible immediate expansion
+    } else if (op==0x04||op==0x05||op==0x06||op==0x07||op==0x17) {
+        // ADD / SUB / MUL / DIV / MOD with possible immediate expansion
         if (ops.size()!=3) { error=instr.mnemonic+" requires 3 operands"; return false; }
         uint8_t dstReg = ops[0].reg;
         set<int> used;

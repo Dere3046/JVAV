@@ -1,0 +1,15 @@
+func memcpy(dst: ptr<int>, src: ptr<int>, n: int): void {
+    var i = 0;
+    while (i < n) {
+        dst[i] = src[i];
+        i = i + 1;
+    }
+}
+
+func memset(p: ptr<int>, val: int, n: int): void {
+    var i = 0;
+    while (i < n) {
+        p[i] = val;
+        i = i + 1;
+    }
+}

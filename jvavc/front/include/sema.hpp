@@ -47,10 +47,12 @@ public:
     bool hasErrors() const;
     void printErrors(std::ostream &os) const;
     void setBasePath(const std::string &path) { basePath = path; }
+    void setImportPaths(const std::vector<std::string>& paths) { importPaths = paths; }
 private:
     std::string firstError;
     std::vector<SemaError> errors;
     std::string basePath;
+    std::vector<std::string> importPaths;
     int scopeLevel;
     std::vector<std::map<std::string, Symbol>> scopes;
     std::set<std::string> importedFiles;

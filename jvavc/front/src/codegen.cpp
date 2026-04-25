@@ -53,7 +53,7 @@ void CodeGenerator::loadVar(const string &name, int reg) {
         emit("    ADD R4, R6, R4");
         emit("    LDR R" + to_string(reg) + ", [R4]");
     } else {
-        emit("    ; unknown var " + name);
+        emit("    LDR R" + to_string(reg) + ", [" + name + "]");
     }
 }
 
@@ -64,7 +64,7 @@ void CodeGenerator::storeVar(const string &name, int reg) {
         emit("    ADD R4, R6, R4");
         emit("    STR [R4], R" + to_string(reg));
     } else {
-        emit("    ; unknown var " + name);
+        emit("    STR [" + name + "], R" + to_string(reg));
     }
 }
 
@@ -190,6 +190,34 @@ void CodeGenerator::genCondJump(shared_ptr<Expr> e, const string &falseLabel) {
     emit("    JE " + falseLabel);
 }
 
+static bool exprHasCall(shared_ptr<Expr> e) {
+    if (!e) return false;
+    switch (e->kind) {
+        case Expr::EXPR_CALL: return true;
+        case Expr::EXPR_BINARY: {
+            auto b = dynamic_pointer_cast<BinaryExpr>(e);
+            return exprHasCall(b->left) || exprHasCall(b->right);
+        }
+        case Expr::EXPR_UNARY: {
+            auto u = dynamic_pointer_cast<UnaryExpr>(e);
+            return exprHasCall(u->operand);
+        }
+        case Expr::EXPR_ASSIGN: {
+            auto a = dynamic_pointer_cast<AssignExpr>(e);
+            return exprHasCall(a->left) || exprHasCall(a->right);
+        }
+        case Expr::EXPR_INDEX: {
+            auto i = dynamic_pointer_cast<IndexExpr>(e);
+            return exprHasCall(i->base) || exprHasCall(i->index);
+        }
+        case Expr::EXPR_BORROW: {
+            auto b = dynamic_pointer_cast<BorrowExpr>(e);
+            return exprHasCall(b->operand);
+        }
+        default: return false;
+    }
+}
+
 void CodeGenerator::genExpr(shared_ptr<Expr> e, int destReg) {
     if (!e) return;
     switch (e->kind) {
@@ -250,9 +278,16 @@ void CodeGenerator::genExpr(shared_ptr<Expr> e, int destReg) {
                 emit(endLabel + ":");
             } else {
                 int r2 = destReg + 1;
-                if (r2 > 3) r2 = 3; // fallback, should not happen for simple cases
+                if (r2 > 3) r2 = 0; // wrap around to keep registers distinct
+                bool saveLeft = exprHasCall(b->right);
                 genExpr(b->left, destReg);
+                if (saveLeft) {
+                    emit("    PUSH R" + to_string(destReg));
+                }
                 genExpr(b->right, r2);
+                if (saveLeft) {
+                    emit("    POP R" + to_string(destReg));
+                }
                 if (op == "+") emit("    ADD R" + to_string(destReg) + ", R" + to_string(destReg) + ", R" + to_string(r2));
                 else if (op == "-") emit("    SUB R" + to_string(destReg) + ", R" + to_string(destReg) + ", R" + to_string(r2));
                 else if (op == "*") emit("    MUL R" + to_string(destReg) + ", R" + to_string(destReg) + ", R" + to_string(r2));
@@ -428,7 +463,12 @@ void CodeGenerator::genProgram(shared_ptr<Program> prog) {
             auto vd = dynamic_pointer_cast<GlobalVarDecl>(d);
             emit("    .data");
             emit(vd->name + ":");
-            emit("    DT 0");
+            if (vd->init && vd->init->kind == Expr::EXPR_NUMBER) {
+                auto n = dynamic_pointer_cast<NumberExpr>(vd->init);
+                emit("    DT " + to_string((long long)n->value));
+            } else {
+                emit("    DT 0");
+            }
             emit("    .text");
         } else if (d->kind == Decl::DECL_CONST) {
             auto cd = dynamic_pointer_cast<GlobalConstDecl>(d);
@@ -437,10 +477,25 @@ void CodeGenerator::genProgram(shared_ptr<Program> prog) {
             auto id = dynamic_pointer_cast<ImportDecl>(d);
             if (!id->module) continue;
             fs::path p = id->path;
-            if (!basePath.empty() && p.is_relative()) {
-                p = fs::path(basePath) / p;
+            string absPath;
+            if (p.is_absolute()) {
+                absPath = fs::weakly_canonical(p).string();
+            } else {
+                bool found = false;
+                vector<string> paths = importPaths;
+                if (!basePath.empty()) paths.insert(paths.begin(), basePath);
+                for (auto &dir : paths) {
+                    fs::path cand = fs::path(dir) / p;
+                    if (fs::exists(cand)) {
+                        absPath = fs::weakly_canonical(cand).string();
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    absPath = fs::weakly_canonical(fs::path(basePath.empty() ? "." : basePath) / p).string();
+                }
             }
-            string absPath = fs::weakly_canonical(p).string();
             if (generatedFiles.find(absPath) != generatedFiles.end()) continue;
             generatedFiles.insert(absPath);
             genProgram(id->module);

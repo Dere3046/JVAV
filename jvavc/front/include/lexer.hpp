@@ -44,10 +44,17 @@ public:
     bool tokenize(const std::string &filename);
     const std::vector<Token>& getTokens() const { return tokens; }
     const std::string& getError() const { return error; }
+    int getErrorLine() const { return errorLine; }
+    int getErrorCol() const { return errorCol; }
+    const std::string& getFilename() const { return filename; }
+    const std::string& getSource() const { return src; }
 private:
+    std::string filename;
     std::string src;
     std::vector<Token> tokens;
     std::string error;
+    int errorLine = 0;
+    int errorCol = 0;
     size_t pos;
     int line;
     int col;
@@ -60,6 +67,7 @@ private:
     bool readIdentOrKeyword();
     bool readSymbol();
     void emit(TokenType t, const std::string &txt, __int128 val = 0);
+    void setError(const std::string &msg);
     bool isIdentStart(char c);
     bool isIdentChar(char c);
 };

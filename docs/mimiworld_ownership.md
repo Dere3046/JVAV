@@ -94,18 +94,28 @@ func main(): int {
 
 ## Error Messages
 
-MimiWorld provides detailed, Rust-style error messages:
+MimiWorld provides detailed, Rust-style error messages with error codes, source locations, and help text:
 
 ```
-[MimiWorld Error] line 5: Use of moved value 'p'
-  --> hint: reassign 'p' or use a borrow (&p) instead
+error[E0000]: use of moved value `p`
+ --> line 5
+   = help: reassign `p` or use a borrow (`&p`) instead
 
-[MimiWorld Error] line 8: Cannot mutably borrow 'x' because it is already borrowed
-  --> hint: drop existing borrows before taking &mut
+error[E0001]: cannot mutably borrow `x` because it is already borrowed
+ --> line 8
+   = help: drop existing borrows before taking `&mut`
 
-[MimiWorld Warning] line 3: Unused variable 'tmp'
-  --> hint: remove the declaration or prefix with _ to suppress
+warning[W2000]: unused variable `tmp`
+ --> line 3
+   = help: remove the declaration or prefix with `_` to suppress
 ```
+
+Error code ranges:
+- `E0000–E0999`: MimiWorld ownership and borrow checker errors
+- `E1000–E1999`: Semantic analysis errors (type checking, void parameters, missing returns)
+- `E0100–E0199`: Lexer errors
+- `E0200–E0299`: Parser errors
+- `E0300–E0399`: I/O and codegen errors
 
 ## VM Heap Implementation
 

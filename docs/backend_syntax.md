@@ -26,6 +26,7 @@ JVAV assembly is an ARM-like textual assembly language that maps directly to the
 | `SUB Rd, Rs, Rt` | `Rd = Rs - Rt` | Subtraction |
 | `MUL Rd, Rs, Rt` | `Rd = Rs * Rt` | Multiplication |
 | `DIV Rd, Rs, Rt` | `Rd = Rs / Rt` | Division |
+| `MOD Rd, Rs, Rt` | `Rd = Rs % Rt` | Modulo |
 | `CMP Rs, Rt` | `FLAGS = Rs - Rt` | Compare |
 | `JMP label` | `PC = label` | Unconditional jump (pseudo) |
 | `JZ label` | `if ZF` jump | Jump if zero |
