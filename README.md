@@ -86,7 +86,7 @@ JVAV/
 - **Multi-file linker** — Structured linking with EQU global collection and base address relocation
 - **Import system** — Recursive module imports with cyclic import guard
 - **Disassembler** — Static disassembly and dynamic trace mode
-- **Rust-style diagnostics** — Error codes, source snippets, and help messages
+- **Rust-style diagnostics** — Error codes, source snippets with context lines, and help messages
 - **Cross-platform** — Linux, Windows & Android (x86, x64, ARM, ARM64); statically linked binaries; GitHub Actions CI with multi-arch matrix
 - **PATH-ready** — `std/` directory ships alongside `bin/`; add `bin/` to PATH and use `jvlc`/`jvavc`/`jvm`/`disasm` from anywhere
 - **Version flag** — All tools support `-v` / `--version`
