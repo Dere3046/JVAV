@@ -125,7 +125,9 @@ jobs:
 
       - name: Add llvm-mingw to PATH
         run: |
-          echo "C:\llvm-mingw\llvm-mingw-20240619-ucrt-x86_64\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+          $base = "C:\llvm-mingw\llvm-mingw-20240619-ucrt-x86_64"
+          echo "$base\${{ matrix.triple }}\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+          echo "$base\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
 
       - name: Configure
         shell: pwsh
