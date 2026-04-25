@@ -53,12 +53,15 @@
 
             <h2><span class="active" data-lang="zh">标准库</span><span data-lang="en">Standard Library</span></h2>
             <p class="active" data-lang="zh">
-                JVAV 标准库位于项目根目录的 <code>std/</code> 文件夹，通过 <code>import "std/xxx.jvl";</code> 引入。
-                jvlc 会自动解析项目根目录下的 <code>std/</code> 路径，无需手动指定。
+                JVAV 标准库位于 <code>std/</code> 文件夹，通过 <code>import "std/xxx.jvl";</code> 引入。
+                安装包中 <code>std/</code> 与 <code>bin/</code> 同级，将 <code>bin/</code> 加入 PATH 后即可从任意位置使用。
+                如果标准库文件缺失，编译器会给出明确的 "cannot find standard library" 提示。
             </p>
             <p data-lang="en">
-                The JVAV standard library lives in the <code>std/</code> directory at the project root.
-                Import via <code>import "std/xxx.jvl";</code>. jvlc resolves the <code>std/</code> path automatically.
+                The JVAV standard library lives in the <code>std/</code> directory.
+                Import via <code>import "std/xxx.jvl";</code>. In release packages <code>std/</code> sits alongside <code>bin/</code>;
+                add <code>bin/</code> to PATH and use from anywhere. Missing stdlib files produce a clear
+                "cannot find standard library" diagnostic.
             </p>
 
             <h3 id="import">Import</h3>

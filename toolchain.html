@@ -43,7 +43,8 @@
                 <li><a href="#jvavc">jvavc</a></li>
                 <li><a href="#jvm">jvm</a></li>
                 <li><a href="#disasm">disasm</a></li>
-                <li><a href="#build"><span data-lang="zh">构建</span><span data-lang="en">Build</span></a></li>
+                <li><a href="#build"><span data-lang="zh">构建与安装</span><span data-lang="en">Build &amp; Install</span></a></li>
+                <li><a href="#install"><span data-lang="zh">安装 / 打包</span><span data-lang="en">Install / Package</span></a></li>
             </ul>
         </aside>
         <div class="content">
@@ -65,6 +66,7 @@
             <p data-lang="en">Compiles JVL high-level language to JVAV assembly. Supports modular imports, type inference, and MimiWorld ownership checking.</p>
             <table class="feature-table">
                 <tr><th>Command</th><th class="active" data-lang="zh">说明</th><th data-lang="en">Description</th></tr>
+                <tr><td><code>jvlc -v</code></td><td class="active" data-lang="zh">显示版本号</td><td data-lang="en">Show version</td></tr>
                 <tr><td><code>jvlc a.jvl a.jvav</code></td><td class="active" data-lang="zh">编译为汇编</td><td data-lang="en">Compile to assembly</td></tr>
                 <tr><td><code>jvlc --run a.jvl</code></td><td class="active" data-lang="zh">一键编译并运行</td><td data-lang="en">Compile and run</td></tr>
                 <tr><td><code>jvlc --run a.jvl -o out.bin</code></td><td class="active" data-lang="zh">保留二进制输出</td><td data-lang="en">Keep binary output</td></tr>
@@ -75,6 +77,7 @@
             <p data-lang="en">Encodes JVAV assembly into 128-bit binary. Supports multi-file linking, label resolution, and EQU definitions.</p>
             <table class="feature-table">
                 <tr><th>Command</th><th class="active" data-lang="zh">说明</th><th data-lang="en">Description</th></tr>
+                <tr><td><code>jvavc -v</code></td><td class="active" data-lang="zh">显示版本号</td><td data-lang="en">Show version</td></tr>
                 <tr><td><code>jvavc a.jvav out.bin</code></td><td class="active" data-lang="zh">单文件汇编</td><td data-lang="en">Single-file assemble</td></tr>
                 <tr><td><code>jvavc a.jvav b.jvav -o out.bin</code></td><td class="active" data-lang="zh">多文件链接</td><td data-lang="en">Multi-file link</td></tr>
             </table>
@@ -84,18 +87,36 @@
             <p data-lang="en">128-bit word-addressable virtual machine, implemented in C99. Executes JVAV binary files.</p>
             <table class="feature-table">
                 <tr><th>Command</th><th class="active" data-lang="zh">说明</th><th data-lang="en">Description</th></tr>
+                <tr><td><code>jvm -v</code></td><td class="active" data-lang="zh">显示版本号</td><td data-lang="en">Show version</td></tr>
                 <tr><td><code>jvm program.bin</code></td><td class="active" data-lang="zh">执行二进制</td><td data-lang="en">Run binary</td></tr>
             </table>
 
             <h2 id="disasm"><span class="active" data-lang="zh">disasm — 反汇编器</span><span data-lang="en">disasm — Disassembler</span></h2>
             <p class="active" data-lang="zh">静态反汇编与动态 trace 模式。用于调试 JVAV 二进制。</p>
             <p data-lang="en">Static disassembly and dynamic trace mode. Used for debugging JVAV binaries.</p>
+            <table class="feature-table">
+                <tr><th>Command</th><th class="active" data-lang="zh">说明</th><th data-lang="en">Description</th></tr>
+                <tr><td><code>disasm -v</code></td><td class="active" data-lang="zh">显示版本号</td><td data-lang="en">Show version</td></tr>
+                <tr><td><code>disasm file.bin</code></td><td class="active" data-lang="zh">静态反汇编</td><td data-lang="en">Static disassembly</td></tr>
+                <tr><td><code>disasm -t file.bin</code></td><td class="active" data-lang="zh">动态 trace</td><td data-lang="en">Dynamic trace</td></tr>
+            </table>
 
-            <h2 id="build"><span class="active" data-lang="zh">构建</span><span data-lang="en">Build</span></h2>
+            <h2 id="build"><span class="active" data-lang="zh">构建与安装</span><span data-lang="en">Build &amp; Install</span></h2>
             <pre class="code">cmake -S . -B build
 cmake --build build</pre>
-            <p class="active" data-lang="zh">构建完成后，可执行文件位于 <code>build/bin/</code> 目录。</p>
-            <p data-lang="en">After building, executables are in <code>build/bin/</code>.</p>
+            <p class="active" data-lang="zh">构建完成后，可执行文件位于 <code>build/bin/</code>，标准库位于 <code>std/</code>。</p>
+            <p data-lang="en">After building, executables are in <code>build/bin/</code> and the standard library is in <code>std/</code>.</p>
+
+            <h3 id="install"><span class="active" data-lang="zh">安装 / 打包</span><span data-lang="en">Install / Package</span></h3>
+            <pre class="code">cpack -C Release</pre>
+            <p class="active" data-lang="zh">
+                所有二进制均为<strong>静态链接</strong>，解压后即可运行，无需额外依赖。
+                包内 <code>bin/</code> 与 <code>std/</code> 同级，将 <code>bin/</code> 加入 PATH 即可全局使用。
+            </p>
+            <p data-lang="en">
+                All binaries are <strong>statically linked</strong> — extract and run, no extra dependencies.
+                <code>std/</code> sits alongside <code>bin/</code> in the package; add <code>bin/</code> to PATH for global access.
+            </p>
         </div>
     </div>
 

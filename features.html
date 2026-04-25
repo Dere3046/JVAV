@@ -44,6 +44,8 @@
                 <li><a href="#stdlib"><span data-lang="zh">Standard Library</span><span data-lang="en">Standard Library</span></a></li>
                 <li><a href="#operators"><span data-lang="zh">运算符</span><span data-lang="en">Operators</span></a></li>
                 <li><a href="#types"><span data-lang="zh">类型系统</span><span data-lang="en">Type System</span></a></li>
+                <li><a href="#platform"><span data-lang="zh">跨平台</span><span data-lang="en">Platform</span></a></li>
+                <li><a href="#path"><span data-lang="zh">PATH 就绪</span><span data-lang="en">PATH-Ready</span></a></li>
             </ul>
         </aside>
         <div class="content">
@@ -112,10 +114,12 @@
             <h2 id="stdlib"><span class="active" data-lang="zh">标准库</span><span data-lang="en">Standard Library</span></h2>
             <p class="active" data-lang="zh">
                 位于 <code>std/</code> 目录，包含 io、math、mem、string 四个模块。
+                安装包中 <code>std/</code> 与 <code>bin/</code> 同级，将 <code>bin/</code> 加入 PATH 后即可从任意位置使用。
                 <a href="stdlib.html">查看详情 →</a>
             </p>
             <p data-lang="en">
                 Located in <code>std/</code> with io, math, mem, and string modules.
+                In release packages <code>std/</code> sits alongside <code>bin/</code>; add <code>bin/</code> to PATH and use from anywhere.
                 <a href="stdlib.html">View details →</a>
             </p>
 
@@ -144,6 +148,30 @@
                 <tr><td><code>ptr&lt;T&gt;</code></td><td>✗</td><td class="active" data-lang="zh">指针（Move 语义）</td><td data-lang="en">Pointer (Move semantics)</td></tr>
                 <tr><td><code>array&lt;T&gt;</code></td><td>✗</td><td class="active" data-lang="zh">array&lt;T&gt; 是 ptr&lt;T&gt; 别名</td><td data-lang="en">Alias for ptr&lt;T&gt;</td></tr>
             </table>
+
+            <h2 id="platform"><span class="active" data-lang="zh">跨平台与分发</span><span data-lang="en">Cross-Platform &amp; Distribution</span></h2>
+            <p class="active" data-lang="zh">
+                支持 Linux、Windows 与 Android（x86、x64、ARM、ARM64）。
+                所有二进制均为<strong>静态链接</strong>，解压即可运行，无需额外安装运行时库。
+                GitHub Actions 多架构矩阵 CI 保证每次提交都通过编译与测试。
+            </p>
+            <p data-lang="en">
+                Supports Linux, Windows &amp; Android (x86, x64, ARM, ARM64).
+                All binaries are <strong>statically linked</strong> — extract and run, no extra runtime dependencies.
+                GitHub Actions multi-arch matrix CI ensures every commit builds and passes tests.
+            </p>
+
+            <h2 id="path"><span class="active" data-lang="zh">PATH 就绪</span><span data-lang="en">PATH-Ready</span></h2>
+            <p class="active" data-lang="zh">
+                发布包中 <code>std/</code> 与 <code>bin/</code> 同级。将 <code>bin/</code> 加入 PATH 后，
+                <code>jvlc</code>、<code>jvavc</code>、<code>jvm</code>、<code>disasm</code> 均可从任意目录调用，
+                并自动定位标准库。
+            </p>
+            <p data-lang="en">
+                In release packages <code>std/</code> sits alongside <code>bin/</code>.
+                Add <code>bin/</code> to PATH and use <code>jvlc</code>, <code>jvavc</code>, <code>jvm</code>, <code>disasm</code> from anywhere —
+                the standard library is discovered automatically.
+            </p>
         </div>
     </div>
 
