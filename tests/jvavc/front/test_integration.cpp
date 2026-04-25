@@ -515,7 +515,7 @@ func main(): int { return 0; }
         TEST_ASSERT(ret == 0, "jvlc -v exit code");
         string out;
         TEST_ASSERT(read_output("version.out", out), "read version output");
-        TEST_ASSERT(out.find("jvlc 0.2.3") != string::npos, "jvlc version string");
+        TEST_ASSERT(out.find("jvlc 0.2.5") != string::npos, "jvlc version string");
         std::remove("version.out");
     }
     test_passed("integration_version_jvlc");
@@ -526,7 +526,7 @@ func main(): int { return 0; }
         TEST_ASSERT(ret == 0, "jvavc -v exit code");
         string out;
         TEST_ASSERT(read_output("version.out", out), "read version output");
-        TEST_ASSERT(out.find("jvavc 0.2.3") != string::npos, "jvavc version string");
+        TEST_ASSERT(out.find("jvavc 0.2.5") != string::npos, "jvavc version string");
         std::remove("version.out");
     }
     test_passed("integration_version_jvavc");
@@ -537,7 +537,7 @@ func main(): int { return 0; }
         TEST_ASSERT(ret == 0, "jvm -v exit code");
         string out;
         TEST_ASSERT(read_output("version.out", out), "read version output");
-        TEST_ASSERT(out.find("jvm 0.2.3") != string::npos, "jvm version string");
+        TEST_ASSERT(out.find("jvm 0.2.5") != string::npos, "jvm version string");
         std::remove("version.out");
     }
     test_passed("integration_version_jvm");
@@ -548,7 +548,7 @@ func main(): int { return 0; }
         TEST_ASSERT(ret == 0, "disasm -v exit code");
         string out;
         TEST_ASSERT(read_output("version.out", out), "read version output");
-        TEST_ASSERT(out.find("disasm 0.2.3") != string::npos, "disasm version string");
+        TEST_ASSERT(out.find("disasm 0.2.5") != string::npos, "disasm version string");
         std::remove("version.out");
     }
     test_passed("integration_version_disasm");
