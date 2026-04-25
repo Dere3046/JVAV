@@ -44,6 +44,7 @@
                 <li><a href="#stdlib"><span data-lang="zh">Standard Library</span><span data-lang="en">Standard Library</span></a></li>
                 <li><a href="#operators"><span data-lang="zh">运算符</span><span data-lang="en">Operators</span></a></li>
                 <li><a href="#types"><span data-lang="zh">类型系统</span><span data-lang="en">Type System</span></a></li>
+                <li><a href="#diagnostics"><span data-lang="zh">诊断信息</span><span data-lang="en">Diagnostics</span></a></li>
                 <li><a href="#platform"><span data-lang="zh">跨平台</span><span data-lang="en">Platform</span></a></li>
                 <li><a href="#path"><span data-lang="zh">PATH 就绪</span><span data-lang="en">PATH-Ready</span></a></li>
             </ul>
@@ -151,6 +152,23 @@
                 <tr><td><code>ptr&lt;T&gt;</code></td><td>✗</td><td class="active" data-lang="zh">指针（Move 语义）</td><td data-lang="en">Pointer (Move semantics)</td></tr>
                 <tr><td><code>array&lt;T&gt;</code></td><td>✗</td><td class="active" data-lang="zh">array&lt;T&gt; 是 ptr&lt;T&gt; 别名</td><td data-lang="en">Alias for ptr&lt;T&gt;</td></tr>
             </table>
+
+            <h2 id="diagnostics"><span class="active" data-lang="zh">Rust 风格诊断信息</span><span data-lang="en">Rust-Style Diagnostics</span></h2>
+            <p class="active" data-lang="zh">
+                编译器输出带有错误码、源文件位置、源代码片段和 <code>^</code> 下划线的 Rust 风格诊断信息。
+                覆盖词法错误（E0100）、语法错误（E0200）、语义错误（E1000+）与 I/O 错误（E0300）。
+            </p>
+            <p data-lang="en">
+                The compiler emits Rust-style diagnostics with error codes, source locations,
+                source snippets, and <code>^</code> caret underlines.
+                Covers lexer (E0100), parser (E0200), semantic (E1000+), and I/O (E0300) errors.
+            </p>
+            <pre class="code">error[E0200]: expected `;`, but found `return`
+ --> hello.jvl:2:13
+    |
+  2 |     var x = 5 return 0;
+    |             ^
+   = note: unexpected token in this position</pre>
 
             <h2 id="platform"><span class="active" data-lang="zh">跨平台与分发</span><span data-lang="en">Cross-Platform &amp; Distribution</span></h2>
             <p class="active" data-lang="zh">
