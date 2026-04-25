@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+    <script>(function(){var l=localStorage.getItem('jvav-lang')||'zh';document.documentElement.lang=l==='zh'?'zh-CN':'en';})();</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Toolchain - JVAV</title>
@@ -10,7 +11,7 @@
     <div class="oracle-bar"></div>
     <header class="header">
         <div class="header-inner">
-            <a href="index.html" class="logo">J<span>V</span>AV</a>
+            <a href="index.html" class="logo"><div class="logo-mark"><span class="logo-text-full">JVAV</span><span class="logo-text-main">JVAV</span><span class="logo-knife"></span></div></a>
             <ul class="nav-links">
                 <li><a href="index.html"><span data-lang="zh">首页</span><span data-lang="en">Home</span></a></li>
                 <li><a href="features.html"><span data-lang="zh">特性</span><span data-lang="en">Features</span></a></li>
@@ -37,54 +38,58 @@
             <h4 class="active" data-lang="zh">本页目录</h4>
             <h4 data-lang="en">On This Page</h4>
             <ul>
-                <li><a href="#pipeline">流水线</a></li>
+                <li><a href="#pipeline"><span data-lang="zh">流水线</span><span data-lang="en">Pipeline</span></a></li>
                 <li><a href="#jvlc">jvlc</a></li>
                 <li><a href="#jvavc">jvavc</a></li>
                 <li><a href="#jvm">jvm</a></li>
                 <li><a href="#disasm">disasm</a></li>
-                <li><a href="#build">构建</a></li>
+                <li><a href="#build"><span data-lang="zh">构建</span><span data-lang="en">Build</span></a></li>
             </ul>
         </aside>
         <div class="content">
             <div class="breadcrumb">
-                <a href="index.html">Home</a> / <span class="active" data-lang="zh">工具链</span><span data-lang="en">Toolchain</span>
+                <a href="index.html"><span data-lang="zh">首页</span><span data-lang="en">Home</span></a> / <span class="active" data-lang="zh">工具链</span><span data-lang="en">Toolchain</span>
             </div>
 
             <h2 id="pipeline"><span class="active" data-lang="zh">工具链流水线</span><span data-lang="en">Toolchain Pipeline</span></h2>
             <p class="active" data-lang="zh">JVAV 工具链包含四个核心组件，从高级语言到执行一次到位。</p>
             <p data-lang="en">The JVAV toolchain consists of four core components, taking you from high-level source to execution.</p>
 
-            <div class="step-box"><h4>JVL 源码 <code>.jvl</code></h4><pre>↓  jvlc  前端编译器</pre></div>
-            <div class="step-box"><h4>JVAV 汇编 <code>.jvav</code></h4><pre>↓  jvavc  后端汇编器/链接器</pre></div>
-            <div class="step-box"><h4>128-bit 二进制 <code>.bin</code></h4><pre>↓  jvm  虚拟机</pre></div>
-            <div class="step-box"><h4>运行结果</h4><pre>stdout / exit code</pre></div>
+            <div class="step-box"><h4><span class="active" data-lang="zh">JVL 源码 <code>.jvl</code></span><span data-lang="en">JVL Source <code>.jvl</code></span></h4><pre><span class="active" data-lang="zh">↓  jvlc  前端编译器</span><span data-lang="en">↓  jvlc  Frontend Compiler</span></pre></div>
+            <div class="step-box"><h4><span class="active" data-lang="zh">JVAV 汇编 <code>.jvav</code></span><span data-lang="en">JVAV Assembly <code>.jvav</code></span></h4><pre><span class="active" data-lang="zh">↓  jvavc  后端汇编器/链接器</span><span data-lang="en">↓  jvavc  Backend Assembler / Linker</span></pre></div>
+            <div class="step-box"><h4><span class="active" data-lang="zh">128-bit 二进制 <code>.bin</code></span><span data-lang="en">128-bit Binary <code>.bin</code></span></h4><pre><span class="active" data-lang="zh">↓  jvm  虚拟机</span><span data-lang="en">↓  jvm  Virtual Machine</span></pre></div>
+            <div class="step-box"><h4><span class="active" data-lang="zh">运行结果</span><span data-lang="en">Execution Result</span></h4><pre>stdout / exit code</pre></div>
 
-            <h2 id="jvlc">jvlc — 前端编译器</h2>
-            <p>将 JVL 高级语言编译为 JVAV 汇编。支持模块化导入、类型推断、MimiWorld 所有权检查。</p>
+            <h2 id="jvlc"><span class="active" data-lang="zh">jvlc — 前端编译器</span><span data-lang="en">jvlc — Frontend Compiler</span></h2>
+            <p class="active" data-lang="zh">将 JVL 高级语言编译为 JVAV 汇编。支持模块化导入、类型推断、MimiWorld 所有权检查。</p>
+            <p data-lang="en">Compiles JVL high-level language to JVAV assembly. Supports modular imports, type inference, and MimiWorld ownership checking.</p>
             <table class="feature-table">
-                <tr><th class="active" data-lang="zh">命令</th><th data-lang="en">Command</th><th class="active" data-lang="zh">说明</th><th data-lang="en">Description</th></tr>
-                <tr><td><code>jvlc a.jvl a.jvav</code></td><td><code>jvlc a.jvl a.jvav</code></td><td class="active" data-lang="zh">编译为汇编</td><td data-lang="en">Compile to assembly</td></tr>
-                <tr><td><code>jvlc --run a.jvl</code></td><td><code>jvlc --run a.jvl</code></td><td class="active" data-lang="zh">一键编译并运行</td><td data-lang="en">Compile and run</td></tr>
-                <tr><td><code>jvlc --run a.jvl -o out.bin</code></td><td><code>jvlc --run a.jvl -o out.bin</code></td><td class="active" data-lang="zh">保留二进制输出</td><td data-lang="en">Keep binary output</td></tr>
+                <tr><th>Command</th><th class="active" data-lang="zh">说明</th><th data-lang="en">Description</th></tr>
+                <tr><td><code>jvlc a.jvl a.jvav</code></td><td class="active" data-lang="zh">编译为汇编</td><td data-lang="en">Compile to assembly</td></tr>
+                <tr><td><code>jvlc --run a.jvl</code></td><td class="active" data-lang="zh">一键编译并运行</td><td data-lang="en">Compile and run</td></tr>
+                <tr><td><code>jvlc --run a.jvl -o out.bin</code></td><td class="active" data-lang="zh">保留二进制输出</td><td data-lang="en">Keep binary output</td></tr>
             </table>
 
-            <h2 id="jvavc">jvavc — 后端汇编器</h2>
-            <p>将 JVAV 汇编编码为 128-bit 二进制。支持多文件链接、标签解析、EQU 定义。</p>
+            <h2 id="jvavc"><span class="active" data-lang="zh">jvavc — 后端汇编器</span><span data-lang="en">jvavc — Backend Assembler</span></h2>
+            <p class="active" data-lang="zh">将 JVAV 汇编编码为 128-bit 二进制。支持多文件链接、标签解析、EQU 定义。</p>
+            <p data-lang="en">Encodes JVAV assembly into 128-bit binary. Supports multi-file linking, label resolution, and EQU definitions.</p>
             <table class="feature-table">
-                <tr><th class="active" data-lang="zh">命令</th><th data-lang="en">Command</th><th class="active" data-lang="zh">说明</th><th data-lang="en">Description</th></tr>
-                <tr><td><code>jvavc a.jvav out.bin</code></td><td><code>jvavc a.jvav out.bin</code></td><td class="active" data-lang="zh">单文件汇编</td><td data-lang="en">Single-file assemble</td></tr>
-                <tr><td><code>jvavc a.jvav b.jvav -o out.bin</code></td><td><code>jvavc a.jvav b.jvav -o out.bin</code></td><td class="active" data-lang="zh">多文件链接</td><td data-lang="en">Multi-file link</td></tr>
+                <tr><th>Command</th><th class="active" data-lang="zh">说明</th><th data-lang="en">Description</th></tr>
+                <tr><td><code>jvavc a.jvav out.bin</code></td><td class="active" data-lang="zh">单文件汇编</td><td data-lang="en">Single-file assemble</td></tr>
+                <tr><td><code>jvavc a.jvav b.jvav -o out.bin</code></td><td class="active" data-lang="zh">多文件链接</td><td data-lang="en">Multi-file link</td></tr>
             </table>
 
-            <h2 id="jvm">jvm — 虚拟机</h2>
-            <p>128-bit 字寻址虚拟机，C99 实现。执行 JVAV 二进制文件。</p>
+            <h2 id="jvm"><span class="active" data-lang="zh">jvm — 虚拟机</span><span data-lang="en">jvm — Virtual Machine</span></h2>
+            <p class="active" data-lang="zh">128-bit 字寻址虚拟机，C99 实现。执行 JVAV 二进制文件。</p>
+            <p data-lang="en">128-bit word-addressable virtual machine, implemented in C99. Executes JVAV binary files.</p>
             <table class="feature-table">
-                <tr><th class="active" data-lang="zh">命令</th><th data-lang="en">Command</th><th class="active" data-lang="zh">说明</th><th data-lang="en">Description</th></tr>
-                <tr><td><code>jvm program.bin</code></td><td><code>jvm program.bin</code></td><td class="active" data-lang="zh">执行二进制</td><td data-lang="en">Run binary</td></tr>
+                <tr><th>Command</th><th class="active" data-lang="zh">说明</th><th data-lang="en">Description</th></tr>
+                <tr><td><code>jvm program.bin</code></td><td class="active" data-lang="zh">执行二进制</td><td data-lang="en">Run binary</td></tr>
             </table>
 
-            <h2 id="disasm">disasm — 反汇编器</h2>
-            <p>静态反汇编与动态 trace 模式。用于调试 JVAV 二进制。</p>
+            <h2 id="disasm"><span class="active" data-lang="zh">disasm — 反汇编器</span><span data-lang="en">disasm — Disassembler</span></h2>
+            <p class="active" data-lang="zh">静态反汇编与动态 trace 模式。用于调试 JVAV 二进制。</p>
+            <p data-lang="en">Static disassembly and dynamic trace mode. Used for debugging JVAV binaries.</p>
 
             <h2 id="build"><span class="active" data-lang="zh">构建</span><span data-lang="en">Build</span></h2>
             <pre class="code">cmake -S . -B build
