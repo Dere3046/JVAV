@@ -22,10 +22,10 @@ bool FrontParser::expect(TokenType t) {
         "int", "char", "bool", "void", "ptr", "array",
         "true", "false", "import", "mut",
         "+", "-", "*", "/", "%", "=", "==", "!=", "<", ">", "<=", ">=",
-        "&&", "||", "&", "|", "^", "~", "!",
+        "&&", "||", "&", "|", "^", "~", "<<", ">>", "!",
         "(", ")", "[", "]", "{", "}", ",", ";", ":"
     };
-    const char* got = (CURRENT.type >= 0 && CURRENT.type <= TOK_COLON) ? names[CURRENT.type] : "?";
+    const char* got = (t >= 0 && t <= TOK_COLON) ? names[t] : "?";
     error = "expected `" + string(got) + "`, but found `" + CURRENT.text + "`\n"
             " --> line " + to_string(CURRENT.line) + ", column " + to_string(CURRENT.col) + "\n"
             "    = note: unexpected token in this position";
