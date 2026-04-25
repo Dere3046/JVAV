@@ -283,12 +283,16 @@ static void print_instr(size_t idx, const Instr *in, Int128 imm,
 int main(int argc, char *argv[]) {
     int trace_mode = 0;
     int argi = 1;
+    if (argi < argc && (strcmp(argv[argi], "-v") == 0 || strcmp(argv[argi], "--version") == 0)) {
+        printf("disasm " JVAV_VERSION "\n");
+        return 0;
+    }
     if (argi < argc && strcmp(argv[argi], "-t") == 0) {
         trace_mode = 1;
         argi++;
     }
     if (argi >= argc) {
-        fprintf(stderr, "Usage: %s [-t] <bytecode.bin>\n"
+        fprintf(stderr, "Usage: %s [-v|--version] [-t] <bytecode.bin>\n"
                         "  -t   dynamic trace (embedded VM execution)\n", argv[0]);
         return 1;
     }

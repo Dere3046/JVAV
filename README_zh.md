@@ -2,10 +2,10 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/Dere3046/JVAV/actions/workflows/ci.yml/badge.svg)](https://github.com/Dere3046/JVAV/actions)
+[![CI-Android](https://github.com/Dere3046/JVAV/actions/workflows/ci-android.yml/badge.svg)](https://github.com/Dere3046/JVAV/actions)
 [![Stars](https://img.shields.io/github/stars/Dere3046/JVAV?style=social)](https://github.com/Dere3046/JVAV)
 ![JVAV](https://img.shields.io/badge/JVAV-128--位-ff69b4.svg)
-![C](https://img.shields.io/badge/C-99-blue.svg)
-![C++](https://img.shields.io/badge/C%2B%2B-17-blue.svg)
+![C/C++](https://img.shields.io/badge/C%2FC%2B%2B-99%2F17-blue.svg)
 
 > **声明：** 本项目仅为玩笑/恶搞性质。JVAV 由「张浩杨博士」提出，由 **Dere3046** 实现。请不要对张浩杨或任何与 JVAV 相关的人进行骚扰、攻击或恶意中伤。本项目纯粹为了娱乐和教育目的而存在。
 
@@ -87,7 +87,9 @@ JVAV/
 - **导入系统** — 递归模块导入，带循环导入防护
 - **反汇编器** — 支持静态反汇编与动态 trace 模式
 - **Rust 风格诊断信息** — 错误代码、源代码片段、帮助提示
-- **跨平台** — Linux 与 Windows（x86、x64、ARM、ARM64）；GitHub Actions 多架构矩阵 CI
+- **跨平台** — Linux、Windows 与 Android（x86、x64、ARM、ARM64）；静态链接二进制文件；GitHub Actions 多架构矩阵 CI
+- **PATH 就绪** — `std/` 目录与 `bin/` 一起分发；将 `bin/` 加入 PATH 即可从任意位置使用 `jvlc`/`jvavc`/`jvm`/`disasm`
+- **版本号标志** — 所有工具均支持 `-v` / `--version`
 
 ---
 
@@ -111,7 +113,7 @@ ctest --output-on-failure
 
 # 或直接运行测试二进制文件
 ./test_back    # 90 项后端单元 + 集成测试
-./test_front   # 100 项前端单元 + 集成测试
+./test_front   # 105 项前端单元 + 集成测试
 ```
 
 测试覆盖范围：
@@ -120,7 +122,7 @@ ctest --output-on-failure
 - **语义分析**：类型推导、所有权、借用冲突、未初始化变量、作用域
 - **代码生成**：函数序言/尾声、局部变量、调用、控制流、指针、字符串
 - **后端**：所有指令、EQU、.global/.extern、DB/DW/DT、#include、编码、链接
-- **集成测试**：端到端编译运行，覆盖算术、控制流、堆内存、递归、导入、全局变量、标准库
+- **集成测试**：端到端编译运行，覆盖算术、控制流、堆内存、递归、导入、全局变量、标准库、版本号标志、缺失标准库诊断
 
 ---
 

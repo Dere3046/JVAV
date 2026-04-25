@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(JVAV VERSION 0.1.0 LANGUAGES C CXX)
+project(JVAV VERSION 0.2.0 LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -23,6 +23,16 @@ endif()
 # Standard installation directories
 include(GNUInstallDirs)
 
+# Static linking for command-line tools (no external DLL/runtime dependency)
+if(WIN32)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
+endif()
+
+# Pass version to source code
+add_compile_definitions(JVAV_VERSION="${PROJECT_VERSION}")
+
 # Put all executables in a single directory so tests/integration can find them
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/bin)
@@ -41,6 +51,7 @@ add_subdirectory(tests/jvavc/front)
 # Install documentation -------------------------------------------------------
 install(FILES README.md README_zh.md LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR})
 install(DIRECTORY docs/ DESTINATION ${CMAKE_INSTALL_DOCDIR}/docs)
+install(DIRECTORY std/ DESTINATION std)
 
 # CPack packaging configuration -----------------------------------------------
 set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
@@ -50,6 +61,9 @@ set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "JVAV Compiler and JVM")
 set(CPACK_PACKAGE_INSTALL_DIRECTORY ${CPACK_PACKAGE_NAME})
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
 set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
+
+# CPack archive layout: flat directory with bin/ and std/ side-by-side
+set(CPACK_PACKAGING_INSTALL_PREFIX ".")
 
 if(WIN32)
     find_program(NSIS_EXECUTABLE makensis)

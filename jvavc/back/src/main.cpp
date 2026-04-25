@@ -14,6 +14,13 @@ static void printUsage(const char *prog) {
 }
 
 int main(int argc, char *argv[]) {
+    if (argc >= 2) {
+        string arg = argv[1];
+        if (arg == "-v" || arg == "--version") {
+            cout << "jvavc " << JVAV_VERSION << "\n";
+            return 0;
+        }
+    }
     if (argc < 2) { printUsage(argv[0]); return 1; }
 
     vector<string> inputs;
