@@ -35,11 +35,11 @@ static int opCode(const string& mnem) {
     return -1;
 }
 
-static __int128 buildInstr(uint8_t op, uint8_t dst, uint8_t src1, uint8_t src2, __int128 imm) {
+static Int128 buildInstr(uint8_t op, uint8_t dst, uint8_t src1, uint8_t src2, Int128 imm) {
     uint64_t lo = (uint64_t)imm;
     uint32_t hi = (uint32_t)(imm >> 64);
-    return ((__int128)hi<<96)|((__int128)lo<<32)|((__int128)src2<<24)
-          |((__int128)src1<<16)|((__int128)dst<<8)|op;
+    return ((Int128)hi<<96)|((Int128)lo<<32)|((Int128)src2<<24)
+          |((Int128)src1<<16)|((Int128)dst<<8)|op;
 }
 
 static int allocTempReg(const set<int>& used) {
@@ -47,7 +47,7 @@ static int allocTempReg(const set<int>& used) {
     return -1;
 }
 
-void Encoder::emit(__int128 word) {
+void Encoder::emit(Int128 word) {
     output->push_back(word);
 }
 
@@ -89,7 +89,7 @@ bool Encoder::encodeInstruction(const Instruction& instr) {
                 }
                 return true;
             }
-            __int128 addr = ops[memIdx].imm;
+            Int128 addr = ops[memIdx].imm;
             if (!ops[memIdx].label.empty()) {
                 auto it = labelMap->find(ops[memIdx].label);
                 if (it==labelMap->end()) { error="Undefined label: "+ops[memIdx].label; return false; }
@@ -108,7 +108,7 @@ bool Encoder::encodeInstruction(const Instruction& instr) {
     }
 
     uint8_t dst=0, src1=0, src2=0;
-    __int128 imm=0;
+    Int128 imm=0;
 
     if (op==0x00||op==0x0F) {
         // HALT / RET
@@ -152,7 +152,7 @@ bool Encoder::encodeInstruction(const Instruction& instr) {
         used.insert(dstReg);
         
         // Build expanded operands
-        struct EOp { uint8_t type; uint8_t reg; __int128 imm; };
+        struct EOp { uint8_t type; uint8_t reg; Int128 imm; };
         EOp eops[3];
         for (int i=0;i<3;i++) {
             eops[i].type = (uint8_t)ops[i].type;
@@ -162,7 +162,7 @@ bool Encoder::encodeInstruction(const Instruction& instr) {
         
         for (int idx=1; idx<3; idx++) {
             if (ops[idx].type==OP_IMM) {
-                __int128 val = ops[idx].imm;
+                Int128 val = ops[idx].imm;
                 if (!ops[idx].label.empty()) {
                     auto it = labelMap->find(ops[idx].label);
                     if (it==labelMap->end()) { error="Undefined label: "+ops[idx].label; return false; }
@@ -190,7 +190,7 @@ bool Encoder::encodeInstruction(const Instruction& instr) {
 
 bool Encoder::encode(const vector<Instruction>& instructions,
                      const map<string,int>& labels,
-                     vector<__int128>& bytecode) {
+                     vector<Int128>& bytecode) {
     labelMap = &labels;
     output = &bytecode;
     bytecode.clear();

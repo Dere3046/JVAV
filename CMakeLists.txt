@@ -7,9 +7,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Platform & compiler checks --------------------------------------------------
-# __int128 is required (GCC/Clang/MinGW). MSVC is NOT supported.
+# MSVC is NOT supported (Int128 relies on GCC/Clang extensions or soft emulation).
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    message(FATAL_ERROR "JVAV requires a compiler that supports __int128 (GCC, Clang, or MinGW-w64). MSVC is not supported.")
+    message(FATAL_ERROR "JVAV requires GCC, Clang, or MinGW-w64. MSVC is not supported.")
 endif()
 
 # Enable more warnings

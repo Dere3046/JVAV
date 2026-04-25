@@ -10,7 +10,7 @@ static string trim(const string &s) {
     return s.substr(b, e - b + 1);
 }
 
-bool Linker::extractEqu(const vector<string> &lines, map<string, __int128> &out) {
+bool Linker::extractEqu(const vector<string> &lines, map<string, Int128> &out) {
     for (const string &line : lines) {
         string l = trim(line);
         if (l.empty() || l.substr(0,2)=="//" || l[0]==';') continue;
@@ -24,7 +24,7 @@ bool Linker::extractEqu(const vector<string> &lines, map<string, __int128> &out)
                 string valstr = trim(rest.substr(3));
                 if (!name.empty()) {
                     try {
-                        __int128 v;
+                        Int128 v;
                         if (valstr.substr(0,2)=="0x") v = stoull(valstr.substr(2),nullptr,16);
                         else v = stoll(valstr);
                         out[name] = v;
@@ -41,7 +41,7 @@ bool Linker::extractEqu(const vector<string> &lines, map<string, __int128> &out)
             string valstr = trim(l.substr(equPos + 3));
             if (!name.empty() && !valstr.empty()) {
                 try {
-                    __int128 v;
+                    Int128 v;
                     if (valstr.substr(0,2)=="0x") v = stoull(valstr.substr(2),nullptr,16);
                     else v = stoll(valstr);
                     out[name] = v;
@@ -138,7 +138,7 @@ bool Linker::link(const string &output) {
     
     // Encode
     Encoder e;
-    vector<__int128> bc;
+    vector<Int128> bc;
     if (!e.encode(mergedInstructions, mergedLabels, bc)) {
         error = e.getError();
         return false;
@@ -146,6 +146,6 @@ bool Linker::link(const string &output) {
     
     ofstream f(output, ios::binary);
     if (!f) { error = "Cannot write to " + output; return false; }
-    f.write((char*)bc.data(), bc.size()*sizeof(__int128));
+    f.write((char*)bc.data(), bc.size()*sizeof(Int128));
     return true;
 }

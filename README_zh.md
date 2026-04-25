@@ -87,7 +87,7 @@ JVAV/
 - **导入系统** — 递归模块导入，带循环导入防护
 - **反汇编器** — 支持静态反汇编与动态 trace 模式
 - **Rust 风格诊断信息** — 错误代码、源代码片段、帮助提示
-- **跨平台** — Linux、Windows (MinGW)、macOS；GitHub Actions 三平台 CI
+- **跨平台** — Linux 与 Windows（x86、x64、ARM、ARM64）；GitHub Actions 多架构矩阵 CI
 
 ---
 
