@@ -60,34 +60,51 @@ static fs::path get_executable_dir(char *argv0) {
     }
 }
 
-static void printSourceLine(ostream &os, const string &srcText, int line, int col) {
-    if (line <= 0) return;
-    int targetLine = 1;
+// Split source text into lines; return vector of (line_number, content)
+static vector<pair<int, string>> splitLines(const string &srcText) {
+    vector<pair<int, string>> lines;
+    int curLine = 1;
     size_t start = 0;
-    for (size_t i = 0; i < srcText.size(); ++i) {
-        if (targetLine == line) {
-            start = i;
-            while (i < srcText.size() && srcText[i] != '\n' && srcText[i] != '\r') ++i;
-            string srcLine = srcText.substr(start, i - start);
-            int w = max(4, (int)to_string(line).length());
-            os << string(w + 1, ' ') << "|\n";
-            os << " " << setw(w) << line << " | " << srcLine << "\n";
+    for (size_t i = 0; i <= srcText.size(); ++i) {
+        if (i == srcText.size() || srcText[i] == '\n') {
+            string content = srcText.substr(start, i - start);
+            if (!content.empty() && content.back() == '\r') content.pop_back();
+            lines.push_back({curLine, content});
+            start = i + 1;
+            ++curLine;
+        }
+    }
+    return lines;
+}
+
+static void printSourceSnippet(ostream &os, const vector<pair<int, string>> &lines,
+                                int targetLine, int col, int contextLines = 1) {
+    if (lines.empty() || targetLine <= 0) return;
+    int targetIdx = -1;
+    for (int i = 0; i < (int)lines.size(); ++i) {
+        if (lines[i].first == targetLine) { targetIdx = i; break; }
+    }
+    if (targetIdx == -1) return; // line not found
+
+    int ctxStart = max(0, targetIdx - contextLines);
+    int ctxEnd = min((int)lines.size() - 1, targetIdx + contextLines);
+    int maxLineNum = lines[ctxEnd].first;
+    int w = (int)to_string(maxLineNum).length();
+
+    os << string(w + 1, ' ') << "|\n";
+    for (int i = ctxStart; i <= ctxEnd; ++i) {
+        os << " " << setw(w) << lines[i].first << " | " << lines[i].second << "\n";
+        if (i == targetIdx) {
             os << string(w + 1, ' ') << "| ";
             for (int j = 1; j < col; ++j) os << " ";
             os << "^\n";
-            return;
         }
-        if (srcText[i] == '\n') { ++targetLine; }
     }
-    // Target line is after the last newline (e.g., EOF on a new empty line)
-    if (targetLine == line) {
-        int w = max(4, (int)to_string(line).length());
-        os << string(w + 1, ' ') << "|\n";
-        os << " " << setw(w) << line << " |\n";
-        os << string(w + 1, ' ') << "| ";
-        for (int j = 1; j < col; ++j) os << " ";
-        os << "^\n";
-    }
+}
+
+static void printSourceLine(ostream &os, const string &srcText, int line, int col) {
+    auto lines = splitLines(srcText);
+    printSourceSnippet(os, lines, line, col, 1);
 }
 
 static void printLexError(const Lexer &lexer) {

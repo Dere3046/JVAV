@@ -14,6 +14,7 @@ struct SemaError {
     std::string msg;
     std::string file;
     int line;
+    int col = 1;
     std::string hint;     // suggested fix
 };
 
@@ -62,7 +63,7 @@ private:
     std::shared_ptr<Type> curRetType;   // return type of current function
     bool inLoop;                         // are we inside a loop?
 
-    void report(SemaLevel level, const std::string &msg, int line, const std::string &hint = "");
+    void report(SemaLevel level, const std::string &msg, int line, int col = 1, const std::string &hint = "");
     void enterScope();
     void exitScope();
     bool declare(const std::string &name, Symbol::Kind k, std::shared_ptr<Type> type, int level, bool global);

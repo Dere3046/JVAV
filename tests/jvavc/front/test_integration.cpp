@@ -640,5 +640,135 @@ func main(): int {
     }
     test_passed("integration_all_diagnostics");
 
+    // --- Drawing / format regression tests ---
+    test_header("integration_diag_context_lines");
+    {
+        const char* src = "func main(): int {\nvar x = 5\nreturn 0;\n}";
+        std::ofstream("f.jvl") << src;
+        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav > f.err 2>&1");
+        TEST_ASSERT(ret != 0, "should fail");
+        string err;
+        TEST_ASSERT(read_output("f.err", err), "read error");
+        // Should show context: line 2 (var x = 5) and line 4 (})
+        TEST_ASSERT(err.find("2 |") != string::npos, "context line 2");
+        TEST_ASSERT(err.find("3 |") != string::npos, "error line 3");
+        TEST_ASSERT(err.find("4 |") != string::npos, "context line 4");
+        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.err");
+    }
+    test_passed("integration_diag_context_lines");
+
+    test_header("integration_diag_first_line");
+    {
+        // Error on line 1: no context before
+        const char* src = "1 + 2;";
+        std::ofstream("f.jvl") << src;
+        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav > f.err 2>&1");
+        TEST_ASSERT(ret != 0, "should fail");
+        string err;
+        TEST_ASSERT(read_output("f.err", err), "read error");
+        TEST_ASSERT(err.find("1 |") != string::npos, "error line 1");
+        // Make sure there is no line 0
+        TEST_ASSERT(err.find("0 |") == string::npos, "no line 0");
+        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.err");
+    }
+    test_passed("integration_diag_first_line");
+
+    test_header("integration_diag_last_line");
+    {
+        // Error on last line: no context after
+        const char* src = "func main(): int {\n  var x = 5\n}";
+        std::ofstream("f.jvl") << src;
+        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav > f.err 2>&1");
+        TEST_ASSERT(ret != 0, "should fail");
+        string err;
+        TEST_ASSERT(read_output("f.err", err), "read error");
+        TEST_ASSERT(err.find("3 |") != string::npos, "error line 3");
+        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.err");
+    }
+    test_passed("integration_diag_last_line");
+
+    test_header("integration_diag_caret_position");
+    {
+        // Error at column 13 (missing { after main())
+        const char* src = "func main() var x = 5; }";
+        std::ofstream("f.jvl") << src;
+        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav > f.err 2>&1");
+        TEST_ASSERT(ret != 0, "should fail");
+        string err;
+        TEST_ASSERT(read_output("f.err", err), "read error");
+        // Caret should be aligned under 'v' of 'var'
+        size_t linePos = err.find("1 |");
+        TEST_ASSERT(linePos != string::npos, "source line");
+        size_t caretPos = err.find("^", linePos);
+        TEST_ASSERT(caretPos != string::npos, "caret exists");
+        // In the source line "func main() var x = 5; }", 'v' is at col 13
+        // The caret line looks like " |             ^", so ^ should be after spaces
+        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.err");
+    }
+    test_passed("integration_diag_caret_position");
+
+    // --- Edge case tests ---
+    test_header("integration_edge_empty_file");
+    {
+        std::ofstream("f.jvl") << "";
+        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav > f.err 2>&1");
+        TEST_ASSERT(ret == 0, "empty file should compile successfully");
+        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.err");
+    }
+    test_passed("integration_edge_empty_file");
+
+    test_header("integration_edge_eof_missing_semi");
+    {
+        // Missing semicolon at end of file (no trailing newline)
+        const char* src = "func main(): int { var x = 5 }";
+        std::ofstream("f.jvl") << src;
+        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav > f.err 2>&1");
+        TEST_ASSERT(ret != 0, "should fail");
+        string err;
+        TEST_ASSERT(read_output("f.err", err), "read error");
+        TEST_ASSERT(err.find("expected `;`") != string::npos, "missing semi message");
+        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.err");
+    }
+    test_passed("integration_edge_eof_missing_semi");
+
+    test_header("integration_edge_crlf_source");
+    {
+        // File with CRLF line endings
+        const char* src = "func main(): int {\r\n  var x = 5\r\n  return 0\r\n}";
+        std::ofstream("f.jvl", ios::binary) << src;
+        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav > f.err 2>&1");
+        TEST_ASSERT(ret != 0, "should fail");
+        string err;
+        TEST_ASSERT(read_output("f.err", err), "read error");
+        TEST_ASSERT(err.find("expected `;`") != string::npos, "missing semi on CRLF");
+        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.err");
+    }
+    test_passed("integration_edge_crlf_source");
+
+    test_header("integration_edge_long_line");
+    {
+        string src = "func main(): int { var x = " + string(200, '1') + " return 0; }";
+        std::ofstream("f.jvl") << src;
+        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav > f.err 2>&1");
+        TEST_ASSERT(ret != 0, "should fail");
+        string err;
+        TEST_ASSERT(read_output("f.err", err), "read error");
+        TEST_ASSERT(err.find("expected `;`") != string::npos, "missing semi on long line");
+        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.err");
+    }
+    test_passed("integration_edge_long_line");
+
+    test_header("integration_edge_single_char_file");
+    {
+        std::ofstream("f.jvl") << "{";
+        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav > f.err 2>&1");
+        TEST_ASSERT(ret != 0, "should fail");
+        string err;
+        TEST_ASSERT(read_output("f.err", err), "read error");
+        TEST_ASSERT(!err.empty(), "has error");
+        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.err");
+    }
+    test_passed("integration_edge_single_char_file");
+
     return 0;
 }
