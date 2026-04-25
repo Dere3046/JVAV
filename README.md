@@ -70,7 +70,7 @@ JVAV/
 ├── jvm/             # Virtual machine executor, C99
 ├── std/             # Standard library (io, math, mem, string)
 ├── benchmark/       # Performance benchmark suite (Python)
-├── tests/           # Automated tests (back: 100, front: 111)
+├── tests/           # Automated tests (back: 100, front: 120)
 └── docs/            # Detailed documentation
 ```
 
@@ -113,7 +113,7 @@ ctest --output-on-failure
 
 # Or run individual test binaries directly
 ./test_back    # 100 backend unit + integration tests
-./test_front   # 111 frontend unit + integration tests
+./test_front   # 120 frontend unit + integration tests
 ```
 
 Tests cover:
