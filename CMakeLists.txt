@@ -62,8 +62,7 @@ set(CPACK_PACKAGE_INSTALL_DIRECTORY ${CPACK_PACKAGE_NAME})
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
 set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
 
-# CPack archive layout: flat directory with bin/ and std/ side-by-side
-set(CPACK_PACKAGING_INSTALL_PREFIX ".")
+# CPack archive layout: files are placed under the install prefix
 
 if(WIN32)
     find_program(NSIS_EXECUTABLE makensis)

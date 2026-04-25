@@ -80,13 +80,13 @@ jobs:
 
       - name: Package
         run: |
-          cd build
-          cpack -G TGZ
-
-      - name: Rename artifact
-        run: |
+          cmake --install build --prefix build/install
           mkdir -p build/dist
-          cp build/JVAV-*.tar.gz build/dist/JVAV-${VERSION}-linux-${{ matrix.arch }}.tar.gz
+          cd build/install
+          tar czf ../dist/JVAV-${VERSION}-linux-${{ matrix.arch }}.tar.gz .
+          cd ../..
+          echo "--- dist contents ---"
+          ls -la build/dist/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -162,15 +162,11 @@ jobs:
       - name: Package
         shell: pwsh
         run: |
-          cd build
-          cpack -G ZIP
-
-      - name: Rename artifact
-        shell: pwsh
-        run: |
+          cmake --install build --prefix build/install
           New-Item -ItemType Directory -Force -Path build\dist | Out-Null
-          $src = Get-ChildItem -Path build\JVAV-*.zip | Select-Object -First 1
-          Copy-Item $src.FullName -Destination "build\dist\JVAV-$env:VERSION-windows-${{ matrix.arch }}.zip"
+          Compress-Archive -Path build\install\* -DestinationPath "build\dist\JVAV-$env:VERSION-windows-${{ matrix.arch }}.zip"
+          Write-Host "--- dist contents ---"
+          Get-ChildItem -Path build\dist\ | Format-Table -AutoSize
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
