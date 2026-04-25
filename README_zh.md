@@ -70,7 +70,7 @@ JVAV/
 ├── jvm/             # 虚拟机执行引擎, C99
 ├── std/             # 标准库 (io, math, mem, string)
 ├── benchmark/       # 性能基准测试套件 (Python)
-├── tests/           # 自动化测试 (后端: 98, 前端: 107)
+├── tests/           # 自动化测试 (后端: 100, 前端: 110)
 └── docs/            # 详细文档
 ```
 
@@ -112,8 +112,8 @@ JVAV/
 ctest --output-on-failure
 
 # 或直接运行测试二进制文件
-./test_back    # 98 项后端单元 + 集成测试
-./test_front   # 107 项前端单元 + 集成测试
+./test_back    # 100 项后端单元 + 集成测试
+./test_front   # 110 项前端单元 + 集成测试
 ```
 
 测试覆盖范围：
