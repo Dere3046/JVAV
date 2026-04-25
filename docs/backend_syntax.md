@@ -37,6 +37,12 @@ JVAV assembly is an ARM-like textual assembly language that maps directly to the
 | `CALL label` | Save PC, jump | Function call (pseudo) |
 | `RET` | `PC = mem[SP++]` | Return |
 | `LDI Rd, imm` | `Rd = imm` | Load immediate |
+| `AND Rd, Rs, Rt` | `Rd = Rs & Rt` | Bitwise AND |
+| `OR Rd, Rs, Rt` | `Rd = Rs | Rt` | Bitwise OR |
+| `XOR Rd, Rs, Rt` | `Rd = Rs ^ Rt` | Bitwise XOR |
+| `SHL Rd, Rs, Rt` | `Rd = Rs << Rt` | Shift left (low 7 bits of Rt) |
+| `SHR Rd, Rs, Rt` | `Rd = Rs >> Rt` | Arithmetic shift right (low 7 bits of Rt) |
+| `NOT Rd, Rs` | `Rd = ~Rs` | Bitwise NOT |
 | `HALT` | — | Halt execution |
 
 ## Pseudo-instructions & Data

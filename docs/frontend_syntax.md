@@ -23,6 +23,19 @@ var y = 3;            // inferred as `int` from the initializer
 var z = true;         // inferred as `bool`
 ```
 
+### String Literals
+
+String literals support C-style escape sequences:
+
+| Escape | Meaning |
+|--------|---------|
+| `\n` | newline |
+| `\t` | tab |
+| `\r` | carriage return |
+| `\\` | backslash |
+| `\"` | double quote |
+| `\xNN` | byte with hex value `NN` |
+
 Inference rules:
 - Integer literals → `int`
 - Boolean literals → `bool`
@@ -141,13 +154,14 @@ for (var i = 0; i < 10; i = i + 1) {
 | 1 (lowest) | `=` | Right |
 | 2 | `\|\|` | Left |
 | 3 | `&&` | Left |
-| 4 | `\|`, `^`, `&` | Left |
-| 5 | `==`, `!=` | Left |
-| 6 | `<`, `>`, `<=`, `>=` | Left |
-| 7 | `<<`, `>>` | Left |
-| 8 | `+`, `-` | Left |
-| 9 | `*`, `/`, `%` | Left |
-| 10 (highest) | unary `-`, `!`, `~`, `&`, `&mut` | Right |
+| 4 | `\|`, `^`, `&` | Left | bitwise OR, XOR, AND |
+| 5 | `==`, `!=` | Left | equality |
+| 6 | `<`, `>`, `<=`, `>=` | Left | comparison |
+| 7 | `<<`, `>>` | Left | shift left, shift right |
+| 8 | `+`, `-` | Left | addition, subtraction |
+| 9 | `*`, `/`, `%` | Left | multiplication, division, modulo |
+| 10 (highest) | unary `-`, `!`, `~` | Right | negation, logical NOT, bitwise NOT |
+| borrow | `&expr`, `&mut expr` | — | immutable / mutable borrow (not an arithmetic operator) |
 
 ## Import Modules
 

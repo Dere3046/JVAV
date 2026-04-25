@@ -111,8 +111,7 @@ warning[W2000]: unused variable `tmp`
 ```
 
 Error code ranges:
-- `E0000–E0999`: MimiWorld ownership and borrow checker errors
-- `E1000–E1999`: Semantic analysis errors (type checking, void parameters, missing returns)
+- `E1000–E1999`: Semantic analysis and MimiWorld ownership errors (type checking, void parameters, missing returns, move/borrow violations)
 - `E0100–E0199`: Lexer errors
 - `E0200–E0299`: Parser errors
 - `E0300–E0399`: I/O and codegen errors

@@ -33,7 +33,8 @@ enum {
     OP_RET,
     OP_LDI,
     OP_JE, OP_JNE, OP_JL, OP_JG, OP_JLE, OP_JGE,
-    OP_MOD
+    OP_MOD,
+    OP_AND, OP_OR, OP_XOR, OP_SHL, OP_SHR, OP_NOT
 };
 
 #pragma pack(push, 1)

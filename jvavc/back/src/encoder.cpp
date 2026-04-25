@@ -32,6 +32,12 @@ static int opCode(const string& mnem) {
     if (mnem=="CALL") return 0x0E;
     if (mnem=="RET")  return 0x0F;
     if (mnem=="LDI")  return 0x10;
+    if (mnem=="AND")  return 0x18;
+    if (mnem=="OR")   return 0x19;
+    if (mnem=="XOR")  return 0x1A;
+    if (mnem=="SHL")  return 0x1B;
+    if (mnem=="SHR")  return 0x1C;
+    if (mnem=="NOT")  return 0x1D;
     return -1;
 }
 
@@ -144,7 +150,12 @@ bool Encoder::encodeInstruction(const Instruction& instr) {
     } else if (op==0x09||op==0x0A||op==0x0B||op==0x0E) {
         if (ops.size()!=1||ops[0].type!=OP_REG) { error=instr.mnemonic+" requires register operand"; return false; }
         dst = ops[0].reg;
-    } else if (op==0x04||op==0x05||op==0x06||op==0x07||op==0x17) {
+    } else if (op==0x01||op==0x1D) {
+        // MOV / NOT: 2 register operands
+        if (ops.size()!=2) { error=instr.mnemonic+" requires 2 operands"; return false; }
+        dst = ops[0].reg; src1 = ops[1].reg;
+    } else if (op==0x04||op==0x05||op==0x06||op==0x07||op==0x17||
+               op==0x18||op==0x19||op==0x1A||op==0x1B||op==0x1C) {
         // ADD / SUB / MUL / DIV / MOD with possible immediate expansion
         if (ops.size()!=3) { error=instr.mnemonic+" requires 3 operands"; return false; }
         uint8_t dstReg = ops[0].reg;

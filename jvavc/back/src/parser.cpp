@@ -15,7 +15,8 @@ using namespace std;
 static const set<string> validMnemonics = {
     "HALT", "MOV", "LDR", "STR", "ADD", "SUB", "MUL", "DIV", "MOD",
     "CMP", "JMP", "JZ", "JNZ", "JE", "JNE", "JL", "JG", "JLE", "JGE",
-    "PUSH", "POP", "CALL", "RET", "LDI"
+    "PUSH", "POP", "CALL", "RET", "LDI",
+    "AND", "OR", "XOR", "SHL", "SHR", "NOT"
 };
 
 static string trim(const string &s) {
