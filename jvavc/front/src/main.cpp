@@ -60,33 +60,52 @@ static fs::path get_executable_dir(char *argv0) {
     }
 }
 
+static void printSourceLine(ostream &os, const string &srcText, int line, int col) {
+    if (line <= 0) return;
+    int targetLine = 1;
+    size_t start = 0;
+    for (size_t i = 0; i < srcText.size(); ++i) {
+        if (targetLine == line) {
+            start = i;
+            while (i < srcText.size() && srcText[i] != '\n' && srcText[i] != '\r') ++i;
+            string srcLine = srcText.substr(start, i - start);
+            int w = max(4, (int)to_string(line).length());
+            os << string(w + 1, ' ') << "|\n";
+            os << " " << setw(w) << line << " | " << srcLine << "\n";
+            os << string(w + 1, ' ') << "| ";
+            for (int j = 1; j < col; ++j) os << " ";
+            os << "^\n";
+            return;
+        }
+        if (srcText[i] == '\n') { ++targetLine; }
+    }
+    // Target line is after the last newline (e.g., EOF on a new empty line)
+    if (targetLine == line) {
+        int w = max(4, (int)to_string(line).length());
+        os << string(w + 1, ' ') << "|\n";
+        os << " " << setw(w) << line << " |\n";
+        os << string(w + 1, ' ') << "| ";
+        for (int j = 1; j < col; ++j) os << " ";
+        os << "^\n";
+    }
+}
+
 static void printLexError(const Lexer &lexer) {
     cerr << "error[E0100]: " << lexer.getError() << "\n";
     if (lexer.getErrorLine() > 0) {
         cerr << " --> " << lexer.getFilename() << ":" << lexer.getErrorLine()
              << ":" << lexer.getErrorCol() << "\n";
-        // Try to print source line
-        const string &srcText = lexer.getSource();
-        int line = 1;
-        size_t start = 0;
-        for (size_t i = 0; i < srcText.size(); ++i) {
-            if (line == lexer.getErrorLine()) {
-                start = i;
-                while (i < srcText.size() && srcText[i] != '\n' && srcText[i] != '\r') ++i;
-                string srcLine = srcText.substr(start, i - start);
-                cerr << "  " << setw(4) << line << " | " << srcLine << "\n";
-                cerr << "      | ";
-                for (int j = 1; j < lexer.getErrorCol(); ++j) cerr << " ";
-                cerr << "^\n";
-                break;
-            }
-            if (srcText[i] == '\n') { ++line; }
-        }
+        printSourceLine(cerr, lexer.getSource(), lexer.getErrorLine(), lexer.getErrorCol());
     }
 }
 
-static void printParseError(const FrontParser &parser, const Lexer &/*lexer*/) {
+static void printParseError(const FrontParser &parser, const Lexer &lexer) {
     cerr << "error[E0200]: " << parser.getError() << "\n";
+    if (parser.getErrorLine() > 0) {
+        cerr << " --> " << lexer.getFilename() << ":" << parser.getErrorLine()
+             << ":" << parser.getErrorCol() << "\n";
+        printSourceLine(cerr, lexer.getSource(), parser.getErrorLine(), parser.getErrorCol());
+    }
 }
 
 static int compile_jvl(const string &src, const string &out, const vector<string> &importPaths) {

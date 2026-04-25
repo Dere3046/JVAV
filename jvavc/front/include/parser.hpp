@@ -10,10 +10,14 @@ public:
     bool parse(const std::vector<Token> &toks);
     std::shared_ptr<Program> getProgram() { return program; }
     const std::string& getError() const { return error; }
+    int getErrorLine() const { return errorLine; }
+    int getErrorCol() const { return errorCol; }
 private:
     std::vector<Token> tokens;
     size_t pos;
     std::string error;
+    int errorLine = 0;
+    int errorCol = 0;
     std::shared_ptr<Program> program;
 
     const Token& peek(int ahead = 0);

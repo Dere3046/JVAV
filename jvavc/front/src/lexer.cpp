@@ -19,6 +19,7 @@ static const map<string, TokenType> keywords = {
 bool Lexer::tokenize(const string &filename) {
     ifstream f(filename, ios::binary);
     if (!f) { error = "Cannot open file: " + filename; return false; }
+    this->filename = filename;
     src = string((istreambuf_iterator<char>(f)), istreambuf_iterator<char>());
     f.close();
     pos = 0;
