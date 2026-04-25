@@ -1,7 +1,26 @@
-let currentLang = 'zh';
+let currentLang = localStorage.getItem('jvav-lang') || 'zh';
 
-function toggleLang() {
-    currentLang = currentLang === 'zh' ? 'en' : 'zh';
+const pageTitles = {
+    'zh': {
+        'index.html': 'JVAV - 程序设计语言',
+        'features.html': '特性 - JVAV',
+        'stdlib.html': '标准库 - JVAV',
+        'toolchain.html': '工具链 - JVAV',
+        'about.html': '关于 - JVAV'
+    },
+    'en': {
+        'index.html': 'JVAV - The JVAV Programming Language',
+        'features.html': 'Features - JVAV',
+        'stdlib.html': 'Standard Library - JVAV',
+        'toolchain.html': 'Toolchain - JVAV',
+        'about.html': 'About - JVAV'
+    }
+};
+
+function applyLang(lang) {
+    currentLang = lang;
+    localStorage.setItem('jvav-lang', lang);
+    document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
     document.querySelectorAll('[data-lang]').forEach(function(el) {
         if (el.getAttribute('data-lang') === currentLang) {
             el.classList.add('active');
@@ -9,6 +28,14 @@ function toggleLang() {
             el.classList.remove('active');
         }
     });
+    var path = window.location.pathname.split('/').pop() || 'index.html';
+    if (pageTitles[lang] && pageTitles[lang][path]) {
+        document.title = pageTitles[lang][path];
+    }
+}
+
+function toggleLang() {
+    applyLang(currentLang === 'zh' ? 'en' : 'zh');
 }
 
 function openModal() {
@@ -31,9 +58,7 @@ document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeModal();
 });
 
-// Initialize Chinese as default
+// Initialize from localStorage or default to Chinese
 document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('[data-lang="zh"]').forEach(function(el) {
-        el.classList.add('active');
-    });
+    applyLang(currentLang);
 });
