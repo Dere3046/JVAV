@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Features - JVAV</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="oracle-bar"></div>
+    <header class="header">
+        <div class="header-inner">
+            <a href="index.html" class="logo">J<span>V</span>AV</a>
+            <ul class="nav-links">
+                <li><a href="index.html"><span data-lang="zh">首页</span><span data-lang="en">Home</span></a></li>
+                <li><a href="features.html" class="active"><span data-lang="zh">特性</span><span data-lang="en">Features</span></a></li>
+                <li><a href="stdlib.html"><span data-lang="zh">标准库</span><span data-lang="en">Stdlib</span></a></li>
+                <li><a href="toolchain.html"><span data-lang="zh">工具链</span><span data-lang="en">Toolchain</span></a></li>
+                <li><a href="about.html"><span data-lang="zh">关于</span><span data-lang="en">About</span></a></li>
+                <li><a href="https://github.com/Dere3046/JVAV" class="nav-cta" target="_blank">GitHub</a></li>
+                <li><button class="lang-switch" onclick="toggleLang()"><span data-lang="zh">EN</span><span data-lang="en">中文</span></button></li>
+            </ul>
+        </div>
+    </header>
+
+    <div class="main">
+        <aside class="sidebar">
+            <h4 class="active" data-lang="zh">导航</h4>
+            <h4 data-lang="en">Navigation</h4>
+            <ul>
+                <li><a href="index.html"><span data-lang="zh">首页</span><span data-lang="en">Home</span></a></li>
+                <li><a href="features.html" class="active"><span data-lang="zh">语言特性</span><span data-lang="en">Features</span></a></li>
+                <li><a href="stdlib.html"><span data-lang="zh">标准库</span><span data-lang="en">Standard Library</span></a></li>
+                <li><a href="toolchain.html"><span data-lang="zh">工具链</span><span data-lang="en">Toolchain</span></a></li>
+                <li><a href="about.html"><span data-lang="zh">关于</span><span data-lang="en">About</span></a></li>
+            </ul>
+            <h4 class="active" data-lang="zh">本页目录</h4>
+            <h4 data-lang="en">On This Page</h4>
+            <ul>
+                <li><a href="#isa">128-bit ISA</a></li>
+                <li><a href="#jvl">JVL 语言</a></li>
+                <li><a href="#mimiworld">MimiWorld</a></li>
+                <li><a href="#stdlib">Standard Library</a></li>
+                <li><a href="#operators">运算符</a></li>
+                <li><a href="#types">类型系统</a></li>
+            </ul>
+        </aside>
+        <div class="content">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> / <span class="active" data-lang="zh">特性</span><span data-lang="en">Features</span>
+            </div>
+
+            <h2 id="isa"><span class="active" data-lang="zh">128-bit 指令集架构</span><span data-lang="en">128-bit Instruction Set</span></h2>
+            <p class="active" data-lang="zh">
+                JVAV 使用固定 16 字节（128-bit）的指令格式。每条指令包含 8-bit 操作码、三个 8-bit 寄存器索引，
+                以及最多 96-bit 的立即数。这使得单条指令即可完成常见的算术和逻辑操作。
+            </p>
+            <p data-lang="en">
+                JVAV uses a fixed 16-byte (128-bit) instruction format. Each instruction contains an 8-bit opcode,
+                three 8-bit register indices, and up to 96 bits of immediate value.
+            </p>
+            <table class="feature-table">
+                <tr><th>Field</th><th>Width</th><th class="active" data-lang="zh">说明</th><th data-lang="en">Description</th></tr>
+                <tr><td>op</td><td>8-bit</td><td class="active" data-lang="zh">操作码</td><td data-lang="en">Opcode</td></tr>
+                <tr><td>dst</td><td>8-bit</td><td class="active" data-lang="zh">目标寄存器</td><td data-lang="en">Destination register</td></tr>
+                <tr><td>src1</td><td>8-bit</td><td class="active" data-lang="zh">源操作数1</td><td data-lang="en">Source operand 1</td></tr>
+                <tr><td>src2</td><td>8-bit</td><td class="active" data-lang="zh">源操作数2</td><td data-lang="en">Source operand 2</td></tr>
+                <tr><td>imm_low</td><td>64-bit</td><td class="active" data-lang="zh">立即数低 64 位</td><td data-lang="en">Lower immediate bits</td></tr>
+                <tr><td>imm_high</td><td>32-bit</td><td class="active" data-lang="zh">立即数高 32 位</td><td data-lang="en">Upper immediate bits</td></tr>
+            </table>
+
+            <h2 id="jvl"><span class="active" data-lang="zh">JVL 高级语言</span><span data-lang="en">JVL Language</span></h2>
+            <p class="active" data-lang="zh">
+                JVL 是一门类 C 的前端语言，支持函数、变量、控制流、import 模块化导入、
+                以及 Rust 风格的借用表达式。编译器 jvlc 将 JVL 编译为 JVAV 汇编。
+            </p>
+            <p data-lang="en">
+                JVL is a C-like frontend language supporting functions, variables, control flow, modular imports,
+                and Rust-style borrow expressions.
+            </p>
+            <pre class="code"><span class="kw">import</span> <span class="str">"std/io.jvl"</span>;
+<span class="kw">import</span> <span class="str">"std/math.jvl"</span>;
+
+<span class="kw">func</span> <span class="fn">factorial</span>(n: <span class="kw">int</span>): <span class="kw">int</span> {
+    <span class="kw">if</span> (n &lt;= 1) { <span class="kw">return</span> 1; }
+    <span class="kw">return</span> n * factorial(n - 1);
+}
+
+<span class="kw">func</span> <span class="fn">main</span>(): <span class="kw">int</span> {
+    println(factorial(5));   <span class="cm">// 120</span>
+    <span class="kw">return</span> 0;
+}</pre>
+
+            <h2 id="mimiworld"><span class="active" data-lang="zh">MimiWorld 所有权系统</span><span data-lang="en">MimiWorld Ownership</span></h2>
+            <p class="active" data-lang="zh">
+                受 Rust 启发的所有权与借用检查系统。非 Copy 类型（<code>ptr&lt;T&gt;</code>、<code>array&lt;T&gt;</code>）
+                在赋值时移动所有权，避免双重释放和野指针。Copy 类型（<code>int</code>、<code>char</code>、<code>bool</code>）
+                按值复制，不受所有权规则约束。
+            </p>
+            <p data-lang="en">
+                A Rust-inspired ownership and borrow checker. Non-Copy types move ownership on assignment,
+                preventing double-free and use-after-free.
+            </p>
+            <pre class="code"><span class="kw">var</span> p: ptr&lt;<span class="kw">int</span>&gt; = alloc(1);   <span class="cm">// p 拥有堆分配</span>
+<span class="kw">var</span> q = p;                      <span class="cm">// ERROR: p 已被移动</span>
+
+<span class="kw">var</span> r = &p;                      <span class="cm">// OK: 不可变借用</span>
+<span class="kw">var</span> s = &<span class="kw">mut</span> p;                 <span class="cm">// OK: 可变借用（独占）</span>
+<span class="kw">var</span> t = &p;                      <span class="cm">// ERROR: p 正被可变借用</span></pre>
+
+            <h2 id="stdlib"><span class="active" data-lang="zh">标准库</span><span data-lang="en">Standard Library</span></h2>
+            <p class="active" data-lang="zh">
+                位于 <code>std/</code> 目录，包含 io、math、mem、string 四个模块。
+                <a href="stdlib.html">查看详情 →</a>
+            </p>
+            <p data-lang="en">
+                Located in <code>std/</code> with io, math, mem, and string modules.
+                <a href="stdlib.html">View details →</a>
+            </p>
+
+            <h2 id="operators"><span class="active" data-lang="zh">运算符</span><span data-lang="en">Operators</span></h2>
+            <table class="feature-table">
+                <tr><th>Precedence</th><th>Operators</th></tr>
+                <tr><td>1 (lowest)</td><td><code>=</code></td></tr>
+                <tr><td>2</td><td><code>||</code></td></tr>
+                <tr><td>3</td><td><code>&&</code></td></tr>
+                <tr><td>4</td><td><code>|</code>, <code>^</code>, <code>&</code></td></tr>
+                <tr><td>5</td><td><code>==</code>, <code>!=</code></td></tr>
+                <tr><td>6</td><td><code>&lt;</code>, <code>&gt;</code>, <code>&lt;=</code>, <code>&gt;=</code></td></tr>
+                <tr><td>7</td><td><code>&lt;&lt;</code>, <code>&gt;&gt;</code></td></tr>
+                <tr><td>8</td><td><code>+</code>, <code>-</code></td></tr>
+                <tr><td>9</td><td><code>*</code>, <code>/</code>, <code>%</code></td></tr>
+                <tr><td>10 (highest)</td><td><code>-</code>, <code>!</code>, <code>~</code>, <code>&</code>, <code>&mut</code></td></tr>
+            </table>
+
+            <h2 id="types"><span class="active" data-lang="zh">类型系统</span><span data-lang="en">Type System</span></h2>
+            <table class="feature-table">
+                <tr><th>Type</th><th>Copy?</th><th class="active" data-lang="zh">说明</th><th data-lang="en">Description</th></tr>
+                <tr><td><code>int</code></td><td>✓</td><td class="active" data-lang="zh">有符号 128-bit 整数</td><td data-lang="en">Signed 128-bit integer</td></tr>
+                <tr><td><code>char</code></td><td>✓</td><td class="active" data-lang="zh">字符（word-sized）</td><td data-lang="en">Character (word-sized)</td></tr>
+                <tr><td><code>bool</code></td><td>✓</td><td class="active" data-lang="zh">布尔值</td><td data-lang="en">Boolean</td></tr>
+                <tr><td><code>void</code></td><td>-</td><td class="active" data-lang="zh">仅用于函数返回值</td><td data-lang="en">Function return type only</td></tr>
+                <tr><td><code>ptr&lt;T&gt;</code></td><td>✗</td><td class="active" data-lang="zh">指针（Move 语义）</td><td data-lang="en">Pointer (Move semantics)</td></tr>
+                <tr><td><code>array&lt;T&gt;</code></td><td>✗</td><td class="active" data-lang="zh">array&lt;T&gt; 是 ptr&lt;T&gt; 别名</td><td data-lang="en">Alias for ptr&lt;T&gt;</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p class="active" data-lang="zh">
+            JVAV 语言由 <strong>张浩杨博士</strong> 提出，
+            <a href="https://github.com/Dere3046" target="_blank">Dere3046</a> 与社区实现 · MIT License
+        </p>
+        <p data-lang="en">
+            JVAV language proposed by <strong>Dr. Zhang Haoyang</strong>,
+            implemented by <a href="https://github.com/Dere3046" target="_blank">Dere3046</a> and the community · MIT License
+        </p>
+        <p style="margin-top:6px;" class="active" data-lang="zh">仅供娱乐与教育目的</p>
+        <p style="margin-top:6px;" data-lang="en">For fun and educational purposes only</p>
+    </footer>
+    <script src="js/main.js"></script>
+</body>
+</html>

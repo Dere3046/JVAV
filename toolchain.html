@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toolchain - JVAV</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="oracle-bar"></div>
+    <header class="header">
+        <div class="header-inner">
+            <a href="index.html" class="logo">J<span>V</span>AV</a>
+            <ul class="nav-links">
+                <li><a href="index.html"><span data-lang="zh">首页</span><span data-lang="en">Home</span></a></li>
+                <li><a href="features.html"><span data-lang="zh">特性</span><span data-lang="en">Features</span></a></li>
+                <li><a href="stdlib.html"><span data-lang="zh">标准库</span><span data-lang="en">Stdlib</span></a></li>
+                <li><a href="toolchain.html" class="active"><span data-lang="zh">工具链</span><span data-lang="en">Toolchain</span></a></li>
+                <li><a href="about.html"><span data-lang="zh">关于</span><span data-lang="en">About</span></a></li>
+                <li><a href="https://github.com/Dere3046/JVAV" class="nav-cta" target="_blank">GitHub</a></li>
+                <li><button class="lang-switch" onclick="toggleLang()"><span data-lang="zh">EN</span><span data-lang="en">中文</span></button></li>
+            </ul>
+        </div>
+    </header>
+
+    <div class="main">
+        <aside class="sidebar">
+            <h4 class="active" data-lang="zh">导航</h4>
+            <h4 data-lang="en">Navigation</h4>
+            <ul>
+                <li><a href="index.html"><span data-lang="zh">首页</span><span data-lang="en">Home</span></a></li>
+                <li><a href="features.html"><span data-lang="zh">语言特性</span><span data-lang="en">Features</span></a></li>
+                <li><a href="stdlib.html"><span data-lang="zh">标准库</span><span data-lang="en">Standard Library</span></a></li>
+                <li><a href="toolchain.html" class="active"><span data-lang="zh">工具链</span><span data-lang="en">Toolchain</span></a></li>
+                <li><a href="about.html"><span data-lang="zh">关于</span><span data-lang="en">About</span></a></li>
+            </ul>
+            <h4 class="active" data-lang="zh">本页目录</h4>
+            <h4 data-lang="en">On This Page</h4>
+            <ul>
+                <li><a href="#pipeline">流水线</a></li>
+                <li><a href="#jvlc">jvlc</a></li>
+                <li><a href="#jvavc">jvavc</a></li>
+                <li><a href="#jvm">jvm</a></li>
+                <li><a href="#disasm">disasm</a></li>
+                <li><a href="#build">构建</a></li>
+            </ul>
+        </aside>
+        <div class="content">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> / <span class="active" data-lang="zh">工具链</span><span data-lang="en">Toolchain</span>
+            </div>
+
+            <h2 id="pipeline"><span class="active" data-lang="zh">工具链流水线</span><span data-lang="en">Toolchain Pipeline</span></h2>
+            <p class="active" data-lang="zh">JVAV 工具链包含四个核心组件，从高级语言到执行一次到位。</p>
+            <p data-lang="en">The JVAV toolchain consists of four core components, taking you from high-level source to execution.</p>
+
+            <div class="step-box"><h4>JVL 源码 <code>.jvl</code></h4><pre>↓  jvlc  前端编译器</pre></div>
+            <div class="step-box"><h4>JVAV 汇编 <code>.jvav</code></h4><pre>↓  jvavc  后端汇编器/链接器</pre></div>
+            <div class="step-box"><h4>128-bit 二进制 <code>.bin</code></h4><pre>↓  jvm  虚拟机</pre></div>
+            <div class="step-box"><h4>运行结果</h4><pre>stdout / exit code</pre></div>
+
+            <h2 id="jvlc">jvlc — 前端编译器</h2>
+            <p>将 JVL 高级语言编译为 JVAV 汇编。支持模块化导入、类型推断、MimiWorld 所有权检查。</p>
+            <table class="feature-table">
+                <tr><th class="active" data-lang="zh">命令</th><th data-lang="en">Command</th><th class="active" data-lang="zh">说明</th><th data-lang="en">Description</th></tr>
+                <tr><td><code>jvlc a.jvl a.jvav</code></td><td><code>jvlc a.jvl a.jvav</code></td><td class="active" data-lang="zh">编译为汇编</td><td data-lang="en">Compile to assembly</td></tr>
+                <tr><td><code>jvlc --run a.jvl</code></td><td><code>jvlc --run a.jvl</code></td><td class="active" data-lang="zh">一键编译并运行</td><td data-lang="en">Compile and run</td></tr>
+                <tr><td><code>jvlc --run a.jvl -o out.bin</code></td><td><code>jvlc --run a.jvl -o out.bin</code></td><td class="active" data-lang="zh">保留二进制输出</td><td data-lang="en">Keep binary output</td></tr>
+            </table>
+
+            <h2 id="jvavc">jvavc — 后端汇编器</h2>
+            <p>将 JVAV 汇编编码为 128-bit 二进制。支持多文件链接、标签解析、EQU 定义。</p>
+            <table class="feature-table">
+                <tr><th class="active" data-lang="zh">命令</th><th data-lang="en">Command</th><th class="active" data-lang="zh">说明</th><th data-lang="en">Description</th></tr>
+                <tr><td><code>jvavc a.jvav out.bin</code></td><td><code>jvavc a.jvav out.bin</code></td><td class="active" data-lang="zh">单文件汇编</td><td data-lang="en">Single-file assemble</td></tr>
+                <tr><td><code>jvavc a.jvav b.jvav -o out.bin</code></td><td><code>jvavc a.jvav b.jvav -o out.bin</code></td><td class="active" data-lang="zh">多文件链接</td><td data-lang="en">Multi-file link</td></tr>
+            </table>
+
+            <h2 id="jvm">jvm — 虚拟机</h2>
+            <p>128-bit 字寻址虚拟机，C99 实现。执行 JVAV 二进制文件。</p>
+            <table class="feature-table">
+                <tr><th class="active" data-lang="zh">命令</th><th data-lang="en">Command</th><th class="active" data-lang="zh">说明</th><th data-lang="en">Description</th></tr>
+                <tr><td><code>jvm program.bin</code></td><td><code>jvm program.bin</code></td><td class="active" data-lang="zh">执行二进制</td><td data-lang="en">Run binary</td></tr>
+            </table>
+
+            <h2 id="disasm">disasm — 反汇编器</h2>
+            <p>静态反汇编与动态 trace 模式。用于调试 JVAV 二进制。</p>
+
+            <h2 id="build"><span class="active" data-lang="zh">构建</span><span data-lang="en">Build</span></h2>
+            <pre class="code">cmake -S . -B build
+cmake --build build</pre>
+            <p class="active" data-lang="zh">构建完成后，可执行文件位于 <code>build/bin/</code> 目录。</p>
+            <p data-lang="en">After building, executables are in <code>build/bin/</code>.</p>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p class="active" data-lang="zh">
+            JVAV 语言由 <strong>张浩杨博士</strong> 提出，
+            <a href="https://github.com/Dere3046" target="_blank">Dere3046</a> 与社区实现 · MIT License
+        </p>
+        <p data-lang="en">
+            JVAV language proposed by <strong>Dr. Zhang Haoyang</strong>,
+            implemented by <a href="https://github.com/Dere3046" target="_blank">Dere3046</a> and the community · MIT License
+        </p>
+        <p style="margin-top:6px;" class="active" data-lang="zh">仅供娱乐与教育目的</p>
+        <p style="margin-top:6px;" data-lang="en">For fun and educational purposes only</p>
+    </footer>
+    <script src="js/main.js"></script>
+</body>
+</html>
