@@ -105,6 +105,7 @@ static int compile_jvl(const string &src, const string &out, const vector<string
     Sema sema;
     string basePath = fs::path(src).parent_path().string();
     sema.setImportPaths(importPaths);
+    sema.setCurrentFile(src);
     if (!sema.analyze(parser.getProgram(), basePath)) {
         sema.printErrors(cerr);
         return 1;
