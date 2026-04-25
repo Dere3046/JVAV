@@ -1,9 +1,14 @@
+#ifdef _WIN32
+#include <process.h>
+#endif
+
 #include <iostream>
 #include <fstream>
 #include <filesystem>
 #include <cstdlib>
 #include <string>
 #include <iomanip>
+#include <vector>
 namespace fs = std::filesystem;
 #include "lexer.hpp"
 #include "parser.hpp"
@@ -11,9 +16,41 @@ namespace fs = std::filesystem;
 #include "codegen.hpp"
 using namespace std;
 
+#ifdef _WIN32
+static int run_cmd(const string &cmd) {
+    vector<string> args;
+    size_t i = 0;
+    while (i < cmd.size()) {
+        while (i < cmd.size() && isspace((unsigned char)cmd[i])) ++i;
+        if (i >= cmd.size()) break;
+        string arg;
+        if (cmd[i] == '"') {
+            ++i;
+            while (i < cmd.size() && cmd[i] != '"') {
+                arg += cmd[i];
+                ++i;
+            }
+            if (i < cmd.size() && cmd[i] == '"') ++i;
+        } else {
+            while (i < cmd.size() && !isspace((unsigned char)cmd[i])) {
+                arg += cmd[i];
+                ++i;
+            }
+        }
+        args.push_back(arg);
+    }
+    if (args.empty()) return -1;
+    vector<const char*> argv;
+    for (auto &a : args) argv.push_back(a.c_str());
+    argv.push_back(nullptr);
+    intptr_t ret = _spawnvp(_P_WAIT, argv[0], argv.data());
+    return (ret == -1) ? -1 : (int)ret;
+}
+#else
 static int run_cmd(const string &cmd) {
     return system(cmd.c_str());
 }
+#endif
 
 static fs::path get_executable_dir(char *argv0) {
     try {
