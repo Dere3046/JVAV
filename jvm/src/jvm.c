@@ -368,10 +368,12 @@ void jvm_run(JVM *vm) {
 
         var val1 = 0, val2 = 0, addr = 0;
         if (op == OP_LDR || op == OP_STR || op == OP_ADD || op == OP_SUB ||
-            op == OP_MUL || op == OP_DIV || op == OP_MOD || op == OP_CMP || op == OP_PUSH) {
+            op == OP_MUL || op == OP_DIV || op == OP_MOD || op == OP_CMP || op == OP_PUSH ||
+            op == OP_AND || op == OP_OR || op == OP_XOR || op == OP_SHL || op == OP_SHR || op == OP_NOT) {
             val1 = (src1 < NUM_REGS) ? vm->reg[src1] : 0;
         }
-        if (op == OP_ADD || op == OP_SUB || op == OP_MUL || op == OP_DIV || op == OP_MOD || op == OP_CMP) {
+        if (op == OP_ADD || op == OP_SUB || op == OP_MUL || op == OP_DIV || op == OP_MOD || op == OP_CMP ||
+            op == OP_AND || op == OP_OR || op == OP_XOR || op == OP_SHL || op == OP_SHR) {
             val2 = (src2 < NUM_REGS) ? vm->reg[src2] : 0;
         }
 
@@ -451,6 +453,20 @@ void jvm_run(JVM *vm) {
                 break;
             case OP_RET: vm->reg[PC] = vm->mem[(size_t)vm->reg[SP]++]; break;
             case OP_LDI: vm->reg[dst] = imm; break;
+            case OP_AND: vm->reg[dst] = val1 & val2; break;
+            case OP_OR:  vm->reg[dst] = val1 | val2; break;
+            case OP_XOR: vm->reg[dst] = val1 ^ val2; break;
+            case OP_SHL: {
+                int shift = (int)(long long)(val2 & 127);
+                vm->reg[dst] = val1 << shift;
+                break;
+            }
+            case OP_SHR: {
+                int shift = (int)(long long)(val2 & 127);
+                vm->reg[dst] = val1 >> shift;
+                break;
+            }
+            case OP_NOT: vm->reg[dst] = ~val1; break;
             default: fprintf(stderr, "Unknown opcode 0x%02X\n", op); vm->running = 0;
         }
     }

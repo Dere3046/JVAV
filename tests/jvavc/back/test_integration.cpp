@@ -729,5 +729,57 @@ _start:
     std::remove("test_stack.out");
     test_passed("integration_stack");
 
+    test_header("integration_bitops");
+    src = R"(
+    LDI R0, 0x0F
+    LDI R1, 0xF0
+    AND R2, R0, R1
+    LDI R5, 0xFFF2
+    STR [R5], R2
+    LDI R6, 0xFFF0
+    LDI R7, 10
+    STR [R6], R7
+
+    OR R2, R0, R1
+    STR [R5], R2
+    STR [R6], R7
+
+    LDI R1, 0xFF
+    XOR R2, R0, R1
+    STR [R5], R2
+    STR [R6], R7
+
+    LDI R0, 1
+    LDI R1, 3
+    SHL R2, R0, R1
+    STR [R5], R2
+    STR [R6], R7
+
+    LDI R0, 16
+    LDI R1, 2
+    SHR R2, R0, R1
+    STR [R5], R2
+    STR [R6], R7
+
+    LDI R0, 0
+    NOT R2, R0
+    STR [R5], R2
+    STR [R6], R7
+
+    HALT
+)";
+    std::ofstream("test_bitops.jvav") << src;
+    ret = system(JVAVC_BACK_EXE " test_bitops.jvav test_bitops.bin");
+    TEST_ASSERT(ret == 0, "compilation failed");
+    ret = system(JVM_EXE " test_bitops.bin > test_bitops.out 2>&1");
+    TEST_ASSERT(ret == 0, "execution failed");
+    std::ifstream out_bitops("test_bitops.out");
+    std::string output_bitops((std::istreambuf_iterator<char>(out_bitops)), std::istreambuf_iterator<char>());
+    TEST_ASSERT(output_bitops == "0\n255\n240\n8\n4\n-1\n", "bitops output");
+    std::remove("test_bitops.jvav");
+    std::remove("test_bitops.bin");
+    std::remove("test_bitops.out");
+    test_passed("integration_bitops");
+
     return 0;
 }

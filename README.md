@@ -112,7 +112,7 @@ JVAV/
 ctest --output-on-failure
 
 # Or run individual test binaries directly
-./test_back    # 90 backend unit + integration tests
+./test_back    # 91 backend unit + integration tests
 ./test_front   # 105 frontend unit + integration tests
 ```
 
