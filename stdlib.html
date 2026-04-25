@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Standard Library - JVAV</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="oracle-bar"></div>
+    <header class="header">
+        <div class="header-inner">
+            <a href="index.html" class="logo">J<span>V</span>AV</a>
+            <ul class="nav-links">
+                <li><a href="index.html"><span data-lang="zh">首页</span><span data-lang="en">Home</span></a></li>
+                <li><a href="features.html"><span data-lang="zh">特性</span><span data-lang="en">Features</span></a></li>
+                <li><a href="stdlib.html" class="active"><span data-lang="zh">标准库</span><span data-lang="en">Stdlib</span></a></li>
+                <li><a href="toolchain.html"><span data-lang="zh">工具链</span><span data-lang="en">Toolchain</span></a></li>
+                <li><a href="about.html"><span data-lang="zh">关于</span><span data-lang="en">About</span></a></li>
+                <li><a href="https://github.com/Dere3046/JVAV" class="nav-cta" target="_blank">GitHub</a></li>
+                <li><button class="lang-switch" onclick="toggleLang()"><span data-lang="zh">EN</span><span data-lang="en">中文</span></button></li>
+            </ul>
+        </div>
+    </header>
+
+    <div class="main">
+        <aside class="sidebar">
+            <h4 class="active" data-lang="zh">导航</h4>
+            <h4 data-lang="en">Navigation</h4>
+            <ul>
+                <li><a href="index.html"><span data-lang="zh">首页</span><span data-lang="en">Home</span></a></li>
+                <li><a href="features.html"><span data-lang="zh">语言特性</span><span data-lang="en">Features</span></a></li>
+                <li><a href="stdlib.html" class="active"><span data-lang="zh">标准库</span><span data-lang="en">Standard Library</span></a></li>
+                <li><a href="toolchain.html"><span data-lang="zh">工具链</span><span data-lang="en">Toolchain</span></a></li>
+                <li><a href="about.html"><span data-lang="zh">关于</span><span data-lang="en">About</span></a></li>
+            </ul>
+            <h4 class="active" data-lang="zh">本页目录</h4>
+            <h4 data-lang="en">On This Page</h4>
+            <ul>
+                <li><a href="#import">Import</a></li>
+                <li><a href="#io">std/io</a></li>
+                <li><a href="#math">std/math</a></li>
+                <li><a href="#mem">std/mem</a></li>
+                <li><a href="#string">std/string</a></li>
+                <li><a href="#example">Example</a></li>
+            </ul>
+        </aside>
+        <div class="content">
+            <div class="breadcrumb">
+                <a href="index.html">Home</a> / <span class="active" data-lang="zh">标准库</span><span data-lang="en">Standard Library</span>
+            </div>
+
+            <h2><span class="active" data-lang="zh">标准库</span><span data-lang="en">Standard Library</span></h2>
+            <p class="active" data-lang="zh">
+                JVAV 标准库位于项目根目录的 <code>std/</code> 文件夹，通过 <code>import "std/xxx.jvl";</code> 引入。
+                jvlc 会自动解析项目根目录下的 <code>std/</code> 路径，无需手动指定。
+            </p>
+            <p data-lang="en">
+                The JVAV standard library lives in the <code>std/</code> directory at the project root.
+                Import via <code>import "std/xxx.jvl";</code>. jvlc resolves the <code>std/</code> path automatically.
+            </p>
+
+            <h3 id="import">Import</h3>
+            <pre class="code"><span class="kw">import</span> <span class="str">"std/io.jvl"</span>;
+<span class="kw">import</span> <span class="str">"std/math.jvl"</span>;
+<span class="kw">import</span> <span class="str">"std/mem.jvl"</span>;
+<span class="kw">import</span> <span class="str">"std/string.jvl"</span>;</pre>
+
+            <h3 id="io">std/io.jvl — Console Output</h3>
+            <p class="active" data-lang="zh">基于 VM 的内存映射 I/O 端口实现（<code>0xFFF0</code> putchar，<code>0xFFF2</code> putint）。</p>
+            <p data-lang="en">Built on the VM's memory-mapped I/O ports (<code>0xFFF0</code> putchar, <code>0xFFF2</code> putint).</p>
+            <table class="stdlib-table">
+                <tr><th>Function</th><th class="active" data-lang="zh">描述</th><th data-lang="en">Description</th></tr>
+                <tr><td>println(x)</td><td class="active" data-lang="zh">打印整数并换行</td><td data-lang="en">Print integer followed by newline</td></tr>
+                <tr><td>print_newline()</td><td class="active" data-lang="zh">打印换行</td><td data-lang="en">Print newline</td></tr>
+                <tr><td>print_space()</td><td class="active" data-lang="zh">打印空格</td><td data-lang="en">Print space</td></tr>
+            </table>
+
+            <h3 id="math">std/math.jvl — Integer Math</h3>
+            <p class="active" data-lang="zh">所有函数操作有符号 128-bit 整数。不支持浮点数。</p>
+            <p data-lang="en">All functions operate on signed 128-bit integers. No floating-point support.</p>
+            <table class="stdlib-table">
+                <tr><th>Function</th><th class="active" data-lang="zh">描述</th><th data-lang="en">Description</th></tr>
+                <tr><td>abs(x)</td><td class="active" data-lang="zh">绝对值</td><td data-lang="en">Absolute value</td></tr>
+                <tr><td>max(a, b)</td><td class="active" data-lang="zh">两数较大值</td><td data-lang="en">Maximum of two integers</td></tr>
+                <tr><td>min(a, b)</td><td class="active" data-lang="zh">两数较小值</td><td data-lang="en">Minimum of two integers</td></tr>
+                <tr><td>clamp(x, lo, hi)</td><td class="active" data-lang="zh">限制在区间内</td><td data-lang="en">Clamp value to range [lo, hi]</td></tr>
+                <tr><td>pow(base, exp)</td><td class="active" data-lang="zh">整数幂</td><td data-lang="en">Integer power</td></tr>
+            </table>
+
+            <h3 id="mem">std/mem.jvl — Memory</h3>
+            <p class="active" data-lang="zh">
+                JVAV 是<strong>字寻址</strong>（word-addressable），每个地址指向一个 128-bit word。
+                <code>memcpy</code> 和 <code>memset</code> 以 word 为单位操作。
+            </p>
+            <p data-lang="en">
+                JVAV is <strong>word-addressable</strong> — each address points to one 128-bit word.
+                <code>memcpy</code> and <code>memset</code> operate in units of words.
+            </p>
+            <table class="stdlib-table">
+                <tr><th>Function</th><th class="active" data-lang="zh">描述</th><th data-lang="en">Description</th></tr>
+                <tr><td>memcpy(dst, src, n)</td><td class="active" data-lang="zh">复制 n 个 word</td><td data-lang="en">Copy n words from src to dst</td></tr>
+                <tr><td>memset(p, val, n)</td><td class="active" data-lang="zh">将 n 个 word 设为 val</td><td data-lang="en">Set n words to val</td></tr>
+            </table>
+
+            <h3 id="string">std/string.jvl — String Output</h3>
+            <p class="active" data-lang="zh">
+                JVL 字符串字面量以 word 数组存储，<strong>不是 null-terminated</strong>，需要传入长度。
+            </p>
+            <p data-lang="en">
+                JVL string literals are stored as word arrays, <strong>not null-terminated</strong>; length must be provided.
+            </p>
+            <table class="stdlib-table">
+                <tr><th>Function</th><th class="active" data-lang="zh">描述</th><th data-lang="en">Description</th></tr>
+                <tr><td>str_putn(s, n)</td><td class="active" data-lang="zh">输出字符串前 n 个字符</td><td data-lang="en">Print first n characters of string s</td></tr>
+            </table>
+
+            <h3 id="example"><span class="active" data-lang="zh">完整示例</span><span data-lang="en">Complete Example</span></h3>
+            <pre class="code"><span class="kw">import</span> <span class="str">"std/io.jvl"</span>;
+<span class="kw">import</span> <span class="str">"std/math.jvl"</span>;
+<span class="kw">import</span> <span class="str">"std/string.jvl"</span>;
+
+<span class="kw">func</span> <span class="fn">main</span>(): <span class="kw">int</span> {
+    println(abs(-5));          <span class="cm">// 5</span>
+    println(max(3, 7));        <span class="cm">// 7</span>
+    println(pow(2, 3));        <span class="cm">// 8</span>
+
+    <span class="kw">var</span> msg = <span class="str">"JVAV"</span>;
+    str_putn(msg, 4);          <span class="cm">// JVAV</span>
+    print_newline();
+
+    <span class="kw">return</span> 0;
+}</pre>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p class="active" data-lang="zh">
+            JVAV 语言由 <strong>张浩杨博士</strong> 提出，
+            <a href="https://github.com/Dere3046" target="_blank">Dere3046</a> 与社区实现 · MIT License
+        </p>
+        <p data-lang="en">
+            JVAV language proposed by <strong>Dr. Zhang Haoyang</strong>,
+            implemented by <a href="https://github.com/Dere3046" target="_blank">Dere3046</a> and the community · MIT License
+        </p>
+        <p style="margin-top:6px;" class="active" data-lang="zh">仅供娱乐与教育目的</p>
+        <p style="margin-top:6px;" data-lang="en">For fun and educational purposes only</p>
+    </footer>
+    <script src="js/main.js"></script>
+</body>
+</html>
