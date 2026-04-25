@@ -281,5 +281,29 @@ int test_parser_main() {
     TEST_ASSERT(parse_ok(".data\n.text\nHALT\n"), "section directives should parse");
     test_passed("parse_sections");
 
+    test_header("parse_error_bad_mnemonic_msg");
+    {
+        ofstream("tmp_err.jvav") << "BAD_OPCODE R0\n";
+        Parser p;
+        bool ok = p.parse("tmp_err.jvav");
+        remove("tmp_err.jvav");
+        TEST_ASSERT(!ok, "should fail");
+        string err = p.getError();
+        TEST_ASSERT(err.find("BAD_OPCODE") != string::npos, "error should mention the bad mnemonic");
+    }
+    test_passed("parse_error_bad_mnemonic_msg");
+
+    test_header("parse_error_operand_count");
+    {
+        // Parser itself accepts any operand count; the encoder validates it.
+        // Verify parser does NOT reject ADD with 2 operands.
+        ofstream("tmp_err.jvav") << "ADD R0, R1\n";
+        Parser p;
+        bool ok = p.parse("tmp_err.jvav");
+        remove("tmp_err.jvav");
+        TEST_ASSERT(ok, "parser should accept ADD with 2 operands (encoder checks count)");
+    }
+    test_passed("parse_error_operand_count");
+
     return 0;
 }
