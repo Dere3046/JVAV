@@ -18,6 +18,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Get version
+        run: |
+          VERSION=$(grep -oP 'project\(JVAV VERSION \K[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
       - name: Configure
         run: |
           cmake -B build \
@@ -34,10 +39,10 @@ jobs:
         run: |
           mkdir -p build/dist
           cd build/bin
-          zip -r ../../build/dist/JVAV-android-${{ matrix.abi }}.zip *
+          zip -r ../../build/dist/JVAV-${VERSION}-android-${{ matrix.abi }}.zip *
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: JVAV-android-${{ matrix.abi }}
-          path: build/dist/JVAV-android-${{ matrix.abi }}.zip
+          path: build/dist/JVAV-${VERSION}-android-${{ matrix.abi }}.zip
