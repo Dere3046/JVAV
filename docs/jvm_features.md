@@ -35,9 +35,10 @@ Memory-mapped I/O via `STR [port], value`:
 | Port | Function |
 |------|----------|
 | `0xFFF0` | `putchar` |
+| `0xFFF1` | `getchar` |
 | `0xFFF2` | `putint` |
-| `0xFFF1` | `getchar` (reserved) |
-| `0xFFF3` | `getint` (reserved) |
+| `0xFFF3` | `getint` |
+| `0xFFF4` | `puthex` |
 
 ## System Calls
 
@@ -55,6 +56,9 @@ Triggered via `SYSCALL_CMD` mailbox (`0xFFE0`):
 | `SYS_MEMSET` | 11 | Set memory |
 | `SYS_MALLOC` | 12 | Allocate heap memory (used by `alloc()`) |
 | `SYS_FREE` | 13 | Free heap allocation (used by `free()`) |
+| `SYS_MSYNC` | 3 | Sync memory-mapped file to disk |
+| `SYS_FSEEK` | 8 | Seek file position |
+| `SYS_FTELL` | 9 | Get file position |
 
 ## Stack Convention
 
