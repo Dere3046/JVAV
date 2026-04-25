@@ -132,7 +132,7 @@ struct Int128 {
 
     Int128 operator-() const {
         uint64_t l = ~low + 1;
-        int64_t h = ~high + (l < low ? 1 : 0);
+        int64_t h = ~high + (low == 0 ? 1 : 0);
         return Int128(l, h);
     }
 

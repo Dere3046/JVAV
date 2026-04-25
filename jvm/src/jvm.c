@@ -64,7 +64,7 @@ static mmap_entry_t* find_mmap(JVM *vm, var addr) {
     return NULL;
 }
 
-static var mmap_read(JVM *vm, mmap_entry_t *ent, var addr) {
+static var mmap_read(JVM * /*vm*/, mmap_entry_t *ent, var addr) {
     if (!ent->file) return 0;
     long off = ent->file_offset + (long)(addr - ent->start) * sizeof(var);
     fseek(ent->file, off, SEEK_SET);
@@ -73,7 +73,7 @@ static var mmap_read(JVM *vm, mmap_entry_t *ent, var addr) {
     return val;
 }
 
-static void mmap_write(JVM *vm, mmap_entry_t *ent, var addr, var val) {
+static void mmap_write(JVM * /*vm*/, mmap_entry_t *ent, var addr, var val) {
     if (!ent->file) return;
     long off = ent->file_offset + (long)(addr - ent->start) * sizeof(var);
     fseek(ent->file, off, SEEK_SET);
