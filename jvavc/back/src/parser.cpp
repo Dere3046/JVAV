@@ -13,7 +13,7 @@ namespace fs = std::filesystem;
 using namespace std;
 
 static const set<string> validMnemonics = {
-    "HALT", "MOV", "LDR", "STR", "ADD", "SUB", "MUL", "DIV",
+    "HALT", "MOV", "LDR", "STR", "ADD", "SUB", "MUL", "DIV", "MOD",
     "CMP", "JMP", "JZ", "JNZ", "JE", "JNE", "JL", "JG", "JLE", "JGE",
     "PUSH", "POP", "CALL", "RET", "LDI"
 };

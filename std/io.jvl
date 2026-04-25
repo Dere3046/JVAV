@@ -1,0 +1,12 @@
+func println(x: int): void {
+    putint(x);
+    putchar(10);
+}
+
+func print_newline(): void {
+    putchar(10);
+}
+
+func print_space(): void {
+    putchar(32);
+}

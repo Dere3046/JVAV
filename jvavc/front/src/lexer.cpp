@@ -31,6 +31,8 @@ bool Lexer::tokenize(const string &filename) {
         if (pos >= src.size()) break;
         skipComment();
         if (pos >= src.size()) break;
+        skipWhitespace();
+        if (pos >= src.size()) break;
 
         char c = src[pos];
         if (c == '"') { if (!readString()) return false; }
@@ -75,7 +77,7 @@ bool Lexer::readString() {
     while (pos < src.size() && src[pos] != '"') {
         if (src[pos] == '\\') {
             pos++; col++;
-            if (pos >= src.size()) { error = "Unterminated string"; return false; }
+            if (pos >= src.size()) { error = "unterminated string literal"; return false; }
             char c = src[pos];
             if (c == 'n') s += '\n';
             else if (c == 't') s += '\t';
@@ -88,7 +90,7 @@ bool Lexer::readString() {
         }
         pos++; col++;
     }
-    if (pos >= src.size()) { error = "Unterminated string"; return false; }
+    if (pos >= src.size()) { error = "unterminated string literal"; return false; }
     pos++; col++;
     emit(TOK_STRING, s, 0);
     return true;
@@ -96,11 +98,11 @@ bool Lexer::readString() {
 
 bool Lexer::readChar() {
     pos++; col++;
-    if (pos >= src.size()) { error = "Unterminated char"; return false; }
+    if (pos >= src.size()) { error = "unterminated character literal"; return false; }
     char c = src[pos];
     if (c == '\\') {
         pos++; col++;
-        if (pos >= src.size()) { error = "Unterminated char"; return false; }
+        if (pos >= src.size()) { error = "unterminated character literal"; return false; }
         char esc = src[pos];
         if (esc == 'n') c = '\n';
         else if (esc == 't') c = '\t';
@@ -118,6 +120,7 @@ bool Lexer::readChar() {
 
 bool Lexer::readNumber() {
     size_t start = pos;
+    int startCol = col;
     bool neg = false;
     if (src[pos] == '-') { neg = true; pos++; col++; }
     int base = 10;
@@ -132,17 +135,22 @@ bool Lexer::readNumber() {
         pos++; col++;
     }
     if (neg) val = -val;
+    int savedCol = col; col = startCol;
     emit(TOK_NUMBER, src.substr(start, pos-start), val);
+    col = savedCol;
     return true;
 }
 
 bool Lexer::readIdentOrKeyword() {
     size_t start = pos;
+    int startCol = col;
     while (pos < src.size() && isIdentChar(src[pos])) { pos++; col++; }
     string text = src.substr(start, pos-start);
     auto it = keywords.find(text);
+    int savedCol = col; col = startCol;
     if (it != keywords.end()) emit(it->second, text, 0);
     else emit(TOK_IDENT, text, 0);
+    col = savedCol;
     return true;
 }
 
@@ -190,7 +198,7 @@ bool Lexer::readSymbol() {
         case ';': pos++; col++; emit(TOK_SEMI, ";", 0); return true;
         case ':': pos++; col++; emit(TOK_COLON, ":", 0); return true;
         default:
-            error = "Unknown character '" + string(1, c) + "' at line " + to_string(line);
+            error = "unknown character `" + string(1, c) + "` at line " + to_string(line);
             return false;
     }
 }

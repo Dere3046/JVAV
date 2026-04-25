@@ -4,5 +4,8 @@ add_executable(jvlc
     src/parser.cpp
     src/sema.cpp
     src/codegen.cpp
+    src/diag.cpp
 )
 target_include_directories(jvlc PRIVATE include)
+
+install(TARGETS jvlc DESTINATION ${CMAKE_INSTALL_BINDIR})

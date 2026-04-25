@@ -16,7 +16,19 @@ const Token& FrontParser::advance() {
 
 bool FrontParser::expect(TokenType t) {
     if (peek().type == t) { advance(); return true; }
-    error = "Expected token " + to_string(t) + " but got " + CURRENT.text + " at line " + to_string(CURRENT.line);
+    const char* names[] = {
+        "EOF", "identifier", "number", "string", "char",
+        "func", "var", "const", "if", "else", "while", "for", "return",
+        "int", "char", "bool", "void", "ptr", "array",
+        "true", "false", "import", "mut",
+        "+", "-", "*", "/", "%", "=", "==", "!=", "<", ">", "<=", ">=",
+        "&&", "||", "&", "|", "^", "~", "!",
+        "(", ")", "[", "]", "{", "}", ",", ";", ":"
+    };
+    const char* got = (CURRENT.type >= 0 && CURRENT.type <= TOK_COLON) ? names[CURRENT.type] : "?";
+    error = "expected `" + string(got) + "`, but found `" + CURRENT.text + "`\n"
+            " --> line " + to_string(CURRENT.line) + ", column " + to_string(CURRENT.col) + "\n"
+            "    = note: unexpected token in this position";
     return false;
 }
 
@@ -67,7 +79,9 @@ shared_ptr<Type> FrontParser::parseType() {
         if (!expect(TOK_GT)) return nullptr;
     }
     else {
-        error = "Expected type at line " + to_string(CURRENT.line);
+        error = "expected a type (e.g., `int`, `char`, `bool`, `ptr<T>`, `array<T>`)\n"
+                " --> line " + to_string(CURRENT.line) + ", column " + to_string(CURRENT.col) + "\n"
+                "    = note: found `" + CURRENT.text + "` instead";
         return nullptr;
     }
     return t;
@@ -318,7 +332,9 @@ shared_ptr<Expr> FrontParser::parsePrimary() {
         if (!expect(TOK_RPAREN)) return nullptr;
         return e;
     }
-    error = "Unexpected token '" + CURRENT.text + "' in expression at line " + to_string(CURRENT.line);
+    error = "unexpected token `" + CURRENT.text + "` in expression\n"
+            " --> line " + to_string(CURRENT.line) + ", column " + to_string(CURRENT.col) + "\n"
+            "    = note: expected an expression here";
     return nullptr;
 }
 
@@ -479,7 +495,9 @@ shared_ptr<Decl> FrontParser::parseDecl() {
         auto cs = dynamic_pointer_cast<ConstStmt>(s);
         return make_shared<GlobalConstDecl>(cs->name, cs->value, cs->line);
     }
-    error = "Expected declaration at line " + to_string(CURRENT.line);
+    error = "expected a declaration (function, variable, or constant)\n"
+            " --> line " + to_string(CURRENT.line) + ", column " + to_string(CURRENT.col) + "\n"
+            "    = note: found `" + CURRENT.text + "` instead";
     return nullptr;
 }
 
