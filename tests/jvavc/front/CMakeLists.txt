@@ -17,6 +17,7 @@ target_compile_definitions(test_front PRIVATE
     JVAVC_FRONT_EXE="$<TARGET_FILE:jvlc>"
     JVAVC_BACK_EXE="$<TARGET_FILE:jvavc>"
     JVM_EXE="$<TARGET_FILE:jvm>"
+    DISASM_EXE="$<TARGET_FILE:disasm>"
 )
 
 add_test(NAME test_front COMMAND test_front)

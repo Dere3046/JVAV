@@ -493,5 +493,65 @@ func main(): int {
     }
     test_passed("integration_stdlib_string");
 
+    test_header("integration_stdlib_not_found");
+    {
+        const char* src = R"(
+import "std/nonexistent.jvl";
+func main(): int { return 0; }
+)";
+        std::ofstream("f.jvl") << src;
+        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav > f.err 2>&1");
+        TEST_ASSERT(ret != 0, "should fail on missing stdlib");
+        string err;
+        TEST_ASSERT(read_output("f.err", err), "read error output");
+        TEST_ASSERT(err.find("cannot find standard library") != string::npos, "missing stdlib error message");
+        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.err");
+    }
+    test_passed("integration_stdlib_not_found");
+
+    test_header("integration_version_jvlc");
+    {
+        int ret = run_cmd(JVAVC_FRONT_EXE " -v > version.out 2>&1");
+        TEST_ASSERT(ret == 0, "jvlc -v exit code");
+        string out;
+        TEST_ASSERT(read_output("version.out", out), "read version output");
+        TEST_ASSERT(out.find("jvlc 0.2.0") != string::npos, "jvlc version string");
+        std::remove("version.out");
+    }
+    test_passed("integration_version_jvlc");
+
+    test_header("integration_version_jvavc");
+    {
+        int ret = run_cmd(JVAVC_BACK_EXE " -v > version.out 2>&1");
+        TEST_ASSERT(ret == 0, "jvavc -v exit code");
+        string out;
+        TEST_ASSERT(read_output("version.out", out), "read version output");
+        TEST_ASSERT(out.find("jvavc 0.2.0") != string::npos, "jvavc version string");
+        std::remove("version.out");
+    }
+    test_passed("integration_version_jvavc");
+
+    test_header("integration_version_jvm");
+    {
+        int ret = run_cmd(JVM_EXE " -v > version.out 2>&1");
+        TEST_ASSERT(ret == 0, "jvm -v exit code");
+        string out;
+        TEST_ASSERT(read_output("version.out", out), "read version output");
+        TEST_ASSERT(out.find("jvm 0.2.0") != string::npos, "jvm version string");
+        std::remove("version.out");
+    }
+    test_passed("integration_version_jvm");
+
+    test_header("integration_version_disasm");
+    {
+        int ret = run_cmd(DISASM_EXE " -v > version.out 2>&1");
+        TEST_ASSERT(ret == 0, "disasm -v exit code");
+        string out;
+        TEST_ASSERT(read_output("version.out", out), "read version output");
+        TEST_ASSERT(out.find("disasm 0.2.0") != string::npos, "disasm version string");
+        std::remove("version.out");
+    }
+    test_passed("integration_version_disasm");
+
     return 0;
 }

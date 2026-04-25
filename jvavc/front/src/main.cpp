@@ -88,6 +88,26 @@ static int compile_jvl(const string &src, const string &out, const vector<string
     return 0;
 }
 
+static vector<string> find_std_import_paths(const fs::path &exeDir) {
+    vector<string> paths;
+    vector<fs::path> candidates = {
+        exeDir,                   // bin/     → check bin/std/
+        exeDir / "..",            // ../      → check ../std/ (installed layout)
+        exeDir / ".." / ".."      // ../../   → check ../../std/ (dev layout)
+    };
+    for (auto &cand : candidates) {
+        try {
+            fs::path base = fs::weakly_canonical(cand);
+            fs::path stdDir = base / "std";
+            if (fs::exists(stdDir) && fs::is_directory(stdDir)) {
+                paths.push_back(base.string());
+                break;
+            }
+        } catch (...) {}
+    }
+    return paths;
+}
+
 int main(int argc, char *argv[]) {
     bool runMode = false;
     string src;
@@ -100,19 +120,22 @@ int main(int argc, char *argv[]) {
             runMode = true;
         } else if (arg == "-o" && i + 1 < argc) {
             out = argv[++i];
+        } else if (arg == "-v" || arg == "--version") {
+            cout << "jvlc " << JVAV_VERSION << "\n";
+            return 0;
         } else if (arg[0] != '-') {
             if (src.empty()) {
                 src = arg;
             } else if (legacyOut.empty() && !runMode) {
                 legacyOut = arg;     // old-style second positional argument = output
             } else {
-                cerr << "Usage: " << argv[0] << " [--run|-r] [-o output] <source.jvl> [output.jvav]\n";
+                cerr << "Usage: " << argv[0] << " [-v|--version] [--run|-r] [-o output] <source.jvl> [output.jvav]\n";
                 cerr << "  Default: compile .jvl to .jvav\n";
                 cerr << "  --run: compile .jvl -> .jvav -> .bin and execute with JVM\n";
                 return 1;
             }
         } else {
-            cerr << "Usage: " << argv[0] << " [--run|-r] [-o output] <source.jvl> [output.jvav]\n";
+            cerr << "Usage: " << argv[0] << " [-v|--version] [--run|-r] [-o output] <source.jvl> [output.jvav]\n";
             cerr << "  Default: compile .jvl to .jvav\n";
             cerr << "  --run: compile .jvl -> .jvav -> .bin and execute with JVM\n";
             return 1;
@@ -120,7 +143,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (src.empty()) {
-        cerr << "Usage: " << argv[0] << " [--run|-r] [-o output] <source.jvl> [output.jvav]\n";
+        cerr << "Usage: " << argv[0] << " [-v|--version] [--run|-r] [-o output] <source.jvl> [output.jvav]\n";
         cerr << "  Default: compile .jvl to .jvav\n";
         cerr << "  --run: compile .jvl -> .jvav -> .bin and execute with JVM\n";
         return 1;
@@ -133,11 +156,7 @@ int main(int argc, char *argv[]) {
         // Normal compile mode
         string jvavOut = out.empty() ? (legacyOut.empty() ? "a.jvav" : legacyOut) : out;
         fs::path exeDir = get_executable_dir(argv[0]);
-        fs::path stdDir = exeDir / ".." / "..";
-        vector<string> importPaths;
-        try {
-            importPaths.push_back(fs::weakly_canonical(stdDir).string());
-        } catch (...) {}
+        vector<string> importPaths = find_std_import_paths(exeDir);
         int ret = compile_jvl(src, jvavOut, importPaths);
         if (ret == 0) {
             cout << "Compiled to " << jvavOut << "\n";
@@ -150,11 +169,7 @@ int main(int argc, char *argv[]) {
     string binFile = out.empty() ? (stem + ".bin") : out;
 
     fs::path exeDir = get_executable_dir(argv[0]);
-    fs::path stdDir = exeDir / ".." / "..";
-    vector<string> importPaths;
-    try {
-        importPaths.push_back(fs::weakly_canonical(stdDir).string());
-    } catch (...) {}
+    vector<string> importPaths = find_std_import_paths(exeDir);
     int ret = compile_jvl(src, jvavFile, importPaths);
     if (ret != 0) return ret;
 
