@@ -553,5 +553,55 @@ func main(): int { return 0; }
     }
     test_passed("integration_version_disasm");
 
+    test_header("integration_bitwise");
+    {
+        const char* src = R"(
+func main(): int {
+    putint(0x0F & 0xF0);
+    putint(0x0F | 0xF0);
+    putint(0x0F ^ 0xFF);
+    putint(1 << 3);
+    putint(16 >> 2);
+    putint(~0);
+    return 0;
+}
+)";
+        std::ofstream("f.jvl") << src;
+        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav");
+        TEST_ASSERT(ret == 0, "front");
+        ret = run_cmd(JVAVC_BACK_EXE " f.jvav f.bin");
+        TEST_ASSERT(ret == 0, "back");
+        ret = run_cmd(JVM_EXE " f.bin > f.out 2>&1");
+        TEST_ASSERT(ret == 0, "run");
+        string out;
+        TEST_ASSERT(read_output("f.out", out), "read");
+        // putint prints without separators; 0|255|240|8|4|-1 -> "025524084-1"
+        TEST_ASSERT(out == "025524084-1", "bitwise output");
+        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.bin"); std::remove("f.out");
+    }
+    test_passed("integration_bitwise");
+
+    test_header("integration_diag_format");
+    {
+        const char* src = R"(
+func main(): int {
+    var z = undefined_var;
+    return 0;
+}
+)";
+        std::ofstream("f.jvl") << src;
+        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav > f.err 2>&1");
+        TEST_ASSERT(ret != 0, "should fail on undefined variable");
+        string err;
+        TEST_ASSERT(read_output("f.err", err), "read error output");
+        // Rust-style diagnostics: error[...], location arrow, source line, underline caret
+        TEST_ASSERT(err.find("error[") != string::npos, "error code tag");
+        TEST_ASSERT(err.find("-->") != string::npos, "location arrow");
+        TEST_ASSERT(err.find("|") != string::npos, "source gutter");
+        TEST_ASSERT(err.find("^") != string::npos, "underline caret");
+        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.err");
+    }
+    test_passed("integration_diag_format");
+
     return 0;
 }
