@@ -603,5 +603,42 @@ func main(): int {
     }
     test_passed("integration_diag_format");
 
+    test_header("integration_all_diagnostics");
+    {
+        // Helper: compile a snippet and verify it produces a Rust-style diagnostic
+        auto checkDiag = [](const char* label, const char* src, const char* expectedCode) -> bool {
+            std::ofstream("f.jvl") << src;
+            int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav > f.err 2>&1");
+            if (ret == 0) { printf("  FAIL %s: should have failed\n", label); return false; }
+            string err;
+            if (!read_output("f.err", err)) { printf("  FAIL %s: cannot read f.err\n", label); return false; }
+            bool ok = true;
+            if (err.find(expectedCode) == string::npos) { printf("  FAIL %s: missing %s\n", label, expectedCode); ok = false; }
+            if (err.find("error[") == string::npos) { printf("  FAIL %s: missing error[\n", label); ok = false; }
+            if (err.find("-->") == string::npos) { printf("  FAIL %s: missing -->\n", label); ok = false; }
+            if (err.find("|") == string::npos) { printf("  FAIL %s: missing |\n", label); ok = false; }
+            if (err.find("^") == string::npos) { printf("  FAIL %s: missing ^\n", label); ok = false; }
+            if (!ok) printf("  actual output:\n%s\n", err.c_str());
+            return ok;
+        };
+
+        // Lexer errors (E0100)
+        TEST_ASSERT(checkDiag("lexer_unterminated_string", "func main(){ var a = \"hello }", "E0100"), "lexer unterminated string");
+        TEST_ASSERT(checkDiag("lexer_unknown_char", "func main(){ var a = 1 @ 2; }", "E0100"), "lexer unknown char");
+
+        // Parser errors (E0200) - exercise all parser error paths
+        TEST_ASSERT(checkDiag("parser_missing_semi", "func main(): int { var x = 5 return 0; }", "E0200"), "parser missing semi");
+        TEST_ASSERT(checkDiag("parser_missing_paren", "func main(): int { var x = (1 + 2; }", "E0200"), "parser missing paren");
+        TEST_ASSERT(checkDiag("parser_type_error", "func main(): int { var x: unknown = 5; }", "E0200"), "parser type error");
+        TEST_ASSERT(checkDiag("parser_expr_error", "func main(): int { var x = ; }", "E0200"), "parser expr error");
+        TEST_ASSERT(checkDiag("parser_decl_error", "1 + 2;", "E0200"), "parser decl error");
+
+        // Semantic errors (E1xxx)
+        TEST_ASSERT(checkDiag("sema_undef_var", "func main(): int { var z = undefined_var; return 0; }", "E1"), "sema undefined var");
+
+        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.err");
+    }
+    test_passed("integration_all_diagnostics");
+
     return 0;
 }

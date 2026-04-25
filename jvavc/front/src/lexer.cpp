@@ -18,7 +18,7 @@ static const map<string, TokenType> keywords = {
 
 bool Lexer::tokenize(const string &filename) {
     ifstream f(filename, ios::binary);
-    if (!f) { error = "Cannot open file: " + filename; return false; }
+    if (!f) { error = "Cannot open file: " + filename; errorLine = 0; errorCol = 0; return false; }
     this->filename = filename;
     src = string((istreambuf_iterator<char>(f)), istreambuf_iterator<char>());
     f.close();
@@ -78,7 +78,7 @@ bool Lexer::readString() {
     while (pos < src.size() && src[pos] != '"') {
         if (src[pos] == '\\') {
             pos++; col++;
-            if (pos >= src.size()) { error = "unterminated string literal"; return false; }
+            if (pos >= src.size()) { error = "unterminated string literal"; errorLine = line; errorCol = col; return false; }
             char c = src[pos];
             if (c == 'n') s += '\n';
             else if (c == 't') s += '\t';
@@ -91,7 +91,7 @@ bool Lexer::readString() {
         }
         pos++; col++;
     }
-    if (pos >= src.size()) { error = "unterminated string literal"; return false; }
+    if (pos >= src.size()) { error = "unterminated string literal"; errorLine = line; errorCol = col; return false; }
     pos++; col++;
     emit(TOK_STRING, s, 0);
     return true;
@@ -99,11 +99,11 @@ bool Lexer::readString() {
 
 bool Lexer::readChar() {
     pos++; col++;
-    if (pos >= src.size()) { error = "unterminated character literal"; return false; }
+    if (pos >= src.size()) { error = "unterminated character literal"; errorLine = line; errorCol = col; return false; }
     char c = src[pos];
     if (c == '\\') {
         pos++; col++;
-        if (pos >= src.size()) { error = "unterminated character literal"; return false; }
+        if (pos >= src.size()) { error = "unterminated character literal"; errorLine = line; errorCol = col; return false; }
         char esc = src[pos];
         if (esc == 'n') c = '\n';
         else if (esc == 't') c = '\t';
@@ -113,7 +113,7 @@ bool Lexer::readChar() {
         else c = esc;
     }
     pos++; col++;
-    if (pos >= src.size() || src[pos] != '\'') { error = "Expected ' after char"; return false; }
+    if (pos >= src.size() || src[pos] != '\'') { error = "Expected ' after char"; errorLine = line; errorCol = col; return false; }
     pos++; col++;
     emit(TOK_CHAR, string(1, c), (unsigned char)c);
     return true;
@@ -199,7 +199,7 @@ bool Lexer::readSymbol() {
         case ';': pos++; col++; emit(TOK_SEMI, ";", 0); return true;
         case ':': pos++; col++; emit(TOK_COLON, ":", 0); return true;
         default:
-            error = "unknown character `" + string(1, c) + "` at line " + to_string(line);
+            error = "unknown character `" + string(1, c) + "`"; errorLine = line; errorCol = col;
             return false;
     }
 }
