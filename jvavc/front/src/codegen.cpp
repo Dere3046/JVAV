@@ -1,8 +1,31 @@
 #include "codegen.hpp"
 #include <algorithm>
 #include <filesystem>
+#include <cctype>
+#include <cstdio>
 namespace fs = std::filesystem;
 using namespace std;
+
+static string escapeString(const string &s) {
+    string out;
+    for (char c : s) {
+        switch (c) {
+            case '\n': out += "\\n"; break;
+            case '\t': out += "\\t"; break;
+            case '\r': out += "\\r"; break;
+            case '"':  out += "\\\""; break;
+            case '\\': out += "\\\\"; break;
+            default:
+                if (isprint((unsigned char)c)) out += c;
+                else {
+                    char buf[8];
+                    snprintf(buf, sizeof(buf), "\\x%02x", (unsigned char)c);
+                    out += buf;
+                }
+        }
+    }
+    return out;
+}
 
 string CodeGenerator::nextLabel(const string &prefix) {
     return "." + prefix + "_" + to_string(labelCounter++);
@@ -239,7 +262,7 @@ void CodeGenerator::genExpr(shared_ptr<Expr> e, int destReg) {
         case Expr::EXPR_STRING: {
             auto str = dynamic_pointer_cast<StringExpr>(e);
             string lbl = ".str_" + to_string(stringCounter++);
-            stringLabels.push_back(lbl + ":\n    DB \"" + str->value + "\"");
+            stringLabels.push_back(lbl + ":\n    DB \"" + escapeString(str->value) + "\"");
             emit("    LDI R" + to_string(destReg) + ", " + lbl);
             break;
         }
