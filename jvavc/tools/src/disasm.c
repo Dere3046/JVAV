@@ -110,7 +110,9 @@ static int is_io_port(size_t addr) {
 
 static void trace_run(Int128 *code, size_t ninstr, uint8_t *visited,
                       int *halted_cleanly, size_t *fault_pc) {
-    TraceVM vm_ = {0}, *vm = &vm_;
+    TraceVM vm_;
+    memset(&vm_, 0, sizeof(vm_));
+    TraceVM *vm = &vm_;
     vm->cap = ninstr + 4096;
     vm->mem = (Int128 *)calloc(vm->cap, sizeof(Int128));
     memcpy(vm->mem, code, ninstr * sizeof(Int128));

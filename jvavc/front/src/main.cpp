@@ -30,7 +30,7 @@ static void printLexError(const Lexer &lexer) {
              << ":" << lexer.getErrorCol() << "\n";
         // Try to print source line
         const string &srcText = lexer.getSource();
-        int line = 1, col = 1;
+        int line = 1;
         size_t start = 0;
         for (size_t i = 0; i < srcText.size(); ++i) {
             if (line == lexer.getErrorLine()) {
@@ -43,13 +43,12 @@ static void printLexError(const Lexer &lexer) {
                 cerr << "^\n";
                 break;
             }
-            if (srcText[i] == '\n') { ++line; col = 1; }
-            else ++col;
+            if (srcText[i] == '\n') { ++line; }
         }
     }
 }
 
-static void printParseError(const FrontParser &parser, const Lexer &lexer) {
+static void printParseError(const FrontParser &parser, const Lexer &/*lexer*/) {
     cerr << "error[E0200]: " << parser.getError() << "\n";
 }
 

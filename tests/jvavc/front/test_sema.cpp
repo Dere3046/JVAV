@@ -17,7 +17,7 @@ static bool sema_ok(const string &src, string &err) {
     return ok;
 }
 
-static bool sema_has(const string &src, const string &substr) {
+[[maybe_unused]] static bool sema_has(const string &src, const string &substr) {
     string err;
     sema_ok(src, err);
     return err.find(substr) != string::npos;

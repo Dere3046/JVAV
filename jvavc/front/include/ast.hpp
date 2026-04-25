@@ -20,8 +20,8 @@ enum TypeKind {
 
 struct Type {
     TypeKind kind;
-    std::shared_ptr<Type> sub;  // for ptr< T > or array< T >
-    int arraySize;              // for array< T >[size]
+    std::shared_ptr<Type> sub = nullptr;  // for ptr< T > or array< T >
+    int arraySize = 0;                    // for array< T >[size]
     std::string toString() const;
 };
 
