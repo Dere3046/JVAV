@@ -73,6 +73,11 @@ jobs:
         env:
           QEMU_LD_PREFIX: ${{ matrix.qemu_ld_prefix || '' }}
 
+      - name: Get version
+        run: |
+          VERSION=$(grep -oP 'project\(JVAV VERSION \K[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
       - name: Package
         run: |
           cd build
@@ -81,13 +86,13 @@ jobs:
       - name: Rename artifact
         run: |
           mkdir -p build/dist
-          cp build/JVAV-*.tar.gz build/dist/JVAV-linux-${{ matrix.arch }}.tar.gz
+          cp build/JVAV-*.tar.gz build/dist/JVAV-${VERSION}-linux-${{ matrix.arch }}.tar.gz
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: JVAV-linux-${{ matrix.arch }}
-          path: build/dist/JVAV-linux-${{ matrix.arch }}.tar.gz
+          path: build/dist/JVAV-${VERSION}-linux-${{ matrix.arch }}.tar.gz
 
   build-windows:
     runs-on: windows-latest
@@ -147,6 +152,13 @@ jobs:
         shell: pwsh
         run: ctest --test-dir build -C Release --output-on-failure
 
+      - name: Get version
+        shell: pwsh
+        run: |
+          $content = Get-Content CMakeLists.txt -Raw
+          $version = [regex]::Match($content, 'project\(JVAV VERSION ([0-9]+\.[0-9]+\.[0-9]+)').Groups[1].Value
+          echo "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+
       - name: Package
         shell: pwsh
         run: |
@@ -158,13 +170,13 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path build\dist | Out-Null
           $src = Get-ChildItem -Path build\JVAV-*.zip | Select-Object -First 1
-          Copy-Item $src.FullName -Destination "build\dist\JVAV-windows-${{ matrix.arch }}.zip"
+          Copy-Item $src.FullName -Destination "build\dist\JVAV-$env:VERSION-windows-${{ matrix.arch }}.zip"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: JVAV-windows-${{ matrix.arch }}
-          path: build/dist/JVAV-windows-${{ matrix.arch }}.zip
+          path: build/dist/JVAV-${VERSION}-windows-${{ matrix.arch }}.zip
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
