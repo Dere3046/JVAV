@@ -246,6 +246,7 @@ int test_parser_main() {
         string err;
         TEST_ASSERT(!parse_ok("func main(): int { var x = 5 return 0 }", err), "should fail");
         TEST_ASSERT(!err.empty(), "has error");
+        TEST_ASSERT(err.find("expected `;`") != string::npos, "error should mention semicolon");
     }
     test_passed("parser_error_missing_semi");
 
@@ -254,8 +255,79 @@ int test_parser_main() {
         string err;
         TEST_ASSERT(!parse_ok("func main(): int { if true { return 0; } }", err), "should fail");
         TEST_ASSERT(!err.empty(), "has error");
+        TEST_ASSERT(err.find("expected `(`") != string::npos, "error should mention '('");
     }
     test_passed("parser_error_missing_paren");
+
+    test_header("parser_error_missing_brace");
+    {
+        string err;
+        TEST_ASSERT(!parse_ok("func main(): int \n    var x = 5;\n    return 0;\n}", err), "should fail");
+        TEST_ASSERT(!err.empty(), "has error");
+        TEST_ASSERT(err.find("expected `{`") != string::npos, "error should mention brace");
+    }
+    test_passed("parser_error_missing_brace");
+
+    test_header("parser_error_expected_vs_found");
+    {
+        // Verify expect() prints the EXPECTED token, not the FOUND token, in the 'expected X' part
+        string err;
+        TEST_ASSERT(!parse_ok("func main(): int \n    var x = 5;\n    return 0;\n}", err), "should fail");
+        // The message should say "expected `{`, but found `var`" -- not "expected `var`"
+        size_t pos = err.find("expected `");
+        TEST_ASSERT(pos != string::npos, "has 'expected' phrase");
+        string after = err.substr(pos + 10);
+        size_t end = after.find("`");
+        string expectedToken = after.substr(0, end);
+        TEST_ASSERT(expectedToken == "{", "'expected' part should be brace");
+    }
+    test_passed("parser_error_expected_vs_found");
+
+    test_header("parser_error_all_token_names");
+    {
+        // Verify key token names are not shifted by checking several distinct errors
+        string err;
+
+        // Missing ';' -> should say "expected `;`"
+        TEST_ASSERT(!parse_ok("func main(): int { var x = 5 return 0; }", err), "fail");
+        TEST_ASSERT(err.find("expected `;`") != string::npos, "semicolon name");
+
+        // Missing '(' after if -> should say "expected `(`"
+        err.clear();
+        TEST_ASSERT(!parse_ok("func main(): int { if true { return 0; } }", err), "fail");
+        TEST_ASSERT(err.find("expected `(`") != string::npos, "lparen name");
+
+        // Missing ')' -> should say "expected `)`"
+        err.clear();
+        TEST_ASSERT(!parse_ok("func main(): int { var x = (1 + 2; return 0; }", err), "fail");
+        TEST_ASSERT(err.find("expected `)`") != string::npos, "rparen name");
+
+        // Missing ']' -> should say "expected `]`"
+        err.clear();
+        TEST_ASSERT(!parse_ok("func main(): int { var p: ptr<int> = alloc(1); p[0 = 1; return 0; }", err), "fail");
+        TEST_ASSERT(err.find("expected `]`") != string::npos, "rbracket name");
+
+        // Missing '}' -> should say "expected `}`"
+        err.clear();
+        TEST_ASSERT(!parse_ok("func main(): int { return 0; ", err), "fail");
+        TEST_ASSERT(err.find("expected `}`") != string::npos, "rbrace name");
+
+        // Missing '=' in const -> should say "expected `=`"
+        err.clear();
+        TEST_ASSERT(!parse_ok("func main(): int { const MAX 100; return 0; }", err), "fail");
+        TEST_ASSERT(err.find("expected `=`") != string::npos, "assign name");
+
+        // Missing '<' in ptr type (using '<<' instead) -> should say "expected `<`", and found `<<`
+        err.clear();
+        TEST_ASSERT(!parse_ok("func main(): int { var p: ptr<<int> = alloc(1); return 0; }", err), "fail");
+        TEST_ASSERT(err.find("expected `<`") != string::npos, "lt name");
+
+        // Missing '>' in ptr type -> should say "expected `>`"
+        err.clear();
+        TEST_ASSERT(!parse_ok("func main(): int { var p: ptr<int = alloc(1); return 0; }", err), "fail");
+        TEST_ASSERT(err.find("expected `>`") != string::npos, "gt name");
+    }
+    test_passed("parser_error_all_token_names");
 
     return 0;
 }
