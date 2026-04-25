@@ -155,19 +155,21 @@
 
             <h2 id="diagnostics"><span class="active" data-lang="zh">Rust 风格诊断信息</span><span data-lang="en">Rust-Style Diagnostics</span></h2>
             <p class="active" data-lang="zh">
-                编译器输出带有错误码、源文件位置、源代码片段和 <code>^</code> 下划线的 Rust 风格诊断信息。
+                编译器输出带有错误码、源文件位置、<strong>上下文行</strong>、源代码片段和 <code>^</code> 下划线的 Rust 风格诊断信息。
                 覆盖词法错误（E0100）、语法错误（E0200）、语义错误（E1000+）与 I/O 错误（E0300）。
             </p>
             <p data-lang="en">
                 The compiler emits Rust-style diagnostics with error codes, source locations,
-                source snippets, and <code>^</code> caret underlines.
+                <strong>context lines</strong>, source snippets, and <code>^</code> caret underlines.
                 Covers lexer (E0100), parser (E0200), semantic (E1000+), and I/O (E0300) errors.
             </p>
             <pre class="code">error[E0200]: expected `;`, but found `return`
- --> hello.jvl:2:13
-    |
-  2 |     var x = 5 return 0;
-    |             ^
+ --> hello.jvl:3:5
+  |
+2 |     var x = 5
+3 |     return 0
+  |     ^
+4 | }
    = note: unexpected token in this position</pre>
 
             <h2 id="platform"><span class="active" data-lang="zh">跨平台与分发</span><span data-lang="en">Cross-Platform &amp; Distribution</span></h2>
