@@ -70,7 +70,7 @@ JVAV/
 ├── jvm/             # Virtual machine executor, C99
 ├── std/             # Standard library (io, math, mem, string)
 ├── benchmark/       # Performance benchmark suite (Python)
-├── tests/           # Automated tests (back: 90, front: 100)
+├── tests/           # Automated tests (back: 91, front: 105)
 └── docs/            # Detailed documentation
 ```
 
