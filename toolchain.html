@@ -108,14 +108,16 @@ cmake --build build</pre>
             <p data-lang="en">After building, executables are in <code>build/bin/</code> and the standard library is in <code>std/</code>.</p>
 
             <h3 id="install"><span class="active" data-lang="zh">安装 / 打包</span><span data-lang="en">Install / Package</span></h3>
-            <pre class="code">cpack -C Release</pre>
+            <pre class="code">cmake -S . -B build -DCMAKE_INSTALL_PREFIX=install
+cmake --build build --config Release
+cmake --install build --config Release</pre>
             <p class="active" data-lang="zh">
                 所有二进制均为<strong>静态链接</strong>，解压后即可运行，无需额外依赖。
-                包内 <code>bin/</code> 与 <code>std/</code> 同级，将 <code>bin/</code> 加入 PATH 即可全局使用。
+                安装目录内 <code>bin/</code> 与 <code>std/</code> 同级，将 <code>bin/</code> 加入 PATH 即可全局使用。
             </p>
             <p data-lang="en">
                 All binaries are <strong>statically linked</strong> — extract and run, no extra dependencies.
-                <code>std/</code> sits alongside <code>bin/</code> in the package; add <code>bin/</code> to PATH for global access.
+                <code>std/</code> sits alongside <code>bin/</code> in the install directory; add <code>bin/</code> to PATH for global access.
             </p>
         </div>
     </div>

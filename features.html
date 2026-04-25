@@ -56,11 +56,14 @@
             <h2 id="isa"><span class="active" data-lang="zh">128-bit 指令集架构</span><span data-lang="en">128-bit Instruction Set</span></h2>
             <p class="active" data-lang="zh">
                 JVAV 使用固定 16 字节（128-bit）的指令格式。每条指令包含 8-bit 操作码、三个 8-bit 寄存器索引，
-                以及最多 96-bit 的立即数。这使得单条指令即可完成常见的算术和逻辑操作。
+                以及最多 96-bit 的立即数。支持算术（ADD/SUB/MUL/DIV/MOD）、位运算（AND/OR/XOR/SHL/SHR/NOT）、
+                比较跳转、内存读写与函数调用。
             </p>
             <p data-lang="en">
                 JVAV uses a fixed 16-byte (128-bit) instruction format. Each instruction contains an 8-bit opcode,
                 three 8-bit register indices, and up to 96 bits of immediate value.
+                Supports arithmetic (ADD/SUB/MUL/DIV/MOD), bitwise (AND/OR/XOR/SHL/SHR/NOT),
+                compare &amp; branch, memory access, and function calls.
             </p>
             <table class="feature-table">
                 <tr><th>Field</th><th>Width</th><th class="active" data-lang="zh">说明</th><th data-lang="en">Description</th></tr>

@@ -71,8 +71,8 @@
 <span class="kw">import</span> <span class="str">"std/string.jvl"</span>;</pre>
 
             <h3 id="io">std/io.jvl — Console Output</h3>
-            <p class="active" data-lang="zh">基于 VM 的内存映射 I/O 端口实现（<code>0xFFF0</code> putchar，<code>0xFFF2</code> putint）。</p>
-            <p data-lang="en">Built on the VM's memory-mapped I/O ports (<code>0xFFF0</code> putchar, <code>0xFFF2</code> putint).</p>
+            <p class="active" data-lang="zh">基于 VM 的内存映射 I/O 端口实现（<code>0xFFF0</code> putchar、<code>0xFFF1</code> getchar、<code>0xFFF2</code> putint、<code>0xFFF3</code> getint、<code>0xFFF4</code> puthex）。</p>
+            <p data-lang="en">Built on the VM's memory-mapped I/O ports (<code>0xFFF0</code> putchar, <code>0xFFF1</code> getchar, <code>0xFFF2</code> putint, <code>0xFFF3</code> getint, <code>0xFFF4</code> puthex).</p>
             <table class="stdlib-table">
                 <tr><th>Function</th><th class="active" data-lang="zh">描述</th><th data-lang="en">Description</th></tr>
                 <tr><td>println(x)</td><td class="active" data-lang="zh">打印整数并换行</td><td data-lang="en">Print integer followed by newline</td></tr>
