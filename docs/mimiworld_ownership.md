@@ -98,15 +98,24 @@ MimiWorld provides detailed, Rust-style error messages with error codes, source 
 
 ```
 error[E0000]: use of moved value `p`
- --> line 5
+ --> test.jvl:5:5
+    |
+  5 |     var q = p;
+    |         ^
    = help: reassign `p` or use a borrow (`&p`) instead
 
 error[E0001]: cannot mutably borrow `x` because it is already borrowed
- --> line 8
+ --> test.jvl:8:13
+    |
+  8 |     var t = &mut x;
+    |             ^
    = help: drop existing borrows before taking `&mut`
 
 warning[W2000]: unused variable `tmp`
- --> line 3
+ --> test.jvl:3:9
+    |
+  3 |     var tmp: int = 0;
+    |         ^
    = help: remove the declaration or prefix with `_` to suppress
 ```
 

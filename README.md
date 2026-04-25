@@ -70,7 +70,7 @@ JVAV/
 ├── jvm/             # Virtual machine executor, C99
 ├── std/             # Standard library (io, math, mem, string)
 ├── benchmark/       # Performance benchmark suite (Python)
-├── tests/           # Automated tests (back: 100, front: 110)
+├── tests/           # Automated tests (back: 100, front: 111)
 └── docs/            # Detailed documentation
 ```
 
@@ -113,7 +113,7 @@ ctest --output-on-failure
 
 # Or run individual test binaries directly
 ./test_back    # 100 backend unit + integration tests
-./test_front   # 110 frontend unit + integration tests
+./test_front   # 111 frontend unit + integration tests
 ```
 
 Tests cover:
@@ -122,7 +122,7 @@ Tests cover:
 - **Semantic analysis**: type inference, ownership, borrow conflicts, uninitialized variables, scope
 - **Code generation**: prologue/epilogue, locals, calls, control flow, pointers, strings
 - **Backend**: all instructions, EQU, .global/.extern, DB/DW/DT, #include, encoding, linking
-- **Integration**: end-to-end compile & run for arithmetic, bitwise ops, control flow, heap, recursion, imports, global variables, standard library, version flags, missing-stdlib diagnostics, Rust-style error messages
+- **Integration**: end-to-end compile & run for arithmetic, bitwise ops, control flow, heap, recursion, imports, global variables, standard library, version flags, missing-stdlib diagnostics, Rust-style error messages, all diagnostic formats
 
 ---
 
