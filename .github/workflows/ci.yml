@@ -34,6 +34,7 @@ jobs:
             packages: "gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf libc6-armhf-cross"
             test: true
             qemu: qemu-arm-static
+            qemu_ld_prefix: /usr/arm-linux-gnueabihf
           - arch: arm64
             cc: aarch64-linux-gnu-gcc
             cxx: aarch64-linux-gnu-g++
@@ -41,6 +42,7 @@ jobs:
             packages: "gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-arm64-cross"
             test: true
             qemu: qemu-aarch64-static
+            qemu_ld_prefix: /usr/aarch64-linux-gnu
     steps:
       - uses: actions/checkout@v4
 
@@ -68,9 +70,13 @@ jobs:
       - name: Test
         if: matrix.test
         run: ctest --test-dir build -C Release --output-on-failure
+        env:
+          QEMU_LD_PREFIX: ${{ matrix.qemu_ld_prefix || '' }}
 
       - name: Package
-        run: cpack -B build -C Release -G TGZ
+        run: |
+          cd build
+          cpack -G TGZ
 
       - name: Rename artifact
         run: |
@@ -141,7 +147,9 @@ jobs:
 
       - name: Package
         shell: pwsh
-        run: cpack -B build -C Release -G ZIP
+        run: |
+          cd build
+          cpack -G ZIP
 
       - name: Rename artifact
         shell: pwsh
