@@ -128,7 +128,7 @@ bool Lexer::readNumber() {
         pos += 2; col += 2;
         base = 16;
     }
-    __int128 val = 0;
+    Int128 val = 0;
     while (pos < src.size() && ((base==10 && isdigit(src[pos])) || (base==16 && isxdigit(src[pos])))) {
         int digit = (src[pos] <= '9') ? (src[pos]-'0') : (tolower(src[pos])-'a'+10);
         val = val * base + digit;
@@ -203,7 +203,7 @@ bool Lexer::readSymbol() {
     }
 }
 
-void Lexer::emit(TokenType t, const std::string &txt, __int128 val) {
+void Lexer::emit(TokenType t, const std::string &txt, Int128 val) {
     Token tok; tok.type = t; tok.text = txt; tok.value = val; tok.line = line; tok.col = col;
     tokens.push_back(tok);
 }

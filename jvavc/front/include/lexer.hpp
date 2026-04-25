@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <cstdint>
+#include "int128.hpp"
 
 enum TokenType {
     TOK_EOF = 0,
@@ -34,7 +35,7 @@ enum TokenType {
 struct Token {
     TokenType type;
     std::string text;
-    __int128 value;   // for NUMBER
+    Int128 value;   // for NUMBER
     int line;
     int col;
 };
@@ -66,7 +67,7 @@ private:
     bool readNumber();
     bool readIdentOrKeyword();
     bool readSymbol();
-    void emit(TokenType t, const std::string &txt, __int128 val = 0);
+    void emit(TokenType t, const std::string &txt, Int128 val = 0);
     void setError(const std::string &msg);
     bool isIdentStart(char c);
     bool isIdentChar(char c);

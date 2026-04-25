@@ -39,7 +39,7 @@ int Parser::getRegister(const string &s) {
     return -1;
 }
 
-void Parser::addExternalEqu(const std::string &name, __int128 value) {
+void Parser::addExternalEqu(const std::string &name, Int128 value) {
     equSymbols[name] = value;
 }
 
@@ -58,7 +58,7 @@ void Parser::clear() {
     baseAddr = 0;
 }
 
-bool Parser::resolveEqu(const std::string &name, __int128 &out) {
+bool Parser::resolveEqu(const std::string &name, Int128 &out) {
     auto it = equSymbols.find(name);
     if (it == equSymbols.end()) return false;
     out = it->second;
@@ -81,7 +81,7 @@ bool Parser::parseOperand(const string &tok, Operand &op) {
             } catch(...) { error="Bad mem addr: "+inner; return false; }
             return true;
         }
-        __int128 equVal;
+        Int128 equVal;
         if (resolveEqu(inner, equVal)) {
             op.type = OP_MEM; op.reg = -1; op.imm = equVal; return true;
         }
@@ -102,7 +102,7 @@ bool Parser::parseOperand(const string &tok, Operand &op) {
     }
     int r = getRegister(t);
     if (r>=0&&r<=10) { op.type=OP_REG; op.reg=r; return true; }
-    __int128 equVal;
+    Int128 equVal;
     if (resolveEqu(t, equVal)) {
         op.type = OP_IMM; op.imm = equVal; return true;
     }
@@ -122,7 +122,7 @@ static bool parseDataItems(const string &args, vector<DataItem> &items, int widt
             items.push_back({(unsigned char)p[1], width});
         } else {
             try {
-                __int128 v;
+                Int128 v;
                 if (p.substr(0,2)=="0x") v = stoull(p.substr(2),nullptr,16);
                 else v = stoll(p);
                 items.push_back({v, width});
@@ -139,7 +139,7 @@ static bool parseDataItems(const string &args, vector<DataItem> &items, int widt
             items.push_back({(unsigned char)p[1], width});
         } else {
             try {
-                __int128 v;
+                Int128 v;
                 if (p.substr(0,2)=="0x") v = stoull(p.substr(2),nullptr,16);
                 else v = stoll(p);
                 items.push_back({v, width});
@@ -192,7 +192,7 @@ bool Parser::parseLine(const string &line, int lineNum) {
     if (!rest.empty() && rest.substr(0,3)=="EQU") {
         string valstr = trim(rest.substr(3));
         try {
-            __int128 v;
+            Int128 v;
             if (valstr.substr(0,2)=="0x") v = stoull(valstr.substr(2),nullptr,16);
             else v = stoll(valstr);
             equSymbols[lbl] = v;
@@ -207,7 +207,7 @@ bool Parser::parseLine(const string &line, int lineNum) {
             string right = trim(l.substr(equPos + 3));
             if (!left.empty() && !right.empty()) {
                 try {
-                    __int128 v;
+                    Int128 v;
                     if (right.substr(0,2)=="0x") v = stoull(right.substr(2),nullptr,16);
                     else v = stoll(right);
                     equSymbols[left] = v;

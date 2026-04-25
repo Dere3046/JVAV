@@ -3,8 +3,9 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include "int128.hpp"
 
-typedef __int128 var;
+typedef Int128 var;
 #define MEM_INITIAL   4096          /* initial RAM words */
 #define MEM_MAX       (1LL<<30)     /* max RAM words (~16 GB) */
 #define NUM_REGS      11
