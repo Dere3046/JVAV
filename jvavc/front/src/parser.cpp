@@ -26,9 +26,9 @@ bool FrontParser::expect(TokenType t) {
         "(", ")", "[", "]", "{", "}", ",", ";", ":"
     };
     const char* got = (t >= 0 && t <= TOK_COLON) ? names[t] : "?";
-    error = "expected `" + string(got) + "`, but found `" + CURRENT.text + "`\n"
-            " --> line " + to_string(CURRENT.line) + ", column " + to_string(CURRENT.col) + "\n"
-            "    = note: unexpected token in this position";
+    errorLine = CURRENT.line;
+    errorCol = CURRENT.col;
+    error = "expected `" + string(got) + "`, but found `" + CURRENT.text + "`";
     return false;
 }
 
@@ -79,9 +79,9 @@ shared_ptr<Type> FrontParser::parseType() {
         if (!expect(TOK_GT)) return nullptr;
     }
     else {
-        error = "expected a type (e.g., `int`, `char`, `bool`, `ptr<T>`, `array<T>`)\n"
-                " --> line " + to_string(CURRENT.line) + ", column " + to_string(CURRENT.col) + "\n"
-                "    = note: found `" + CURRENT.text + "` instead";
+        errorLine = CURRENT.line;
+        errorCol = CURRENT.col;
+        error = "expected a type (e.g., `int`, `char`, `bool`, `ptr<T>`, `array<T>`), but found `" + CURRENT.text + "`";
         return nullptr;
     }
     return t;
@@ -332,9 +332,9 @@ shared_ptr<Expr> FrontParser::parsePrimary() {
         if (!expect(TOK_RPAREN)) return nullptr;
         return e;
     }
-    error = "unexpected token `" + CURRENT.text + "` in expression\n"
-            " --> line " + to_string(CURRENT.line) + ", column " + to_string(CURRENT.col) + "\n"
-            "    = note: expected an expression here";
+    errorLine = CURRENT.line;
+    errorCol = CURRENT.col;
+    error = "unexpected token `" + CURRENT.text + "` in expression";
     return nullptr;
 }
 
@@ -495,9 +495,9 @@ shared_ptr<Decl> FrontParser::parseDecl() {
         auto cs = dynamic_pointer_cast<ConstStmt>(s);
         return make_shared<GlobalConstDecl>(cs->name, cs->value, cs->line);
     }
-    error = "expected a declaration (function, variable, or constant)\n"
-            " --> line " + to_string(CURRENT.line) + ", column " + to_string(CURRENT.col) + "\n"
-            "    = note: found `" + CURRENT.text + "` instead";
+    errorLine = CURRENT.line;
+    errorCol = CURRENT.col;
+    error = "expected a declaration (function, variable, or constant), but found `" + CURRENT.text + "`";
     return nullptr;
 }
 
