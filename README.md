@@ -2,10 +2,10 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![CI](https://github.com/Dere3046/JVAV/actions/workflows/ci.yml/badge.svg)](https://github.com/Dere3046/JVAV/actions)
+[![CI-Android](https://github.com/Dere3046/JVAV/actions/workflows/ci-android.yml/badge.svg)](https://github.com/Dere3046/JVAV/actions)
 [![Stars](https://img.shields.io/github/stars/Dere3046/JVAV?style=social)](https://github.com/Dere3046/JVAV)
 ![JVAV](https://img.shields.io/badge/JVAV-128--bit-ff69b4.svg)
-![C](https://img.shields.io/badge/C-99-blue.svg)
-![C++](https://img.shields.io/badge/C%2B%2B-17-blue.svg)
+![C/C++](https://img.shields.io/badge/C%2FC%2B%2B-99%2F17-blue.svg)
 
 > **Disclaimer:** This is a joke / parody project. JVAV was "proposed by Dr. Zhang Haoyang" and implemented by **Dere3046**. Please do not harass, attack, or send hate to Zhang Haoyang or anyone associated with JVAV. This project exists purely for fun and educational purposes.
 
@@ -87,7 +87,9 @@ JVAV/
 - **Import system** — Recursive module imports with cyclic import guard
 - **Disassembler** — Static disassembly and dynamic trace mode
 - **Rust-style diagnostics** — Error codes, source snippets, and help messages
-- **Cross-platform** — Linux & Windows (x86, x64, ARM, ARM64); GitHub Actions CI with multi-arch matrix
+- **Cross-platform** — Linux, Windows & Android (x86, x64, ARM, ARM64); statically linked binaries; GitHub Actions CI with multi-arch matrix
+- **PATH-ready** — `std/` directory ships alongside `bin/`; add `bin/` to PATH and use `jvlc`/`jvavc`/`jvm`/`disasm` from anywhere
+- **Version flag** — All tools support `-v` / `--version`
 
 ---
 
@@ -111,7 +113,7 @@ ctest --output-on-failure
 
 # Or run individual test binaries directly
 ./test_back    # 90 backend unit + integration tests
-./test_front   # 100 frontend unit + integration tests
+./test_front   # 105 frontend unit + integration tests
 ```
 
 Tests cover:
@@ -120,7 +122,7 @@ Tests cover:
 - **Semantic analysis**: type inference, ownership, borrow conflicts, uninitialized variables, scope
 - **Code generation**: prologue/epilogue, locals, calls, control flow, pointers, strings
 - **Backend**: all instructions, EQU, .global/.extern, DB/DW/DT, #include, encoding, linking
-- **Integration**: end-to-end compile & run for arithmetic, control flow, heap, recursion, imports, global variables, standard library
+- **Integration**: end-to-end compile & run for arithmetic, control flow, heap, recursion, imports, global variables, standard library, version flags, missing-stdlib diagnostics
 
 ---
 

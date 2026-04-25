@@ -342,8 +342,13 @@ bool Sema::processImport(shared_ptr<ImportDecl> id) {
 
     Lexer lex;
     if (!lex.tokenize(absPath)) {
-        report(SEM_ERROR, "cannot read import file `" + id->path + "`", id->line,
-               "check that the file exists and is readable");
+        if (id->path.rfind("std/", 0) == 0 || id->path.rfind("std\\", 0) == 0) {
+            report(SEM_ERROR, "cannot find standard library `" + id->path + "`", id->line,
+                   "ensure JVAV is installed correctly and the std/ directory is accessible from the compiler");
+        } else {
+            report(SEM_ERROR, "cannot read import file `" + id->path + "`", id->line,
+                   "check that the file exists and is readable");
+        }
         return false;
     }
     FrontParser par;
