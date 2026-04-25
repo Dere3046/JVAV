@@ -150,8 +150,12 @@ int test_codegen_main() {
             "    var f = 8 >> 1;\n"
             "    return 0;\n"
             "}\n");
-        // Bitwise ops may be lowered to arithmetic; just verify it compiles
-        TEST_ASSERT(!asmText.empty(), "generated asm");
+        TEST_ASSERT(asmText.find("AND") != string::npos, "AND instruction");
+        TEST_ASSERT(asmText.find("OR") != string::npos, "OR instruction");
+        TEST_ASSERT(asmText.find("XOR") != string::npos, "XOR instruction");
+        TEST_ASSERT(asmText.find("NOT") != string::npos, "NOT instruction");
+        TEST_ASSERT(asmText.find("SHL") != string::npos, "SHL instruction");
+        TEST_ASSERT(asmText.find("SHR") != string::npos, "SHR instruction");
     }
     test_passed("codegen_bitwise");
 

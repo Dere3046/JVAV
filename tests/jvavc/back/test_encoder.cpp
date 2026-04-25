@@ -278,5 +278,49 @@ int test_encoder_main() {
     }
     test_passed("encode_all_registers");
 
+    test_header("encode_mod");
+    bc = compile("MOD R0, R1, R2\n");
+    TEST_ASSERT_EQ(bc.size(), 1, "size");
+    TEST_ASSERT_EQ((int)(uint8_t)(long long)bc[0], 0x17, "MOD opcode");
+    test_passed("encode_mod");
+
+    test_header("encode_and");
+    bc = compile("AND R0, R1, R2\n");
+    TEST_ASSERT_EQ(bc.size(), 1, "size");
+    TEST_ASSERT_EQ((int)(uint8_t)(long long)bc[0], 0x18, "AND opcode");
+    test_passed("encode_and");
+
+    test_header("encode_or");
+    bc = compile("OR R0, R1, R2\n");
+    TEST_ASSERT_EQ(bc.size(), 1, "size");
+    TEST_ASSERT_EQ((int)(uint8_t)(long long)bc[0], 0x19, "OR opcode");
+    test_passed("encode_or");
+
+    test_header("encode_xor");
+    bc = compile("XOR R0, R1, R2\n");
+    TEST_ASSERT_EQ(bc.size(), 1, "size");
+    TEST_ASSERT_EQ((int)(uint8_t)(long long)bc[0], 0x1A, "XOR opcode");
+    test_passed("encode_xor");
+
+    test_header("encode_shl");
+    bc = compile("SHL R0, R1, R2\n");
+    TEST_ASSERT_EQ(bc.size(), 1, "size");
+    TEST_ASSERT_EQ((int)(uint8_t)(long long)bc[0], 0x1B, "SHL opcode");
+    test_passed("encode_shl");
+
+    test_header("encode_shr");
+    bc = compile("SHR R0, R1, R2\n");
+    TEST_ASSERT_EQ(bc.size(), 1, "size");
+    TEST_ASSERT_EQ((int)(uint8_t)(long long)bc[0], 0x1C, "SHR opcode");
+    test_passed("encode_shr");
+
+    test_header("encode_not");
+    bc = compile("NOT R0, R1\n");
+    TEST_ASSERT_EQ(bc.size(), 1, "size");
+    TEST_ASSERT_EQ((int)(uint8_t)(long long)bc[0], 0x1D, "NOT opcode");
+    TEST_ASSERT_EQ((int)(uint8_t)(long long)(bc[0] >> 8), 0, "dst R0");
+    TEST_ASSERT_EQ((int)(uint8_t)(long long)(bc[0] >> 16), 1, "src1 R1");
+    test_passed("encode_not");
+
     return 0;
 }

@@ -2,6 +2,7 @@
 #include "lexer.hpp"
 #include "parser.hpp"
 #include <filesystem>
+#include <fstream>
 #include <iomanip>
 namespace fs = std::filesystem;
 using namespace std;
@@ -10,13 +11,25 @@ using namespace std;
 // Error reporting
 // ------------------------------------------------------------------
 void Sema::report(SemaLevel level, const string &msg, int line, const string &hint) {
-    errors.push_back({level, msg, line, hint});
+    errors.push_back({level, msg, currentFile, line, hint});
     if (level == SEM_ERROR && firstError.empty()) firstError = msg;
 }
 
 bool Sema::hasErrors() const {
     for (auto &e : errors) if (e.level == SEM_ERROR) return true;
     return false;
+}
+
+static string getSourceLine(const string &file, int line) {
+    ifstream f(file);
+    if (!f) return "";
+    string s;
+    int n = 1;
+    while (getline(f, s)) {
+        if (n == line) return s;
+        ++n;
+    }
+    return "";
 }
 
 void Sema::printErrors(ostream &os) const {
@@ -29,7 +42,16 @@ void Sema::printErrors(ostream &os) const {
             os << "warning[W" << setw(4) << setfill('0') << (2000 + warnCount) << "]: " << e.msg << "\n";
             warnCount++;
         }
-        if (e.line > 0) {
+        if (!e.file.empty() && e.line > 0) {
+            os << " --> " << e.file << ":" << e.line << ":1\n";
+            string lineText = getSourceLine(e.file, e.line);
+            if (!lineText.empty()) {
+                int w = max(4, (int)to_string(e.line).length());
+                os << string(w + 1, ' ') << "|\n";
+                os << " " << setw(w) << e.line << " | " << lineText << "\n";
+                os << string(w + 1, ' ') << "| ^\n";
+            }
+        } else if (e.line > 0) {
             os << " --> line " << e.line << "\n";
         }
         if (!e.hint.empty()) {

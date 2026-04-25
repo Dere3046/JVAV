@@ -12,6 +12,7 @@ enum SemaLevel { SEM_ERROR, SEM_WARNING };
 struct SemaError {
     SemaLevel level;
     std::string msg;
+    std::string file;
     int line;
     std::string hint;     // suggested fix
 };
@@ -48,11 +49,13 @@ public:
     void printErrors(std::ostream &os) const;
     void setBasePath(const std::string &path) { basePath = path; }
     void setImportPaths(const std::vector<std::string>& paths) { importPaths = paths; }
+    void setCurrentFile(const std::string &f) { currentFile = f; }
 private:
     std::string firstError;
     std::vector<SemaError> errors;
     std::string basePath;
     std::vector<std::string> importPaths;
+    std::string currentFile;
     int scopeLevel;
     std::vector<std::map<std::string, Symbol>> scopes;
     std::set<std::string> importedFiles;
