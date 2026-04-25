@@ -109,13 +109,65 @@ bool Parser::parseOperand(const string &tok, Operand &op) {
     op.type=OP_IMM; op.label=t; op.imm=0; return true;
 }
 
+static string unescapeString(const string &s) {
+    string out;
+    for (size_t i = 0; i < s.size(); ++i) {
+        if (s[i] == '\\' && i + 1 < s.size()) {
+            switch (s[i+1]) {
+                case 'n': out += '\n'; ++i; break;
+                case 't': out += '\t'; ++i; break;
+                case 'r': out += '\r'; ++i; break;
+                case '"': out += '"';  ++i; break;
+                case '\\': out += '\\'; ++i; break;
+                case 'x': {
+                    if (i + 3 < s.size() && isxdigit((unsigned char)s[i+2]) && isxdigit((unsigned char)s[i+3])) {
+                        int val = stoi(s.substr(i+2, 2), nullptr, 16);
+                        out += (char)val;
+                        i += 3;
+                    } else {
+                        out += s[i];
+                    }
+                    break;
+                }
+                default: out += s[i]; break;
+            }
+        } else {
+            out += s[i];
+        }
+    }
+    return out;
+}
+
+static vector<string> splitDataArgs(const string &s) {
+    vector<string> result;
+    string current;
+    bool inString = false;
+    for (size_t i = 0; i < s.size(); ++i) {
+        char c = s[i];
+        if (c == '"') {
+            int backslashCount = 0;
+            size_t j = i;
+            while (j > 0 && s[j-1] == '\\') { backslashCount++; j--; }
+            if (backslashCount % 2 == 0) inString = !inString;
+            current += c;
+        } else if (c == ',' && !inString) {
+            result.push_back(trim(current));
+            current.clear();
+        } else {
+            current += c;
+        }
+    }
+    if (!current.empty()) result.push_back(trim(current));
+    return result;
+}
+
 static bool parseDataItems(const string &args, vector<DataItem> &items, int width) {
     if (args.empty()) return true;
     if (args.find(',') == string::npos) {
         string p = trim(args);
         if (p.empty()) return true;
         if (p.front()=='"' && p.back()=='"') {
-            string s = p.substr(1, p.size()-2);
+            string s = unescapeString(p.substr(1, p.size()-2));
             for (char c : s) items.push_back({(unsigned char)c, width});
         } else if (p.front()== '\'' && p.back()=='\'') {
             if (p.size()!=3) return false;
@@ -130,18 +182,20 @@ static bool parseDataItems(const string &args, vector<DataItem> &items, int widt
         }
         return true;
     }
-    for (const string &p : split(args, ',')) {
-        if (p.front()=='"' && p.back()=='"') {
-            string s = p.substr(1, p.size()-2);
+    for (const string &p : splitDataArgs(args)) {
+        string t = trim(p);
+        if (t.empty()) continue;
+        if (t.front()=='"' && t.back()=='"') {
+            string s = unescapeString(t.substr(1, t.size()-2));
             for (char c : s) items.push_back({(unsigned char)c, width});
-        } else if (p.front()=='\'' && p.back()=='\'') {
-            if (p.size()!=3) return false;
-            items.push_back({(unsigned char)p[1], width});
+        } else if (t.front()=='\'' && t.back()=='\'') {
+            if (t.size()!=3) return false;
+            items.push_back({(unsigned char)t[1], width});
         } else {
             try {
                 Int128 v;
-                if (p.substr(0,2)=="0x") v = stoull(p.substr(2),nullptr,16);
-                else v = stoll(p);
+                if (t.substr(0,2)=="0x") v = stoull(t.substr(2),nullptr,16);
+                else v = stoll(t);
                 items.push_back({v, width});
             } catch(...) { return false; }
         }
