@@ -5,3 +5,5 @@ add_executable(jvavc
     src/linker.cpp
 )
 target_include_directories(jvavc PRIVATE include)
+
+install(TARGETS jvavc DESTINATION ${CMAKE_INSTALL_BINDIR})

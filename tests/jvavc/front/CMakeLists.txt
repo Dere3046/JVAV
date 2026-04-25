@@ -11,3 +11,12 @@ add_executable(test_front
     ${CMAKE_SOURCE_DIR}/jvavc/front/src/codegen.cpp
 )
 target_include_directories(test_front PRIVATE ${CMAKE_SOURCE_DIR}/jvavc/front/include)
+
+# Cross-platform executable paths for integration tests
+target_compile_definitions(test_front PRIVATE
+    JVAVC_FRONT_EXE="$<TARGET_FILE:jvlc>"
+    JVAVC_BACK_EXE="$<TARGET_FILE:jvavc>"
+    JVM_EXE="$<TARGET_FILE:jvm>"
+)
+
+add_test(NAME test_front COMMAND test_front)

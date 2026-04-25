@@ -11,6 +11,7 @@ public:
     std::string generate(std::shared_ptr<Program> prog);
     std::string generate(std::shared_ptr<Program> prog, const std::string &basePath);
     void setBasePath(const std::string &path) { basePath = path; }
+    void setImportPaths(const std::vector<std::string>& paths) { importPaths = paths; }
 private:
     std::stringstream out;
     int labelCounter = 0;
@@ -20,6 +21,7 @@ private:
     std::vector<std::string> stringLabels;
     int stringCounter = 0;
     std::string basePath;
+    std::vector<std::string> importPaths;
     std::set<std::string> generatedFiles;
 
     std::string nextLabel(const std::string &prefix);

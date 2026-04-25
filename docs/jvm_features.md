@@ -53,6 +53,8 @@ Triggered via `SYSCALL_CMD` mailbox (`0xFFE0`):
 | `SYS_FWRITE` | 7 | Write to file |
 | `SYS_MEMCPY` | 10 | Copy memory |
 | `SYS_MEMSET` | 11 | Set memory |
+| `SYS_MALLOC` | 12 | Allocate heap memory (used by `alloc()`) |
+| `SYS_FREE` | 13 | Free heap allocation (used by `free()`) |
 
 ## Stack Convention
 

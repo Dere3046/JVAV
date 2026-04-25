@@ -8,3 +8,11 @@ add_executable(test_back
     ${CMAKE_SOURCE_DIR}/jvavc/back/src/linker.cpp
 )
 target_include_directories(test_back PRIVATE ${CMAKE_SOURCE_DIR}/jvavc/back/include)
+
+# Cross-platform executable paths for integration tests
+target_compile_definitions(test_back PRIVATE
+    JVAVC_BACK_EXE="$<TARGET_FILE:jvavc>"
+    JVM_EXE="$<TARGET_FILE:jvm>"
+)
+
+add_test(NAME test_back COMMAND test_back)

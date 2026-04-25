@@ -15,9 +15,10 @@ import time
 # Config
 # ------------------------------------------------------------------
 BUILD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "build")
-JVLC = os.path.join(BUILD_DIR, "jvavc", "front", "jvlc.exe")
-JVC = os.path.join(BUILD_DIR, "jvavc", "back", "jvavc.exe")
-JVM = os.path.join(BUILD_DIR, "jvm", "jvm.exe")
+BIN_DIR = os.path.join(BUILD_DIR, "bin")
+JVLC = os.path.join(BIN_DIR, "jvlc.exe")
+JVC = os.path.join(BIN_DIR, "jvavc.exe")
+JVM = os.path.join(BIN_DIR, "jvm.exe")
 CC = "gcc"
 
 # ------------------------------------------------------------------
