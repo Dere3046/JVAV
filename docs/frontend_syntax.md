@@ -244,10 +244,13 @@ The JVL compiler (`jvlc`) emits **Rust-style** error messages with source locati
 
 ```
 error[E1000]: cannot find value `undefined_var` in this scope
- --> test.jvl:2:1
-     |
- 0002 |     var z = undefined_var;
-     | ^
+ --> test.jvl:3:9
+  |
+2 | func main(): int {
+3 |     var z = undefined_var;
+  |         ^
+4 |     return 0;
+  |
    = help: declare 'undefined_var' before use
 
 1 error(s) and 0 warning(s) generated
@@ -256,6 +259,7 @@ error[E1000]: cannot find value `undefined_var` in this scope
 Each diagnostic includes:
 - **Error code** (`E1000+`) or **warning code** (`W2000+`)
 - **File location** (`--> file:line:col`)
+- **Context lines** (1 line before and after the error)
 - **Source line** with line number and `|` gutter
 - **Caret underline** (`^`) pointing to the error position
 - **Help message** (`= help: ...`) suggesting a fix
