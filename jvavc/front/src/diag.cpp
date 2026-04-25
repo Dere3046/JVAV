@@ -1,6 +1,9 @@
 #include "diag.hpp"
 #include <iomanip>
 #include <algorithm>
+#ifndef _WIN32
+#include <unistd.h>
+#endif
 
 using namespace std;
 

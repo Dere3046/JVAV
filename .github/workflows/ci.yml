@@ -6,96 +6,159 @@ on:
     tags: ['v*']
   pull_request:
     branches: [main, master]
+  workflow_dispatch:
 
 jobs:
   build-linux:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, x86, arm, arm64]
+        include:
+          - arch: x64
+            cc: gcc
+            cxx: g++
+            cmake_args: ""
+            test: true
+          - arch: x86
+            cc: gcc
+            cxx: g++
+            cmake_args: "-DCMAKE_C_FLAGS=-m32 -DCMAKE_CXX_FLAGS=-m32"
+            packages: "gcc-multilib g++-multilib libc6-dev-i386"
+            test: true
+          - arch: arm
+            cc: arm-linux-gnueabihf-gcc
+            cxx: arm-linux-gnueabihf-g++
+            cmake_args: "-DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=arm"
+            packages: "gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf libc6-armhf-cross"
+            test: true
+            qemu: qemu-arm-static
+          - arch: arm64
+            cc: aarch64-linux-gnu-gcc
+            cxx: aarch64-linux-gnu-g++
+            cmake_args: "-DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=aarch64"
+            packages: "gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-arm64-cross"
+            test: true
+            qemu: qemu-aarch64-static
     steps:
       - uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build qemu-user-static binfmt-support ${{ matrix.packages }}
+
+      - name: Setup QEMU binfmt
+        if: matrix.qemu
+        run: |
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes || true
+          sudo update-binfmts --enable ${{ matrix.qemu }} || true
 
       - name: Configure
-        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+        run: >
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_C_COMPILER=${{ matrix.cc }}
+          -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
+          ${{ matrix.cmake_args }}
 
       - name: Build
         run: cmake --build build --config Release
 
       - name: Test
+        if: matrix.test
         run: ctest --test-dir build -C Release --output-on-failure
 
       - name: Package
-        run: cpack -B build -C Release
+        run: cpack -B build -C Release -G TGZ
+
+      - name: Rename artifact
+        run: |
+          mkdir -p build/dist
+          cp build/JVAV-*.tar.gz build/dist/JVAV-linux-${{ matrix.arch }}.tar.gz
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: JVAV-linux
-          path: build/JVAV-*.tar.gz
+          name: JVAV-linux-${{ matrix.arch }}
+          path: build/dist/JVAV-linux-${{ matrix.arch }}.tar.gz
 
   build-windows:
     runs-on: windows-latest
-    defaults:
-      run:
-        shell: msys2 {0}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, x86, arm, arm64]
+        include:
+          - arch: x64
+            triple: x86_64-w64-mingw32
+            test: true
+          - arch: x86
+            triple: i686-w64-mingw32
+            test: true
+          - arch: arm
+            triple: armv7-w64-mingw32
+            test: false
+          - arch: arm64
+            triple: aarch64-w64-mingw32
+            test: false
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup MSYS2
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW64
-          update: true
-          install: >-
-            mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-cmake
-            mingw-w64-x86_64-ninja
+      - name: Download Ninja
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/ninja-build/ninja/releases/download/v1.12.1/ninja-win.zip" -OutFile ninja.zip
+          Expand-Archive -Path ninja.zip -DestinationPath C:\ninja
+          echo "C:\ninja" | Out-File -FilePath $env:GITHUB_PATH -Append
+
+      - name: Download llvm-mingw
+        run: |
+          $url = "https://github.com/mstorsjo/llvm-mingw/releases/download/20240619/llvm-mingw-20240619-ucrt-x86_64.zip"
+          Invoke-WebRequest -Uri $url -OutFile llvm-mingw.zip
+          Expand-Archive -Path llvm-mingw.zip -DestinationPath C:\llvm-mingw
+
+      - name: Add llvm-mingw to PATH
+        run: |
+          echo "C:\llvm-mingw\llvm-mingw-20240619-ucrt-x86_64\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
 
       - name: Configure
-        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+        shell: pwsh
+        run: >
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_C_COMPILER=${{ matrix.triple }}-clang
+          -DCMAKE_CXX_COMPILER=${{ matrix.triple }}-clang++
+          -DCMAKE_SYSTEM_NAME=Windows
+          -DCMAKE_RC_COMPILER=${{ matrix.triple }}-windres
 
       - name: Build
+        shell: pwsh
         run: cmake --build build --config Release
 
       - name: Test
+        if: matrix.test
+        shell: pwsh
         run: ctest --test-dir build -C Release --output-on-failure
 
       - name: Package
-        run: cpack -B build -C Release
+        shell: pwsh
+        run: cpack -B build -C Release -G ZIP
+
+      - name: Rename artifact
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path build\dist | Out-Null
+          $src = Get-ChildItem -Path build\JVAV-*.zip | Select-Object -First 1
+          Copy-Item $src.FullName -Destination "build\dist\JVAV-windows-${{ matrix.arch }}.zip"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: JVAV-windows
-          path: build/JVAV-*.zip
-
-  build-macos:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Configure
-        run: cmake -B build -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
-
-      - name: Build
-        run: cmake --build build --config Release
-
-      - name: Test
-        run: ctest --test-dir build -C Release --output-on-failure
-
-      - name: Package
-        run: cpack -B build -C Release
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: JVAV-macos
-          path: build/JVAV-*.tar.gz
+          name: JVAV-windows-${{ matrix.arch }}
+          path: build/dist/JVAV-windows-${{ matrix.arch }}.zip
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build-linux, build-windows, build-macos]
+    needs: [build-linux, build-windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
