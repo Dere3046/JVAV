@@ -4,6 +4,7 @@
 #include <vector>
 #include <map>
 #include <cstdint>
+#include "int128.hpp"
 #include <set>
 
 enum OperandType { OP_NONE, OP_REG, OP_IMM, OP_MEM };
@@ -12,12 +13,12 @@ struct Operand {
     OperandType type = OP_NONE;
     int reg = -1;
     int64_t _pad = 0;
-    __int128 imm = 0;
+    Int128 imm = 0;
     std::string label;
 };
 
 struct DataItem {
-    __int128 value;
+    Int128 value;
     int width;
 };
 
@@ -39,11 +40,11 @@ public:
     const std::string& getError() const { return error; }
     const std::vector<Instruction>& getInstructions() const { return instructions; }
     const std::map<std::string, int>& getLabels() const { return labels; }
-    const std::map<std::string, __int128>& getEquSymbols() const { return equSymbols; }
+    const std::map<std::string, Int128>& getEquSymbols() const { return equSymbols; }
     const std::set<std::string>& getGlobalSymbols() const { return globalSymbols; }
     const std::set<std::string>& getExternSymbols() const { return externSymbols; }
 
-    void addExternalEqu(const std::string &name, __int128 value);
+    void addExternalEqu(const std::string &name, Int128 value);
     void setBaseAddr(int addr);
     void clear();
 
@@ -52,7 +53,7 @@ public:
 private:
     std::vector<Instruction> instructions;
     std::map<std::string, int> labels;
-    std::map<std::string, __int128> equSymbols;
+    std::map<std::string, Int128> equSymbols;
     std::set<std::string> includedFiles;
     std::set<std::string> globalSymbols;
     std::set<std::string> externSymbols;
@@ -60,7 +61,7 @@ private:
     int baseAddr = 0;
 
     int getRegister(const std::string &s);
-    bool resolveEqu(const std::string &name, __int128 &out);
+    bool resolveEqu(const std::string &name, Int128 &out);
     bool parseOperand(const std::string &tok, Operand &op);
     bool parseLine(const std::string &line, int lineNum);
     void computeAddresses();

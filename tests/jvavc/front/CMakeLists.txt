@@ -10,7 +10,7 @@ add_executable(test_front
     ${CMAKE_SOURCE_DIR}/jvavc/front/src/sema.cpp
     ${CMAKE_SOURCE_DIR}/jvavc/front/src/codegen.cpp
 )
-target_include_directories(test_front PRIVATE ${CMAKE_SOURCE_DIR}/jvavc/front/include)
+target_include_directories(test_front PRIVATE ${CMAKE_SOURCE_DIR}/jvavc/front/include ${CMAKE_SOURCE_DIR}/jvm/include)
 
 # Cross-platform executable paths for integration tests
 target_compile_definitions(test_front PRIVATE

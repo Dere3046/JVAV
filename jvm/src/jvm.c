@@ -14,7 +14,7 @@ static int ensure_mem(JVM *vm, var addr) {
     }
     var *p = (var *)realloc(vm->mem, (size_t)newcap * sizeof(var));
     if (!p) return -1;
-    memset(p + vm->mem_capacity, 0, (size_t)(newcap - vm->mem_capacity) * sizeof(var));
+    memset(p + (size_t)(unsigned long long)vm->mem_capacity, 0, (size_t)(unsigned long long)(newcap - vm->mem_capacity) * sizeof(var));
     vm->mem = p;
     vm->mem_capacity = newcap;
     return 0;
@@ -31,7 +31,7 @@ static void io_write_legacy(var addr, var val) {
         int len = 0;
         var v = val;
         if (v < 0) { putchar('-'); v = -v; }
-        do { buf[len++] = '0' + (char)(v % 10); v /= 10; } while (v > 0);
+        do { buf[len++] = '0' + (char)(long long)(v % 10); v /= 10; } while (v > 0);
         while (len--) putchar(buf[len]);
         fflush(stdout);
     } else if (addr == IO_ADDR_PUTHEX) {
@@ -87,7 +87,7 @@ static int read_vm_string(JVM *vm, var addr, char *buf, size_t max) {
     size_t i = 0;
     while (i < max - 1) {
         if (ensure_mem(vm, addr + i) < 0) return -1;
-        char c = (char)(vm->mem[(size_t)(addr + i)] & 0xFF);
+        char c = (char)(long long)(vm->mem[(size_t)(unsigned long long)(addr + i)] & 0xFF);
         buf[i] = c;
         if (c == 0) break;
         i++;
@@ -190,7 +190,7 @@ static void syscall_dispatch(JVM *vm, var cmd) {
             for (var i = 0; i < count; i++) {
                 var word_addr = buf_addr + i;
                 if (ensure_mem(vm, word_addr) < 0) { vm->syscall_ret = -1; return; }
-                unsigned char c = (unsigned char)(vm->mem[(size_t)word_addr] & 0xFF);
+                unsigned char c = (unsigned char)(long long)(vm->mem[(size_t)(unsigned long long)word_addr] & 0xFF);
                 if (fputc(c, vm->fd_table[fd]) == EOF) break;
                 total++;
             }
@@ -327,7 +327,7 @@ int jvm_load_program(JVM *vm, const char *filename) {
         while (newcap < words) { if (newcap > MEM_MAX / 2) { newcap = MEM_MAX; break; } newcap *= 2; }
         var *p = (var *)realloc(vm->mem, (size_t)newcap * sizeof(var));
         if (!p) { fclose(f); fprintf(stderr, "Out of memory for program\n"); return -1; }
-        memset(p + vm->mem_capacity, 0, (size_t)(newcap - vm->mem_capacity) * sizeof(var));
+        memset(p + (size_t)(unsigned long long)vm->mem_capacity, 0, (size_t)(unsigned long long)(newcap - vm->mem_capacity) * sizeof(var));
         vm->mem = p;
         vm->mem_capacity = newcap;
         vm->reg[SP] = vm->mem_capacity - 1;

@@ -54,13 +54,13 @@ int main(int argc, char *argv[]) {
         Parser p;
         if (!p.parse(inputs[0])) { cerr << "Parse error: " << p.getError() << "\n"; return 1; }
         Encoder e;
-        vector<__int128> bc;
+        vector<Int128> bc;
         if (!e.encode(p.getInstructions(), p.getLabels(), bc)) {
             cerr << "Encode error: " << e.getError() << "\n";
             return 1;
         }
         ofstream f(output, ios::binary);
-        f.write((char*)bc.data(), bc.size()*sizeof(__int128));
+        f.write((char*)bc.data(), bc.size()*sizeof(Int128));
         cout << "Compiled to " << output << " (" << bc.size() << " units)\n";
     } else {
         // Multi-file linker mode

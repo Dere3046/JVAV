@@ -1,6 +1,6 @@
 # JVM Features
 
-The JVAV Virtual Machine (JVM) is a 128-bit word-oriented executor written in C99.
+The JVAV Virtual Machine (JVM) is a 128-bit word-oriented executor written in C/C++.
 
 ## 128-bit Instruction Format
 

@@ -315,7 +315,7 @@ shared_ptr<Expr> FrontParser::parsePrimary() {
         return make_shared<StringExpr>(peek(-1).text, peek(-1).line);
     }
     if (match(TOK_CHAR)) {
-        return make_shared<CharExpr>((char)peek(-1).value, peek(-1).line);
+        return make_shared<CharExpr>((char)(long long)peek(-1).value, peek(-1).line);
     }
     if (match(TOK_KW_TRUE)) {
         return make_shared<BoolExpr>(true, peek(-1).line);

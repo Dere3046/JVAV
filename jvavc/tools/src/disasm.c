@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
+#include "int128.hpp"
 
 /* ---------- instruction format (matches jvm.h / encoder.cpp) ---------- */
 #pragma pack(push, 1)
@@ -58,25 +59,25 @@ static const char *reg_name(int r) {
     return "?";
 }
 
-static __int128 sign_ext_imm(int32_t hi, uint64_t lo) {
-    return ((__int128)(int32_t)hi << 64) | lo;
+static Int128 sign_ext_imm(int32_t hi, uint64_t lo) {
+    return ((Int128)(int32_t)hi << 64) | lo;
 }
 
-static void print_imm(__int128 v) {
+static void print_imm(Int128 v) {
     if (v == 0) { printf("0"); return; }
     if (v < 0) { printf("-"); v = -v; }
     char buf[64]; int n = 0;
-    while (v > 0) { buf[n++] = '0' + (char)(v % 10); v /= 10; }
+    while (v > 0) { buf[n++] = '0' + (char)(long long)(v % 10); v /= 10; }
     while (n--) putchar(buf[n]);
 }
 
-static void print_hex_imm(__int128 v) {
+static void print_hex_imm(Int128 v) {
     if (v == 0) { printf("0x0"); return; }
     if (v < 0) { printf("-0x"); v = -v; }
     else       { printf("0x"); }
     char buf[32]; int n = 0;
     while (v > 0) {
-        int d = (int)(v % 16);
+        int d = (int)(long long)(v % 16);
         buf[n++] = (d < 10) ? ('0' + d) : ('a' + d - 10);
         v /= 16;
     }
@@ -85,9 +86,9 @@ static void print_hex_imm(__int128 v) {
 
 /* ---------- trace VM (simplified embedded JVM) ---------- */
 typedef struct {
-    __int128 *mem;
+    Int128 *mem;
     size_t    cap;
-    __int128  reg[NUM_REGS];
+    Int128  reg[NUM_REGS];
     int       running;
 } TraceVM;
 
@@ -95,9 +96,9 @@ static int ensure_mem(TraceVM *vm, size_t addr) {
     if (addr < vm->cap) return 0;
     size_t newcap = vm->cap;
     while (newcap <= addr) newcap *= 2;
-    __int128 *p = (__int128 *)realloc(vm->mem, newcap * sizeof(__int128));
+    Int128 *p = (Int128 *)realloc(vm->mem, newcap * sizeof(Int128));
     if (!p) return -1;
-    memset(p + vm->cap, 0, (newcap - vm->cap) * sizeof(__int128));
+    memset(p + vm->cap, 0, (newcap - vm->cap) * sizeof(Int128));
     vm->mem = p;
     vm->cap = newcap;
     return 0;
@@ -107,12 +108,12 @@ static int is_io_port(size_t addr) {
     return (addr >= 0xFFF0 && addr <= 0xFFF4) || (addr >= 0xFFE0 && addr <= 0xFFE4);
 }
 
-static void trace_run(__int128 *code, size_t ninstr, uint8_t *visited,
+static void trace_run(Int128 *code, size_t ninstr, uint8_t *visited,
                       int *halted_cleanly, size_t *fault_pc) {
     TraceVM vm_ = {0}, *vm = &vm_;
     vm->cap = ninstr + 4096;
-    vm->mem = (__int128 *)calloc(vm->cap, sizeof(__int128));
-    memcpy(vm->mem, code, ninstr * sizeof(__int128));
+    vm->mem = (Int128 *)calloc(vm->cap, sizeof(Int128));
+    memcpy(vm->mem, code, ninstr * sizeof(Int128));
     vm->reg[SP] = vm->cap - 1;
     vm->running = 1;
     *halted_cleanly = 0;
@@ -121,7 +122,7 @@ static void trace_run(__int128 *code, size_t ninstr, uint8_t *visited,
     int steps = 0, max_steps = 1000000; /* guard against infinite loops */
 
     while (vm->running && steps++ < max_steps) {
-        size_t pc = (size_t)(uint64_t)vm->reg[PC];
+        size_t pc = (size_t)(unsigned long long)vm->reg[PC];
         if (pc >= ninstr) {
             *fault_pc = pc;
             break;
@@ -130,9 +131,9 @@ static void trace_run(__int128 *code, size_t ninstr, uint8_t *visited,
 
         Instr in;
         memcpy(&in, (uint8_t *)&vm->mem[pc], 16);
-        __int128 imm = sign_ext_imm((int32_t)in.imm_high, in.imm_low);
+        Int128 imm = sign_ext_imm((int32_t)in.imm_high, in.imm_low);
 
-        __int128 val1 = 0, val2 = 0, addr = 0;
+        Int128 val1 = 0, val2 = 0, addr = 0;
         if (in.op == OP_LDR || in.op == OP_STR || in.op == OP_ADD ||
             in.op == OP_SUB || in.op == OP_MUL || in.op == OP_DIV ||
             in.op == OP_CMP || in.op == OP_PUSH) {
@@ -152,16 +153,16 @@ static void trace_run(__int128 *code, size_t ninstr, uint8_t *visited,
                 break;
             case OP_LDR:
                 addr = val1;
-                if (addr >= 0 && !is_io_port((size_t)addr)) {
-                    if (ensure_mem(vm, (size_t)addr) == 0)
-                        vm->reg[in.dst] = vm->mem[(size_t)addr];
+                if (addr >= 0 && !is_io_port((size_t)(unsigned long long)addr)) {
+                    if (ensure_mem(vm, (size_t)(unsigned long long)addr) == 0)
+                        vm->reg[in.dst] = vm->mem[(size_t)(unsigned long long)addr];
                 }
                 break;
             case OP_STR:
                 addr = vm->reg[in.dst];
-                if (addr >= 0 && !is_io_port((size_t)addr)) {
-                    if (ensure_mem(vm, (size_t)addr) == 0)
-                        vm->mem[(size_t)addr] = val1;
+                if (addr >= 0 && !is_io_port((size_t)(unsigned long long)addr)) {
+                    if (ensure_mem(vm, (size_t)(unsigned long long)addr) == 0)
+                        vm->mem[(size_t)(unsigned long long)addr] = val1;
                 }
                 break;
             case OP_ADD: vm->reg[in.dst] = val1 + val2; break;
@@ -177,20 +178,20 @@ static void trace_run(__int128 *code, size_t ninstr, uint8_t *visited,
             case OP_JNZ: if (!ZF) vm->reg[PC] = vm->reg[in.dst]; break;
             case OP_PUSH:
                 vm->reg[SP]--;
-                if (ensure_mem(vm, (size_t)vm->reg[SP]) == 0)
-                    vm->mem[(size_t)vm->reg[SP]] = val1;
+                if (ensure_mem(vm, (size_t)(unsigned long long)vm->reg[SP]) == 0)
+                    vm->mem[(size_t)(unsigned long long)vm->reg[SP]] = val1;
                 break;
             case OP_POP:
-                vm->reg[in.dst] = vm->mem[(size_t)vm->reg[SP]++];
+                vm->reg[in.dst] = vm->mem[(size_t)(unsigned long long)vm->reg[SP]++];
                 break;
             case OP_CALL:
                 vm->reg[SP]--;
-                if (ensure_mem(vm, (size_t)vm->reg[SP]) == 0)
-                    vm->mem[(size_t)vm->reg[SP]] = vm->reg[PC];
+                if (ensure_mem(vm, (size_t)(unsigned long long)vm->reg[SP]) == 0)
+                    vm->mem[(size_t)(unsigned long long)vm->reg[SP]] = vm->reg[PC];
                 vm->reg[PC] = vm->reg[in.dst];
                 break;
             case OP_RET:
-                vm->reg[PC] = vm->mem[(size_t)vm->reg[SP]++];
+                vm->reg[PC] = vm->mem[(size_t)(unsigned long long)vm->reg[SP]++];
                 break;
             case OP_LDI:
                 vm->reg[in.dst] = imm;
@@ -209,7 +210,7 @@ static void trace_run(__int128 *code, size_t ninstr, uint8_t *visited,
 }
 
 /* ---------- static disassembly printer ---------- */
-static void print_instr(size_t idx, const Instr *in, __int128 imm,
+static void print_instr(size_t idx, const Instr *in, Int128 imm,
                         int trace_visited, int trace_mode) {
     if (trace_mode) {
         printf(trace_visited ? " >>> " : "     ");
@@ -303,7 +304,7 @@ int main(int argc, char *argv[]) {
     size_t n = (size_t)sz / 16;
     size_t rem = (size_t)sz % 16;
 
-    __int128 *code = (__int128 *)calloc(n + (rem ? 1 : 0), sizeof(__int128));
+    Int128 *code = (Int128 *)calloc(n + (rem ? 1 : 0), sizeof(Int128));
     if (!code) { fclose(f); return 1; }
     fread(code, 1, (size_t)sz, f);
     fclose(f);
@@ -332,7 +333,7 @@ int main(int argc, char *argv[]) {
     for (size_t i = 0; i < n; i++) {
         Instr in;
         memcpy(&in, (uint8_t *)&code[i], 16);
-        __int128 imm = sign_ext_imm((int32_t)in.imm_high, in.imm_low);
+        Int128 imm = sign_ext_imm((int32_t)in.imm_high, in.imm_low);
         print_instr(i, &in, imm, visited ? visited[i] : 0, trace_mode);
     }
 

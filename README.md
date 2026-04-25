@@ -87,7 +87,7 @@ JVAV/
 - **Import system** — Recursive module imports with cyclic import guard
 - **Disassembler** — Static disassembly and dynamic trace mode
 - **Rust-style diagnostics** — Error codes, source snippets, and help messages
-- **Cross-platform** — Linux, Windows (MinGW), macOS; GitHub Actions CI for all three
+- **Cross-platform** — Linux & Windows (x86, x64, ARM, ARM64); GitHub Actions CI with multi-arch matrix
 
 ---
 

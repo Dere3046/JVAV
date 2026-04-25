@@ -2,6 +2,7 @@
 #define LINKER_HPP
 #include "parser.hpp"
 #include "encoder.hpp"
+#include "int128.hpp"
 #include <string>
 #include <vector>
 #include <map>
@@ -18,10 +19,10 @@ private:
         Parser parser;
     };
     std::vector<FileUnit> units;
-    std::map<std::string, __int128> globalEqu;
+    std::map<std::string, Int128> globalEqu;
     std::string error;
 
-    bool extractEqu(const std::vector<std::string> &lines, std::map<std::string, __int128> &out);
+    bool extractEqu(const std::vector<std::string> &lines, std::map<std::string, Int128> &out);
 };
 
 #endif

@@ -4,6 +4,7 @@
 #include <vector>
 #include <memory>
 #include <cstdint>
+#include "int128.hpp"
 
 struct ASTNode;
 struct Type;
@@ -39,8 +40,8 @@ struct Expr {
 };
 
 struct NumberExpr : Expr {
-    __int128 value;
-    NumberExpr(__int128 v, int l) : Expr(EXPR_NUMBER, l), value(v) {}
+    Int128 value;
+    NumberExpr(Int128 v, int l) : Expr(EXPR_NUMBER, l), value(v) {}
 };
 
 struct StringExpr : Expr {
