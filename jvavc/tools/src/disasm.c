@@ -28,6 +28,9 @@ enum {
     OP_CMP,  OP_JMP, OP_JZ,  OP_JNZ,
     OP_PUSH, OP_POP, OP_CALL, OP_RET,
     OP_LDI,
+    OP_JE = 0x11, OP_JNE, OP_JL, OP_JG, OP_JLE, OP_JGE,
+    OP_MOD = 0x17,
+    OP_AND = 0x18, OP_OR, OP_XOR, OP_SHL, OP_SHR, OP_NOT,
     NUM_OPS
 };
 
@@ -41,7 +44,10 @@ static const char *mnemonic[] = {
     "ADD",  "SUB", "MUL", "DIV",
     "CMP",  "JMP", "JZ",  "JNZ",
     "PUSH", "POP", "CALL", "RET",
-    "LDI"
+    "LDI",
+    [0x11]="JE", [0x12]="JNE", [0x13]="JL", [0x14]="JG", [0x15]="JLE", [0x16]="JGE",
+    [0x17]="MOD",
+    [0x18]="AND", [0x19]="OR", [0x1A]="XOR", [0x1B]="SHL", [0x1C]="SHR", [0x1D]="NOT"
 };
 
 /* ---------- helpers ---------- */
@@ -138,11 +144,15 @@ static void trace_run(Int128 *code, size_t ninstr, uint8_t *visited,
         Int128 val1 = 0, val2 = 0, addr = 0;
         if (in.op == OP_LDR || in.op == OP_STR || in.op == OP_ADD ||
             in.op == OP_SUB || in.op == OP_MUL || in.op == OP_DIV ||
-            in.op == OP_CMP || in.op == OP_PUSH) {
+            in.op == OP_CMP || in.op == OP_PUSH ||
+            in.op == OP_AND || in.op == OP_OR || in.op == OP_XOR ||
+            in.op == OP_SHL || in.op == OP_SHR || in.op == OP_NOT) {
             val1 = (in.src1 < NUM_REGS) ? vm->reg[in.src1] : 0;
         }
         if (in.op == OP_ADD || in.op == OP_SUB || in.op == OP_MUL ||
-            in.op == OP_DIV || in.op == OP_CMP) {
+            in.op == OP_DIV || in.op == OP_CMP ||
+            in.op == OP_AND || in.op == OP_OR || in.op == OP_XOR ||
+            in.op == OP_SHL || in.op == OP_SHR) {
             val2 = (in.src2 < NUM_REGS) ? vm->reg[in.src2] : 0;
         }
 
@@ -198,6 +208,30 @@ static void trace_run(Int128 *code, size_t ninstr, uint8_t *visited,
             case OP_LDI:
                 vm->reg[in.dst] = imm;
                 break;
+            case OP_MOD:
+                if (val2 == 0) { *fault_pc = pc; vm->running = 0; }
+                else vm->reg[in.dst] = val1 % val2;
+                break;
+            case OP_JE:  if (vm->reg[FLAGS] == 1) vm->reg[PC] = vm->reg[in.dst]; break;
+            case OP_JNE: if (vm->reg[FLAGS] != 1) vm->reg[PC] = vm->reg[in.dst]; break;
+            case OP_JL:  if (vm->reg[FLAGS] == 2) vm->reg[PC] = vm->reg[in.dst]; break;
+            case OP_JG:  if (vm->reg[FLAGS] == 0) vm->reg[PC] = vm->reg[in.dst]; break;
+            case OP_JLE: if (vm->reg[FLAGS] == 1 || vm->reg[FLAGS] == 2) vm->reg[PC] = vm->reg[in.dst]; break;
+            case OP_JGE: if (vm->reg[FLAGS] == 1 || vm->reg[FLAGS] == 0) vm->reg[PC] = vm->reg[in.dst]; break;
+            case OP_AND: vm->reg[in.dst] = val1 & val2; break;
+            case OP_OR:  vm->reg[in.dst] = val1 | val2; break;
+            case OP_XOR: vm->reg[in.dst] = val1 ^ val2; break;
+            case OP_SHL: {
+                int shift = (int)(long long)(val2 & 127);
+                vm->reg[in.dst] = val1 << shift;
+                break;
+            }
+            case OP_SHR: {
+                int shift = (int)(long long)(val2 & 127);
+                vm->reg[in.dst] = val1 >> shift;
+                break;
+            }
+            case OP_NOT: vm->reg[in.dst] = ~val1; break;
             default:
                 *fault_pc = pc;
                 vm->running = 0;
@@ -248,19 +282,18 @@ static void print_instr(size_t idx, const Instr *in, Int128 imm,
         case OP_STR:
             printf(" [%s], %s", reg_name(in->dst), reg_name(in->src1));
             break;
-        case OP_ADD:
-        case OP_SUB:
-        case OP_MUL:
-        case OP_DIV:
-            printf(" %s, %s, %s", reg_name(in->dst),
-                   reg_name(in->src1), reg_name(in->src2));
-            break;
         case OP_CMP:
             printf(" %s, %s", reg_name(in->src1), reg_name(in->src2));
             break;
         case OP_JMP:
         case OP_JZ:
         case OP_JNZ:
+        case OP_JE:
+        case OP_JNE:
+        case OP_JL:
+        case OP_JG:
+        case OP_JLE:
+        case OP_JGE:
         case OP_CALL:
             printf(" %s", reg_name(in->dst));
             break;
@@ -274,6 +307,22 @@ static void print_instr(size_t idx, const Instr *in, Int128 imm,
             printf(" %s, ", reg_name(in->dst));
             if (imm >= 0 && imm <= 0xFFFF) print_hex_imm(imm);
             else print_imm(imm);
+            break;
+        case OP_MOD:
+        case OP_ADD:
+        case OP_SUB:
+        case OP_MUL:
+        case OP_DIV:
+        case OP_AND:
+        case OP_OR:
+        case OP_XOR:
+        case OP_SHL:
+        case OP_SHR:
+            printf(" %s, %s, %s", reg_name(in->dst),
+                   reg_name(in->src1), reg_name(in->src2));
+            break;
+        case OP_NOT:
+            printf(" %s, %s", reg_name(in->dst), reg_name(in->src1));
             break;
     }
     printf("\n");
