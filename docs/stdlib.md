@@ -24,7 +24,7 @@ Relative imports (e.g. `import "./lib/util.jvl";`) resolve from the source file'
 
 ### `std/io.jvl` — Console Output
 
-Built on top of the VM's memory-mapped I/O ports (`0xFFF0` for `putchar`, `0xFFF2` for `putint`).
+Built on top of the VM's memory-mapped I/O ports (`0xFFF0` putchar, `0xFFF1` getchar, `0xFFF2` putint, `0xFFF3` getint, `0xFFF4` puthex).
 
 | Function | Description | Example Output |
 |----------|-------------|----------------|

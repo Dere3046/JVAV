@@ -237,3 +237,25 @@ var r = &p;                       // OK: immutable borrow
 var s = &mut p;                   // OK: mutable borrow (exclusive)
 var t = &p;                       // ERROR: p is mutably borrowed
 ```
+
+## Diagnostics
+
+The JVL compiler (`jvlc`) emits **Rust-style** error messages with source location, code snippet, and caret underline:
+
+```
+error[E1000]: cannot find value `undefined_var` in this scope
+ --> test.jvl:2:1
+     |
+ 0002 |     var z = undefined_var;
+     | ^
+   = help: declare 'undefined_var' before use
+
+1 error(s) and 0 warning(s) generated
+```
+
+Each diagnostic includes:
+- **Error code** (`E1000+`) or **warning code** (`W2000+`)
+- **File location** (`--> file:line:col`)
+- **Source line** with line number and `|` gutter
+- **Caret underline** (`^`) pointing to the error position
+- **Help message** (`= help: ...`) suggesting a fix

@@ -70,7 +70,7 @@ JVAV/
 ├── jvm/             # Virtual machine executor, C99
 ├── std/             # Standard library (io, math, mem, string)
 ├── benchmark/       # Performance benchmark suite (Python)
-├── tests/           # Automated tests (back: 91, front: 105)
+├── tests/           # Automated tests (back: 98, front: 107)
 └── docs/            # Detailed documentation
 ```
 
@@ -78,7 +78,7 @@ JVAV/
 
 ## Key Features
 
-- **128-bit instruction format** — Every instruction is a fixed 16-byte word
+- **128-bit instruction format** — Every instruction is a fixed 16-byte word, with arithmetic and bitwise operations (AND, OR, XOR, SHL, SHR, NOT)
 - **JVL language** — C-like syntax with functions, variables, control flow, and `import` modules
 - **JVAV assembly** — ARM-like textual assembly with pseudo-instructions
 - **MimiWorld ownership** — Rust-inspired ownership, move, and borrow checking (`&x`, `&mut x`)
@@ -112,8 +112,8 @@ JVAV/
 ctest --output-on-failure
 
 # Or run individual test binaries directly
-./test_back    # 91 backend unit + integration tests
-./test_front   # 105 frontend unit + integration tests
+./test_back    # 98 backend unit + integration tests
+./test_front   # 107 frontend unit + integration tests
 ```
 
 Tests cover:
@@ -122,7 +122,7 @@ Tests cover:
 - **Semantic analysis**: type inference, ownership, borrow conflicts, uninitialized variables, scope
 - **Code generation**: prologue/epilogue, locals, calls, control flow, pointers, strings
 - **Backend**: all instructions, EQU, .global/.extern, DB/DW/DT, #include, encoding, linking
-- **Integration**: end-to-end compile & run for arithmetic, control flow, heap, recursion, imports, global variables, standard library, version flags, missing-stdlib diagnostics
+- **Integration**: end-to-end compile & run for arithmetic, bitwise ops, control flow, heap, recursion, imports, global variables, standard library, version flags, missing-stdlib diagnostics, Rust-style error messages
 
 ---
 
