@@ -1,31 +1,292 @@
-# JVL Frontend Language Syntax
+# JVL Frontend Language Reference
 
-JVL (JVAV Language) is the high-level frontend language of the JVAV platform. It compiles to JVAV assembly (`.jvav`) via the `jvlc` compiler.
+JVL (JVAV Language) is the high-level frontend language of the JVAV platform. It compiles to JVAV assembly (`.jvav`) via `jvlc`, then to binary (`.bin`) via `jvavc`, and finally executes on the `jvm` virtual machine.
 
-## Basic Types
+---
+
+## Basic Syntax
+
+### Program Structure
+
+A JVL program consists of zero or more `import` statements followed by declarations:
+
+```jvl
+import "std/io.jvl";
+import "std/math.jvl";
+
+func add(a: int, b: int): int {
+    return a + b;
+}
+
+func main(): int {
+    putint(add(3, 4));   // 7
+    return 0;
+}
+```
+
+### Comments
+
+```jvl
+// Line comment
+/* Block comment */
+```
+
+---
+
+## Types
 
 | Type | Size | Copy? | Description |
 |------|------|-------|-------------|
-| `int` | 128-bit | Yes | Signed integer (arbitrary precision within 128 bits) |
-| `char` | 128-bit | Yes | Character (word-sized, UTF-8 code unit) |
+| `int` | 128-bit | Yes | Signed integer (full 128-bit range) |
+| `char` | 128-bit | Yes | Character / small integer |
 | `bool` | 128-bit | Yes | Boolean (`true` / `false`) |
-| `void` | — | — | No return value; cannot be used as a variable type |
-| `ptr<T>` | 128-bit | **No** | Pointer to a value of type `T` |
-| `array<T>` | 128-bit | **No** | Dynamic array of elements of type `T` (currently alias for `ptr<T>`) |
+| `void` | — | — | Function return type only |
+| `ptr<T>` | 128-bit | **No** | Pointer to a value of type `T` (Move semantics) |
+| `array<T>` | 128-bit | **No** | Alias for `ptr<T>` |
 
-### Type Derivation and Inference
+### Type Inference
 
-JVL supports **local type inference** for variable declarations:
+Local variables support type inference from their initializer:
 
 ```jvl
-var x: int = 5;       // explicit type annotation
-var y = 3;            // inferred as `int` from the initializer
-var z = true;         // inferred as `bool`
+var x: int = 5;       // explicit
+var y = 3;            // inferred as int
+var z = true;         // inferred as bool
+var c = 'A';          // inferred as char
 ```
 
-### String Literals
+Inference is **not** supported for:
+- Function parameters (must be annotated)
+- Function return types (must be annotated)
+- Empty initializers (`var x;` is invalid)
 
-String literals support C-style escape sequences:
+### Type Compatibility
+
+JVL uses weak numeric coercion for builtins but is otherwise strictly typed:
+
+| Assignment | Allowed? |
+|------------|----------|
+| `int` ← `int` | ✓ |
+| `int` ← `char` | ✓ (weak coercion) |
+| `int` ← `bool` | ✓ (weak coercion) |
+| `ptr<T>` ← `ptr<T>` | ✓ |
+| `ptr<T>` ← `ptr<U>` (T≠U) | ✗ |
+| `void` as variable type | ✗ |
+
+---
+
+## Variables and Constants
+
+```jvl
+var x: int = 10;           // mutable variable
+const PI = 3;              // compile-time constant (no type annotation needed)
+```
+
+Variables must be initialized at declaration. `const` values are inlined at compile time.
+
+---
+
+## Operators
+
+### Precedence (highest to lowest)
+
+| Precedence | Operators | Associativity |
+|------------|-----------|---------------|
+| 1 (highest) | `-x`, `!x`, `~x`, `&x`, `&mut x` | Right |
+| 2 | `*`, `/`, `%` | Left |
+| 3 | `+`, `-` | Left |
+| 4 | `<<`, `>>` | Left |
+| 5 | `<`, `>`, `<=`, `>=` | Left |
+| 6 | `==`, `!=` | Left |
+| 7 | `&` (bitwise) | Left |
+| 8 | `^` | Left |
+| 9 | `\|` | Left |
+| 10 | `&&` | Left |
+| 11 | `\|\|` | Left |
+| 12 (lowest) | `=` | Right |
+
+### Operator Reference
+
+| Operator | Description |
+|----------|-------------|
+| `+` `-` `*` `/` `%` | Arithmetic |
+| `&` `\|` `^` `~` `<<` `>>` | Bitwise |
+| `==` `!=` `<` `>` `<=` `>=` | Comparison |
+| `&&` `\|\|` `!` | Logical |
+| `=` | Assignment |
+| `&x` | Immutable borrow |
+| `&mut x` | Mutable borrow |
+
+---
+
+## Control Flow
+
+### If / Else
+
+```jvl
+if (x > 0) {
+    putint(x);
+} else if (x < 0) {
+    putint(-x);
+} else {
+    putchar(48);   // '0'
+}
+```
+
+### While Loop
+
+```jvl
+var i = 0;
+while (i < 10) {
+    putint(i);
+    i = i + 1;
+}
+```
+
+### For Loop
+
+```jvl
+for (var i = 0; i < 10; i = i + 1) {
+    putint(i);
+}
+```
+
+The `for` loop consists of three parts separated by `;`:
+1. **Init**: executed once before the loop (`var i = 0`)
+2. **Condition**: checked before each iteration (`i < 10`)
+3. **Step**: executed after each iteration (`i = i + 1`)
+
+All three parts are optional. `for (;;) { ... }` creates an infinite loop.
+
+---
+
+## Functions
+
+### Declaration
+
+```jvl
+func name(param: type): return_type {
+    // body
+    return value;
+}
+```
+
+Functions with `void` return type omit the return value:
+
+```jvl
+func greet(): void {
+    putstr("Hello", 5);
+}
+```
+
+### Parameters and Arguments
+
+Arguments are passed by value. For non-Copy types (`ptr<T>`), this means **Move** semantics:
+
+```jvl
+func consume(p: ptr<int>): void {
+    free(p);
+}
+
+func main(): int {
+    var p: ptr<int> = alloc(1);
+    consume(p);      // p is moved into consume
+    // p is invalid here
+    return 0;
+}
+```
+
+### Return Statement
+
+`return` is required in all non-void functions. The compiler checks that all code paths return a value.
+
+---
+
+## Built-in Functions
+
+These functions are recognized by the compiler and do not need to be declared or imported:
+
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `putint(x)` | `func putint(x: int): int` | Print signed integer to stdout |
+| `putchar(c)` | `func putchar(c: int): void` | Print low byte as ASCII character |
+| `getint()` | `func getint(): int` | Read integer from stdin |
+| `getchar()` | `func getchar(): int` | Read character from stdin |
+| `alloc(n)` | `func alloc(n: int): ptr<int>` | Allocate `n` 128-bit words on heap |
+| `free(p)` | `func free(p: ptr<int>): void` | Release heap allocation |
+| `exit(code)` | `func exit(code: int): void` | Terminate with exit code |
+| `putstr(s, n)` | `func putstr(s: ptr<int>, n: int): void` | Print `n` chars from memory address |
+
+**Note:** `getint()` and `getchar()` are available at the assembly level but are not currently exposed as JVL builtins (they exist in the `.syscall` wrappers but are not registered in the semantic analyzer). To use them from JVL, declare them manually:
+
+```jvl
+extern func getint(): int;
+extern func getchar(): int;
+```
+
+### Standard Library Functions
+
+Import via `import "std/xxx.jvl"`:
+
+```jvl
+import "std/io.jvl";      // println, print_newline, print_space, putstr, exit
+import "std/math.jvl";    // abs, max, min, clamp, pow
+import "std/mem.jvl";     // memcpy, memset
+import "std/string.jvl";  // str_putn
+```
+
+Standard library functions are regular JVL functions that compose built-in operations.
+
+---
+
+## Pointers and Heap Allocation
+
+```jvl
+var p: ptr<int> = alloc(3);   // allocate 3 words
+p[0] = 10;
+p[1] = 20;
+p[2] = 30;
+putint(p[0] + p[1] + p[2]);   // 60
+free(p);
+```
+
+Pointer arithmetic is **not** supported. Use array indexing `p[i]`.
+
+### Ownership Rules
+
+- `alloc()` returns a unique owner
+- Assigning a pointer moves ownership
+- `free()` consumes ownership
+- Using a moved pointer is a compile error
+
+See `mimiworld_ownership.md` for full details.
+
+---
+
+## Import System
+
+```jvl
+import "std/io.jvl";
+import "relative/path.jvl";
+```
+
+Import resolution:
+1. If the path is absolute, use it directly
+2. If relative, resolve relative to the importing file's directory
+3. If not found, search alongside the compiler executable (`../std/`)
+4. If still not found, produce error E0300 (cannot find standard library)
+
+Imported files are parsed and their top-level declarations become available in the importing module. There is no namespacing — all declarations share a global namespace.
+
+---
+
+## String Literals
+
+```jvl
+var s = "Hello, World!";
+```
+
+String literals support C-style escapes:
 
 | Escape | Meaning |
 |--------|---------|
@@ -36,230 +297,85 @@ String literals support C-style escape sequences:
 | `\"` | double quote |
 | `\xNN` | byte with hex value `NN` |
 
-Inference rules:
-- Integer literals → `int`
-- Boolean literals → `bool`
-- Character literals → `char`
-- `alloc(n)` → `ptr<int>`
-
-Type inference is **not** supported for:
-- Function parameters (must be annotated)
-- Function return types (must be annotated)
-- Empty initializers (`var x;` is invalid)
-
-### Type Compatibility
-
-JVL uses **nominal typing** with strict compatibility rules:
-
-| Context | Allowed |
-|---------|---------|
-| `int` ← `int` | ✓ |
-| `int` ← `bool` | ✗ (no implicit conversion) |
-| `int` ← `char` | ✗ (no implicit conversion) |
-| `ptr<T>` ← `ptr<T>` | ✓ |
-| `ptr<T>` ← `ptr<U>` where T ≠ U | ✗ |
-| `array<T>` ← `ptr<T>` | ✓ (alias) |
-
-There are **no implicit conversions** between types. Use explicit casts via built-in functions if needed.
-
-### `void` Restrictions
-
-`void` is only valid as a **function return type**:
+**Important:** In the JVAV VM, strings are stored as word arrays (one character per 128-bit word). Passing a string to `putstr` requires the length in characters:
 
 ```jvl
-func foo(): void {          // OK
-    putint(1);
-}
-
-// The following are INVALID:
-// var x: void;             // ERROR: void cannot be used as a variable type
-// func bar(x: void): int;  // ERROR: void parameter
-// ptr<void>                // ERROR: void pointee
+var msg = "Hi!";
+putstr(msg, 3);
 ```
 
-### Pointer Types `ptr<T>`
-
-A pointer stores a memory address (128-bit word address in the JVAV VM):
-
-```jvl
-var p: ptr<int> = alloc(3);     // p points to 3 words of heap memory
-p[0] = 10;                       // dereference and store
-p[1] = 20;
-putint(p[0] + p[1]);             // prints 30
-free(p);                         // release ownership
-```
-
-Pointer arithmetic is **not supported** directly; use array indexing `p[i]`.
-
-### Array Types `array<T>`
-
-`array<T>` is currently an alias for `ptr<T>` in the JVAV toolchain:
-
-```jvl
-var arr: array<int> = alloc(5);  // same as ptr<int>
-arr[0] = 1;
-arr[1] = 2;
-```
-
-Future versions may add length tracking and bounds checking.
-
-## Variables & Constants
-
-```jvl
-var x: int = 5;       // mutable variable
-var y = 3;            // type inferred as int
-const MAX = 100;      // compile-time constant (inferred type, immutable)
-```
-
-All variables must be initialized at declaration. Uninitialized variables are rejected by the semantic analyzer.
-
-## Functions
-
-```jvl
-func add(a: int, b: int): int {
-    return a + b;
-}
-
-func main(): int {
-    return add(3, 5);
-}
-```
-
-Function parameters are passed by value:
-- **Copy types** (`int`, `char`, `bool`): the value is copied
-- **Move types** (`ptr<T>`, `array<T>`): ownership is transferred to the callee
-
-## Control Flow
-
-```jvl
-if (x > 0) {
-    putint(x);
-} else {
-    putint(-x);
-}
-
-while (i < 10) {
-    i = i + 1;
-}
-
-for (var i = 0; i < 10; i = i + 1) {
-    putint(i);
-}
-```
-
-## Operators
-
-| Precedence | Operators | Associativity |
-|------------|-----------|---------------|
-| 1 (lowest) | `=` | Right |
-| 2 | `\|\|` | Left |
-| 3 | `&&` | Left |
-| 4 | `\|`, `^`, `&` | Left | bitwise OR, XOR, AND |
-| 5 | `==`, `!=` | Left | equality |
-| 6 | `<`, `>`, `<=`, `>=` | Left | comparison |
-| 7 | `<<`, `>>` | Left | shift left, shift right |
-| 8 | `+`, `-` | Left | addition, subtraction |
-| 9 | `*`, `/`, `%` | Left | multiplication, division, modulo |
-| 10 (highest) | unary `-`, `!`, `~` | Right | negation, logical NOT, bitwise NOT |
-| borrow | `&expr`, `&mut expr` | — | immutable / mutable borrow (not an arithmetic operator) |
-
-## Import Modules
-
-```jvl
-import "math.jvl";
-
-func main(): int {
-    return factorial(5);
-}
-```
-
-- Relative paths are resolved from the source file's directory
-- The `std/` directory at the project root is automatically searched; `import "std/io.jvl";` works from any source file
-- Cyclic imports are silently deduplicated
-
-## Built-in Functions
-
-| Function | Signature | Description |
-|----------|-----------|-------------|
-| `putint(x)` | `func putint(x: int): int` | Print integer to stdout |
-| `putchar(c)` | `func putchar(c: int): void` | Print character to stdout |
-| `alloc(n)` | `func alloc(size: int): ptr<int>` | Allocate `size` words on the heap |
-| `free(p)` | `func free(p: ptr<int>): void` | Release heap allocation (consumes ownership) |
-
-## Standard Library
-
-The JVAV standard library resides in the `std/` directory at the project root. Import via `import "std/xxx.jvl";` — jvlc automatically resolves the `std/` path relative to the project root.
-
-### `std/io.jvl`
-
-| Function | Signature | Description |
-|----------|-----------|-------------|
-| `println(x)` | `func println(x: int): void` | Print integer followed by newline |
-| `print_newline()` | `func print_newline(): void` | Print newline (`\n`) |
-| `print_space()` | `func print_space(): void` | Print space (` `) |
-
-### `std/math.jvl`
-
-| Function | Signature | Description |
-|----------|-----------|-------------|
-| `abs(x)` | `func abs(x: int): int` | Absolute value |
-| `max(a, b)` | `func max(a: int, b: int): int` | Maximum of two integers |
-| `min(a, b)` | `func min(a: int, b: int): int` | Minimum of two integers |
-| `clamp(x, lo, hi)` | `func clamp(x: int, lo: int, hi: int): int` | Clamp to range `[lo, hi]` |
-| `pow(base, exp)` | `func pow(base: int, exp: int): int` | Integer power |
-
-### `std/mem.jvl`
-
-| Function | Signature | Description |
-|----------|-----------|-------------|
-| `memcpy(dst, src, n)` | `func memcpy(dst: ptr<int>, src: ptr<int>, n: int): void` | Copy `n` words from `src` to `dst` |
-| `memset(p, val, n)` | `func memset(p: ptr<int>, val: int, n: int): void` | Set `n` words starting at `p` to `val` |
-
-### `std/string.jvl`
-
-| Function | Signature | Description |
-|----------|-----------|-------------|
-| `str_putn(s, n)` | `func str_putn(s: ptr<char>, n: int): void` | Print first `n` characters of string `s` |
+There is **no null terminator**. Always pass the length explicitly.
 
 ---
 
-## MimiWorld Ownership in JVL
-
-JVL features a **MimiWorld** ownership system inspired by Rust. See [mimiworld_ownership.md](mimiworld_ownership.md) for full details.
-
-Quick reference:
+## Borrow Expressions
 
 ```jvl
-var p: ptr<int> = alloc_int();   // p owns the allocation
-var q = p;                        // ERROR: p has been moved
+func read(p: &int): int {
+    return p[0];
+}
 
-var r = &p;                       // OK: immutable borrow
-var s = &mut p;                   // OK: mutable borrow (exclusive)
-var t = &p;                       // ERROR: p is mutably borrowed
+func write(p: &mut int): void {
+    p[0] = 42;
+}
+
+func main(): int {
+    var x = 10;
+    read(&x);        // immutable borrow
+    write(&mut x);   // mutable borrow
+    return 0;
+}
 ```
 
-## Diagnostics
+Borrowing rules (enforced at compile time):
+- Multiple immutable borrows (`&x`) are allowed simultaneously
+- Only one mutable borrow (`&mut x`) is allowed at a time
+- Cannot borrow mutably while any borrow (mutable or immutable) exists
+- Borrowed value cannot be moved or accessed directly during the borrow
 
-The JVL compiler (`jvlc`) emits **Rust-style** error messages with source location, code snippet, and caret underline:
+---
 
+## Error Codes
+
+The compiler emits Rust-style diagnostics with error codes:
+
+| Code Range | Category |
+|------------|----------|
+| E0100–E0199 | Lexer errors (invalid characters, unterminated strings, etc.) |
+| E0200–E0299 | Parser errors (missing semicolons, mismatched braces, etc.) |
+| E0300–E0399 | I/O errors (file not found, import resolution, etc.) |
+| E1000+ | Semantic errors (undefined variables, type mismatches, ownership violations, etc.) |
+
+Each error includes:
+- Error code and message
+- File location (`--> file.jvl:line:col`)
+- Source snippet with context lines
+- `^` caret underline pointing to the error position
+- Help/note text where applicable
+
+---
+
+## Complete Example
+
+```jvl
+import "std/io.jvl";
+import "std/math.jvl";
+
+func factorial(n: int): int {
+    if (n <= 1) {
+        return 1;
+    }
+    return n * factorial(n - 1);
+}
+
+func main(): int {
+    println(factorial(5));        // 120
+    
+    var msg = "JVAV";
+    putstr(msg, 4);               // JVAV
+    print_newline();
+    
+    exit(0);
+    return 0;
+}
 ```
-error[E1000]: cannot find value `undefined_var` in this scope
- --> test.jvl:3:9
-  |
-2 | func main(): int {
-3 |     var z = undefined_var;
-  |         ^
-4 |     return 0;
-  |
-   = help: declare 'undefined_var' before use
-
-1 error(s) and 0 warning(s) generated
-```
-
-Each diagnostic includes:
-- **Error code** (`E1000+`) or **warning code** (`W2000+`)
-- **File location** (`--> file:line:col`)
-- **Context lines** (1 line before and after the error)
-- **Source line** with line number and `|` gutter
-- **Caret underline** (`^`) pointing to the error position
-- **Help message** (`= help: ...`) suggesting a fix
