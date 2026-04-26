@@ -72,7 +72,9 @@ enum {
     SYS_PUTCHAR,         /* ARG0=char_code -> RET=0 */
     SYS_PUTINT,          /* ARG0=integer -> RET=0 */
     SYS_GETCHAR,         /* RET=char_code or -1 */
-    SYS_GETINT           /* RET=integer or -1 */
+    SYS_GETINT,          /* RET=integer or -1 */
+    SYS_EXIT,            /* ARG0=exit_code -> stops VM */
+    SYS_PUTSTR           /* ARG0=addr, ARG1=len -> RET=0 */
 };
 
 typedef struct {
@@ -103,6 +105,8 @@ typedef struct {
     mmap_entry_t mmap_table[MAX_MMAP];
     /* file descriptor table for raw file ops */
     FILE *fd_table[MAX_FD];
+    /* program exit code (set by SYS_EXIT) */
+    int exit_code;
 } JVM;
 
 void jvm_init(JVM *vm);

@@ -262,6 +262,12 @@ bool Parser::parseLine(const string &line, int lineNum) {
         addInstr("PUSH", {regOp(6)});
         // MOV R6, SP
         addInstr("MOV", {regOp(6), regOp(9)});
+        // Save register args to stack slots (matches user-function calling convention)
+        for (int i = 0; i < arg_count && i < 4; i++) {
+            addInstr("LDI", {regOp(4), immOp(i + 2)});
+            addInstr("ADD", {regOp(4), regOp(6), regOp(4)});
+            addInstr("STR", {memRegOp(4), regOp(i)});
+        }
         // Args -> syscall mailbox
         for (int i = 0; i < arg_count; i++) {
             int mailbox = 0xFFE1 + i;
