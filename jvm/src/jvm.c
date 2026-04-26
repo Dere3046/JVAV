@@ -20,38 +20,7 @@ static int ensure_mem(JVM *vm, var addr) {
     return 0;
 }
 
-/* ---------- I/O ---------- */
-
-static void io_write_legacy(var addr, var val) {
-    if (addr == IO_ADDR_PUTCHAR) {
-        putchar((int)(val & 0xFF));
-        fflush(stdout);
-    } else if (addr == IO_ADDR_PUTINT) {
-        char buf[64];
-        int len = 0;
-        var v = val;
-        if (v < 0) { putchar('-'); v = -v; }
-        do { buf[len++] = '0' + (char)(long long)(v % 10); v /= 10; } while (v > 0);
-        while (len--) putchar(buf[len]);
-        fflush(stdout);
-    } else if (addr == IO_ADDR_PUTHEX) {
-        printf("0x%016llx%016llx", (unsigned long long)(val >> 64), (unsigned long long)val);
-        fflush(stdout);
-    }
-}
-
-static var io_read_legacy(var addr) {
-    if (addr == IO_ADDR_GETCHAR) {
-        int c = getchar();
-        return (c == EOF) ? -1 : c;
-    }
-    if (addr == IO_ADDR_GETINT) {
-        long long v = 0;
-        scanf("%lld", &v);
-        return (var)v;
-    }
-    return 0;
-}
+/* ---------- I/O (via syscalls only) ---------- */
 
 /* ---------- mmap ---------- */
 
@@ -261,9 +230,36 @@ static void syscall_dispatch(JVM *vm, var cmd) {
                 fprintf(stderr, "Invalid free address %lld\n", (long long)addr);
                 vm->syscall_ret = -1; break;
             }
-            // Tombstone the first word for debugging
             vm->mem[(size_t)addr] = (var)0xDEAD;
             vm->syscall_ret = 0;
+            break;
+        }
+        case SYS_PUTCHAR: {
+            putchar((int)(long long)(a0 & 0xFF));
+            fflush(stdout);
+            vm->syscall_ret = 0;
+            break;
+        }
+        case SYS_PUTINT: {
+            char buf[64];
+            int len = 0;
+            var v = a0;
+            if (v < 0) { putchar('-'); v = -v; }
+            do { buf[len++] = '0' + (char)(long long)(v % 10); v /= 10; } while (v > 0);
+            while (len--) putchar(buf[len]);
+            fflush(stdout);
+            vm->syscall_ret = 0;
+            break;
+        }
+        case SYS_GETCHAR: {
+            int c = getchar();
+            vm->syscall_ret = (c == EOF) ? -1 : c;
+            break;
+        }
+        case SYS_GETINT: {
+            long long v = 0;
+            scanf("%lld", &v);
+            vm->syscall_ret = (var)v;
             break;
         }
         default:
@@ -279,8 +275,6 @@ static var io_read(JVM *vm, var addr) {
     if (addr == SYSCALL_ARG1) return vm->syscall_arg1;
     if (addr == SYSCALL_ARG2) return vm->syscall_arg2;
     if (addr == SYSCALL_RET)  return vm->syscall_ret;
-    if (addr == IO_ADDR_GETCHAR || addr == IO_ADDR_GETINT)
-        return io_read_legacy(addr);
     return 0;
 }
 
@@ -292,8 +286,21 @@ static void io_write(JVM *vm, var addr, var val) {
     if (addr == SYSCALL_ARG0) { vm->syscall_arg0 = val; return; }
     if (addr == SYSCALL_ARG1) { vm->syscall_arg1 = val; return; }
     if (addr == SYSCALL_ARG2) { vm->syscall_arg2 = val; return; }
-    if (addr == IO_ADDR_PUTCHAR || addr == IO_ADDR_PUTINT || addr == IO_ADDR_PUTHEX)
-        io_write_legacy(addr, val);
+    /* Legacy I/O ports for backward compatibility in hand-written assembly */
+    if (addr == 0xFFF0) {
+        putchar((int)(long long)(val & 0xFF));
+        fflush(stdout);
+        return;
+    }
+    if (addr == 0xFFF2) {
+        char buf[64]; int len = 0;
+        var v = val;
+        if (v < 0) { putchar('-'); v = -v; }
+        do { buf[len++] = '0' + (char)(long long)(v % 10); v /= 10; } while (v > 0);
+        while (len--) putchar(buf[len]);
+        fflush(stdout);
+        return;
+    }
 }
 
 /* ---------- public API ---------- */
@@ -386,8 +393,7 @@ void jvm_run(JVM *vm) {
                     mmap_entry_t *ent = find_mmap(vm, addr);
                     if (ent) {
                         vm->reg[dst] = mmap_read(vm, ent, addr);
-                    } else if ((addr >= IO_ADDR_PUTCHAR && addr <= IO_ADDR_PUTHEX) ||
-                               (addr >= SYSCALL_CMD && addr <= SYSCALL_RET)) {
+                    } else if ((addr >= SYSCALL_CMD && addr <= SYSCALL_RET) || addr == 0xFFF0 || addr == 0xFFF2) {
                         vm->reg[dst] = io_read(vm, addr);
                     } else {
                         if (ensure_mem(vm, addr) == 0)
@@ -401,8 +407,7 @@ void jvm_run(JVM *vm) {
                     mmap_entry_t *ent = find_mmap(vm, addr);
                     if (ent) {
                         mmap_write(vm, ent, addr, val1);
-                    } else if ((addr >= IO_ADDR_PUTCHAR && addr <= IO_ADDR_PUTHEX) ||
-                               (addr >= SYSCALL_CMD && addr <= SYSCALL_RET)) {
+                    } else if ((addr >= SYSCALL_CMD && addr <= SYSCALL_RET) || addr == 0xFFF0 || addr == 0xFFF2) {
                         io_write(vm, addr, val1);
                     } else {
                         if (ensure_mem(vm, addr) == 0)

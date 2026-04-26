@@ -101,7 +101,9 @@ bool Encoder::encodeInstruction(const Instruction& instr) {
                 if (it==labelMap->end()) { error="Undefined label: "+ops[memIdx].label; return false; }
                 addr = it->second;
             }
-            int tr = allocTempReg({});
+            std::set<int> used;
+            if (ops[regIdx].reg >= 0) used.insert(ops[regIdx].reg);
+            int tr = allocTempReg(used);
             if (tr<0) { error="No free register for mem address expansion"; return false; }
             emit(buildInstr(0x10, tr, 0x80, 0, addr));
             if (op==0x02) {

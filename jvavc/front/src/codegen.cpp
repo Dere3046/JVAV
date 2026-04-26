@@ -376,38 +376,6 @@ void CodeGenerator::genExpr(shared_ptr<Expr> e, int destReg) {
                 name = dynamic_pointer_cast<IdentExpr>(c->callee)->name;
             }
 
-            // Special handling for built-in I/O
-            if (name == "putint" || name == "putchar") {
-                if (!c->args.empty()) {
-                    genExpr(c->args[0], 0);
-                }
-                string addr = (name == "putint") ? "0xFFF2" : "0xFFF0";
-                emit("    STR [" + addr + "], R0");
-                break;
-            }
-            // Special handling for alloc / free (heap syscalls)
-            if (name == "alloc") {
-                if (!c->args.empty()) {
-                    genExpr(c->args[0], 0);
-                } else {
-                    emit("    LDI R0, 1");  // default alloc 1 word
-                }
-                emit("    STR [0xFFE1], R0");   // SYSCALL_ARG0
-                emit("    LDI R0, 12");          // SYS_MALLOC
-                emit("    STR [0xFFE0], R0");   // SYSCALL_CMD
-                emit("    LDR R0, [0xFFE4]");   // SYSCALL_RET -> R0
-                break;
-            }
-            if (name == "free") {
-                if (!c->args.empty()) {
-                    genExpr(c->args[0], 0);
-                }
-                emit("    STR [0xFFE1], R0");   // SYSCALL_ARG0
-                emit("    LDI R0, 13");          // SYS_FREE
-                emit("    STR [0xFFE0], R0");   // SYSCALL_CMD
-                break;
-            }
-
             // Save args to stack
             int n = (int)c->args.size();
             for (auto &arg : c->args) {
@@ -551,6 +519,14 @@ string CodeGenerator::generate(shared_ptr<Program> prog, const string &bp) {
     emit("    HALT");
 
     genProgram(prog);
+
+    // Built-in syscall wrappers (standard library foundation)
+    emit("    .syscall putchar, 14, 1");
+    emit("    .syscall putint, 15, 1");
+    emit("    .syscall getchar, 16, 0");
+    emit("    .syscall getint, 17, 0");
+    emit("    .syscall alloc, 12, 1");
+    emit("    .syscall free, 13, 1");
 
     // Append string literals
     if (!stringLabels.empty()) {

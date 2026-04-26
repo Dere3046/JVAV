@@ -12,12 +12,16 @@ int test_integration_main() {
     LDI R2, 10
     LDI R3, 1
     LDI R4, 0
-    LDI R5, 0xFFF2
-    LDI R6, 0xFFF0
 fib:
-    STR [R5], R0
+    STR [0xFFE1], R0
+    LDI R7, 15
+    STR [0xFFE0], R7
+    LDR R7, [0xFFE4]
     LDI R7, 32
-    STR [R6], R7
+    STR [0xFFE1], R7
+    LDI R7, 14
+    STR [0xFFE0], R7
+    LDR R7, [0xFFE4]
     ADD R7, R0, R1
     MOV R0, R1
     MOV R1, R7
@@ -25,7 +29,10 @@ fib:
     CMP R2, R4
     JNZ fib
     LDI R7, 10
-    STR [R6], R7
+    STR [0xFFE1], R7
+    LDI R7, 14
+    STR [0xFFE0], R7
+    LDR R7, [0xFFE4]
     HALT
 )";
     std::ofstream("test_fib.jvav") << src;
@@ -47,10 +54,12 @@ fib:
     LDI R1, 14
     LDI R2, 1
     LDI R4, 0
-    LDI R6, 0xFFF0
 pstr:
     LDR R7, [R0]
-    STR [R6], R7
+    STR [0xFFE1], R7
+    LDI R7, 14
+    STR [0xFFE0], R7
+    LDR R7, [0xFFE4]
     ADD R0, R0, R2
     SUB R1, R1, R2
     CMP R1, R4
@@ -95,7 +104,10 @@ msg: DB 72,101,108,108,111,44,32,87,111,114,108,100,33,10
     ADD R2, R0, 2
     LDR R2, [R2]
     ADD R1, R1, R2
-    STR [0xFFF2], R1      ; putint(sum = 24)
+    STR [0xFFE1], R1      ; arg0 = sum
+    LDI R7, 15
+    STR [0xFFE0], R7      ; SYS_PUTINT
+    LDR R7, [0xFFE4]
     ; Free
     STR [0xFFE1], R0
     LDI R0, 13
@@ -780,6 +792,179 @@ _start:
     std::remove("test_bitops.bin");
     std::remove("test_bitops.out");
     test_passed("integration_bitops");
+
+    /* ---------- .syscall edge cases ---------- */
+
+    test_header("integration_syscall_arg0");
+    src = R"(
+    .global _start
+_start:
+    HALT
+    .syscall getchar, 16, 0
+)";
+    std::ofstream("test_sc0.jvav") << src;
+    ret = system(JVAVC_BACK_EXE " test_sc0.jvav test_sc0.bin");
+    TEST_ASSERT(ret == 0, "syscall arg0 compile failed");
+    std::remove("test_sc0.jvav");
+    std::remove("test_sc0.bin");
+    test_passed("integration_syscall_arg0");
+
+    test_header("integration_syscall_arg1");
+    src = R"(
+    .global _start
+_start:
+    LDI R0, 123
+    PUSH R0
+    LDI R4, 0
+    ADD R4, SP, R4
+    LDR R0, [R4]
+    CALL putint
+    LDI R4, 1
+    ADD SP, SP, R4
+    HALT
+    .syscall putint, 15, 1
+)";
+    std::ofstream("test_sc1.jvav") << src;
+    ret = system(JVAVC_BACK_EXE " test_sc1.jvav test_sc1.bin");
+    TEST_ASSERT(ret == 0, "syscall arg1 compile failed");
+    ret = system(JVM_EXE " test_sc1.bin > test_sc1.out 2>&1");
+    TEST_ASSERT(ret == 0, "syscall arg1 execution failed");
+    {
+        std::ifstream out_sc1("test_sc1.out");
+        std::string output_sc1((std::istreambuf_iterator<char>(out_sc1)), std::istreambuf_iterator<char>());
+        TEST_ASSERT(output_sc1 == "123", "syscall arg1 output");
+    }
+    std::remove("test_sc1.jvav");
+    std::remove("test_sc1.bin");
+    std::remove("test_sc1.out");
+    test_passed("integration_syscall_arg1");
+
+    test_header("integration_syscall_arg2");
+    src = R"(
+    .global _start
+_start:
+    LDI R0, 77
+    PUSH R0
+    CALL putint
+    LDI R4, 1
+    ADD SP, SP, R4
+    HALT
+    .syscall putint, 15, 1
+    .syscall getchar, 16, 0
+    .syscall alloc, 12, 1
+)";
+    std::ofstream("test_sc2.jvav") << src;
+    ret = system(JVAVC_BACK_EXE " test_sc2.jvav test_sc2.bin");
+    TEST_ASSERT(ret == 0, "syscall arg2 compile failed");
+    ret = system(JVM_EXE " test_sc2.bin > test_sc2.out 2>&1");
+    TEST_ASSERT(ret == 0, "syscall arg2 execution failed");
+    {
+        std::ifstream out_sc2("test_sc2.out");
+        std::string output_sc2((std::istreambuf_iterator<char>(out_sc2)), std::istreambuf_iterator<char>());
+        TEST_ASSERT(output_sc2 == "77", "syscall arg2 output");
+    }
+    std::remove("test_sc2.jvav");
+    std::remove("test_sc2.bin");
+    std::remove("test_sc2.out");
+    test_passed("integration_syscall_arg2");
+
+    test_header("integration_syscall_arg3");
+    src = R"(
+    .global _start
+_start:
+    LDI R0, 65
+    PUSH R0
+    CALL putchar
+    LDI R4, 1
+    ADD SP, SP, R4
+    LDI R0, 88
+    PUSH R0
+    CALL putint
+    LDI R4, 1
+    ADD SP, SP, R4
+    HALT
+    .syscall putchar, 14, 1
+    .syscall putint, 15, 1
+    .syscall getchar, 16, 0
+    .syscall getint, 17, 0
+)";
+    std::ofstream("test_sc3.jvav") << src;
+    ret = system(JVAVC_BACK_EXE " test_sc3.jvav test_sc3.bin");
+    TEST_ASSERT(ret == 0, "syscall arg3 compile failed");
+    ret = system(JVM_EXE " test_sc3.bin > test_sc3.out 2>&1");
+    TEST_ASSERT(ret == 0, "syscall arg3 execution failed");
+    {
+        std::ifstream out_sc3("test_sc3.out");
+        std::string output_sc3((std::istreambuf_iterator<char>(out_sc3)), std::istreambuf_iterator<char>());
+        TEST_ASSERT(output_sc3 == "A88", "syscall arg3 output");
+    }
+    std::remove("test_sc3.jvav");
+    std::remove("test_sc3.bin");
+    std::remove("test_sc3.out");
+    test_passed("integration_syscall_arg3");
+
+    test_header("integration_syscall_bad_arg_count");
+    src = R"(
+    .syscall bad, 1, -1
+    HALT
+)";
+    std::ofstream("test_sc_bad.jvav") << src;
+    ret = system(JVAVC_BACK_EXE " test_sc_bad.jvav test_sc_bad.bin > test_sc_bad.out 2>&1");
+    TEST_ASSERT(ret != 0, "syscall bad arg_count should fail");
+    {
+        std::ifstream out_bad("test_sc_bad.out");
+        std::string msg((std::istreambuf_iterator<char>(out_bad)), std::istreambuf_iterator<char>());
+        TEST_ASSERT(msg.find("arg_count") != std::string::npos || msg.find("Bad") != std::string::npos, "expected arg_count error");
+    }
+    std::remove("test_sc_bad.jvav");
+    std::remove("test_sc_bad.bin");
+    std::remove("test_sc_bad.out");
+    test_passed("integration_syscall_bad_arg_count");
+
+    test_header("integration_syscall_too_many_args");
+    src = R"(
+    .syscall bad, 1, 4
+    HALT
+)";
+    std::ofstream("test_sc_4.jvav") << src;
+    ret = system(JVAVC_BACK_EXE " test_sc_4.jvav test_sc_4.bin > test_sc_4.out 2>&1");
+    TEST_ASSERT(ret != 0, "syscall too many args should fail");
+    {
+        std::ifstream out_4("test_sc_4.out");
+        std::string msg((std::istreambuf_iterator<char>(out_4)), std::istreambuf_iterator<char>());
+        TEST_ASSERT(msg.find("0..3") != std::string::npos || msg.find("arg_count") != std::string::npos, "expected 0..3 error");
+    }
+    std::remove("test_sc_4.jvav");
+    std::remove("test_sc_4.bin");
+    std::remove("test_sc_4.out");
+    test_passed("integration_syscall_too_many_args");
+
+    test_header("integration_syscall_with_user_func");
+    src = R"(
+    .global _start
+_start:
+    LDI R0, 99
+    PUSH R0
+    CALL putint
+    LDI R4, 1
+    ADD SP, SP, R4
+    HALT
+    .syscall putint, 15, 1
+)";
+    std::ofstream("test_sc_mix.jvav") << src;
+    ret = system(JVAVC_BACK_EXE " test_sc_mix.jvav test_sc_mix.bin");
+    TEST_ASSERT(ret == 0, "syscall mix compile failed");
+    ret = system(JVM_EXE " test_sc_mix.bin > test_sc_mix.out 2>&1");
+    TEST_ASSERT(ret == 0, "syscall mix execution failed");
+    {
+        std::ifstream out_mix("test_sc_mix.out");
+        std::string output_mix((std::istreambuf_iterator<char>(out_mix)), std::istreambuf_iterator<char>());
+        TEST_ASSERT(output_mix == "99", "syscall mix output");
+    }
+    std::remove("test_sc_mix.jvav");
+    std::remove("test_sc_mix.bin");
+    std::remove("test_sc_mix.out");
+    test_passed("integration_syscall_with_user_func");
 
     return 0;
 }
