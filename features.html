@@ -40,6 +40,7 @@
             <ul>
                 <li><a href="#isa"><span data-lang="zh">128-bit ISA</span><span data-lang="en">128-bit ISA</span></a></li>
                 <li><a href="#syscall">.syscall</a></li>
+                <li><a href="#custom-syscall"><span class="active" data-lang="zh">自定义 syscall</span><span data-lang="en">Custom Syscall</span></a></li>
                 <li><a href="#jvl"><span data-lang="zh">JVL 语言</span><span data-lang="en">JVL Language</span></a></li>
                 <li><a href="#mimiworld"><span data-lang="zh">MimiWorld</span><span data-lang="en">MimiWorld</span></a></li>
                 <li><a href="#stdlib"><span data-lang="zh">Standard Library</span><span data-lang="en">Standard Library</span></a></li>
@@ -92,7 +93,31 @@
             </p>
             <pre class="code">    .syscall putint, 15, 1   <span class="cm">; name=putint, cmd=15, 1 arg</span>
     .syscall exit, 18, 1     <span class="cm">; set process exit code</span>
-    .syscall putstr, 19, 2   <span class="cm">; print string (addr, len)</span></pre>
+    .syscall putstr, 19, 2   <span class="cm">; print string (addr, len)</span>
+    .syscall sleep, 20, 1    <span class="cm">; sleep for ms milliseconds</span></pre>
+
+            <h2 id="custom-syscall"><span class="active" data-lang="zh">自定义 syscall 声明</span><span data-lang="en">Custom Syscall Declaration</span></h2>
+            <p class="active" data-lang="zh">
+                JVL 前端支持 <code>syscall name, cmd_id, arg_count;</code> 语法，让用户无需修改编译器源码即可声明任意系统调用。
+                编译器将其注册为 builtin 函数，并自动在汇编末尾生成对应的 <code>.syscall</code> 指令。
+                你可以用它暴露 VM 内置的文件 I/O（cmd 4–9）、内存操作（cmd 1–3, 10–13），甚至自定义扩展。
+            </p>
+            <p data-lang="en">
+                The JVL frontend supports <code>syscall name, cmd_id, arg_count;</code> syntax, allowing users to declare any system call without modifying the compiler source.
+                The compiler registers it as a builtin and automatically emits the corresponding <code>.syscall</code> directive at the end of the assembly.
+                You can use it to expose VM built-in file I/O (cmd 4–9), memory operations (cmd 1–3, 10–13), or even custom extensions.
+            </p>
+            <pre class="code"><span class="kw">syscall</span> fopen, 4, 2;   <span class="cm">// FILE* fopen(path_addr, mode_addr)</span>
+<span class="kw">syscall</span> fclose, 5, 1;  <span class="cm">// int  fclose(fd)</span>
+<span class="kw">syscall</span> fread, 6, 3;   <span class="cm">// int  fread(fd, buf_addr, count)</span>
+<span class="kw">syscall</span> fwrite, 7, 3;  <span class="cm">// int  fwrite(fd, buf_addr, count)</span>
+
+<span class="kw">func</span> <span class="fn">main</span>(): <span class="kw">int</span> {
+    <span class="kw">var</span> fd = fopen(path, mode);
+    <span class="cm">/* ... read / write ... */</span>
+    fclose(fd);
+    <span class="kw">return</span> 0;
+}</pre>
 
             <h2 id="jvl"><span class="active" data-lang="zh">JVL 高级语言</span><span data-lang="en">JVL Language</span></h2>
             <p class="active" data-lang="zh">

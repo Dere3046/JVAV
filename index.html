@@ -79,8 +79,11 @@
             <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
                 <div class="step-box">
                     <h4>1. <span class="active" data-lang="zh">编写源码</span><span data-lang="en">Write Code</span></h4>
-                    <pre class="code"><span class="kw">func</span> <span class="fn">main</span>(): <span class="kw">int</span> {
-    putint(<span class="num">42</span>);
+                    <pre class="code"><span class="kw">import</span> <span class="str">"std/io.jvl"</span>;
+
+<span class="kw">func</span> <span class="fn">main</span>(): <span class="kw">int</span> {
+    println(<span class="num">42</span>);
+    sleep(<span class="num">500</span>);   <span class="cm">// ms</span>
     <span class="kw">return</span> <span class="num">0</span>;
 }</pre>
                 </div>
@@ -90,7 +93,8 @@
                 </div>
                 <div class="step-box">
                     <h4>3. <span class="active" data-lang="zh">查看输出</span><span data-lang="en">See Output</span></h4>
-                    <pre>42</pre>
+                    <pre>42
+&lt;paused 500ms&gt;</pre>
                 </div>
             </div>
 

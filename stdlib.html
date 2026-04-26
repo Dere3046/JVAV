@@ -43,6 +43,7 @@
                 <li><a href="#math">std/math</a></li>
                 <li><a href="#mem">std/mem</a></li>
                 <li><a href="#string">std/string</a></li>
+                <li><a href="#fs"><span class="active" data-lang="zh">文件 I/O</span><span data-lang="en">File I/O</span></a></li>
                 <li><a href="#example"><span data-lang="zh">示例</span><span data-lang="en">Example</span></a></li>
             </ul>
         </aside>
@@ -70,9 +71,9 @@
 <span class="kw">import</span> <span class="str">"std/mem.jvl"</span>;
 <span class="kw">import</span> <span class="str">"std/string.jvl"</span>;</pre>
 
-            <h3 id="io">std/io.jvl — Console Output</h3>
-            <p class="active" data-lang="zh">基于后端 <code>.syscall</code> 指令生成标准函数包装器，通过 VM 系统调用邮箱（<code>0xFFE0</code>–<code>0xFFE4</code>）与宿主交互。支持 <code>putchar</code>、<code>putint</code>、<code>getchar</code>、<code>getint</code>。旧版内存映射端口（<code>0xFFF0</code> / <code>0xFFF2</code>）仍保持向后兼容。</p>
-            <p data-lang="en">Built on the backend <code>.syscall</code> directive, which generates standard function wrappers that interact with the host via the VM syscall mailbox (<code>0xFFE0</code>–<code>0xFFE4</code>). Supports <code>putchar</code>, <code>putint</code>, <code>getchar</code>, <code>getint</code>. Legacy memory-mapped ports (<code>0xFFF0</code> / <code>0xFFF2</code>) remain backward-compatible.</p>
+            <h3 id="io">std/io.jvl — Console &amp; System I/O</h3>
+            <p class="active" data-lang="zh">基于后端 <code>.syscall</code> 指令生成标准函数包装器，通过 VM 系统调用邮箱（<code>0xFFE0</code>–<code>0xFFE4</code>）与宿主交互。支持 <code>putchar</code>、<code>putint</code>、<code>getchar</code>、<code>getint</code>、<code>putstr</code>、<code>exit</code>、<code>sleep</code>。旧版内存映射端口（<code>0xFFF0</code> / <code>0xFFF2</code>）仍保持向后兼容。</p>
+            <p data-lang="en">Built on the backend <code>.syscall</code> directive, which generates standard function wrappers that interact with the host via the VM syscall mailbox (<code>0xFFE0</code>–<code>0xFFE4</code>). Supports <code>putchar</code>, <code>putint</code>, <code>getchar</code>, <code>getint</code>, <code>putstr</code>, <code>exit</code>, <code>sleep</code>. Legacy memory-mapped ports (<code>0xFFF0</code> / <code>0xFFF2</code>) remain backward-compatible.</p>
             <table class="stdlib-table">
                 <tr><th>Function</th><th class="active" data-lang="zh">描述</th><th data-lang="en">Description</th></tr>
                 <tr><td>println(x)</td><td class="active" data-lang="zh">打印整数并换行</td><td data-lang="en">Print integer followed by newline</td></tr>
@@ -80,6 +81,24 @@
                 <tr><td>print_space()</td><td class="active" data-lang="zh">打印空格</td><td data-lang="en">Print space</td></tr>
                 <tr><td>putstr(s, n)</td><td class="active" data-lang="zh">输出字符串前 n 个字符</td><td data-lang="en">Print first n characters of string s</td></tr>
                 <tr><td>exit(code)</td><td class="active" data-lang="zh">以指定退出码结束程序</td><td data-lang="en">Terminate program with exit code</td></tr>
+                <tr><td>sleep(ms)</td><td class="active" data-lang="zh">休眠指定毫秒数</td><td data-lang="en">Sleep for specified milliseconds</td></tr>
+            </table>
+
+            <h3 id="fs"><span class="active" data-lang="zh">文件 I/O（通过自定义 syscall）</span><span data-lang="en">File I/O (via Custom Syscall)</span></h3>
+            <p class="active" data-lang="zh">
+                JVM 已内置文件系统调用（cmd 4–9）。通过 <code>syscall</code> 关键字即可在 JVL 中直接暴露它们，无需等待标准库更新。
+            </p>
+            <p data-lang="en">
+                The JVM already has built-in filesystem syscalls (cmd 4–9). Expose them in JVL directly via the <code>syscall</code> keyword, no standard library update needed.
+            </p>
+            <table class="stdlib-table">
+                <tr><th>Declaration</th><th class="active" data-lang="zh">描述</th><th data-lang="en">Description</th></tr>
+                <tr><td><code>syscall fopen, 4, 2;</code></td><td class="active" data-lang="zh">打开文件（路径地址, 模式地址）</td><td data-lang="en">Open file (path_addr, mode_addr)</td></tr>
+                <tr><td><code>syscall fclose, 5, 1;</code></td><td class="active" data-lang="zh">关闭文件描述符</td><td data-lang="en">Close file descriptor</td></tr>
+                <tr><td><code>syscall fread, 6, 3;</code></td><td class="active" data-lang="zh">读取数据（fd, 缓冲区地址, 字数）</td><td data-lang="en">Read data (fd, buf_addr, word_count)</td></tr>
+                <tr><td><code>syscall fwrite, 7, 3;</code></td><td class="active" data-lang="zh">写入数据（fd, 缓冲区地址, 字数）</td><td data-lang="en">Write data (fd, buf_addr, word_count)</td></tr>
+                <tr><td><code>syscall fseek, 8, 2;</code></td><td class="active" data-lang="zh">定位文件偏移（fd, offset）</td><td data-lang="en">Seek file offset (fd, offset)</td></tr>
+                <tr><td><code>syscall ftell, 9, 1;</code></td><td class="active" data-lang="zh">获取当前文件偏移</td><td data-lang="en">Get current file offset</td></tr>
             </table>
 
             <h3 id="math">std/math.jvl — Integer Math</h3>
