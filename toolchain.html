@@ -84,8 +84,8 @@
             <pre class="code">    .syscall putint, 15, 1   <span class="cm">; name, cmd_id, arg_count</span></pre>
 
             <h2 id="jvm"><span class="active" data-lang="zh">jvm — 虚拟机</span><span data-lang="en">jvm — Virtual Machine</span></h2>
-            <p class="active" data-lang="zh">128-bit 字寻址虚拟机，C99 实现。执行 JVAV 二进制文件。通过系统调用邮箱（<code>0xFFE0</code> 命令、<code>0xFFE1</code>–<code>0xFFE3</code> 参数、<code>0xFFE4</code> 返回值）与宿主操作系统交互。</p>
-            <p data-lang="en">128-bit word-addressable virtual machine, implemented in C99. Executes JVAV binary files. Interacts with the host OS via a syscall mailbox (<code>0xFFE0</code> command, <code>0xFFE1</code>–<code>0xFFE3</code> arguments, <code>0xFFE4</code> return value).</p>
+            <p class="active" data-lang="zh">128-bit 字寻址虚拟机，C99 实现。执行 JVAV 二进制文件。通过系统调用邮箱（<code>0xFFE0</code> 命令、<code>0xFFE1</code>–<code>0xFFE3</code> 参数、<code>0xFFE4</code> 返回值）与宿主操作系统交互。支持 mmap、文件 I/O、堆分配、控制台 I/O 以及自定义 syscall（如 <code>SYS_EXIT=18</code>、<code>SYS_PUTSTR=19</code>）。</p>
+            <p data-lang="en">128-bit word-addressable virtual machine, implemented in C99. Executes JVAV binary files. Interacts with the host OS via a syscall mailbox (<code>0xFFE0</code> command, <code>0xFFE1</code>–<code>0xFFE3</code> arguments, <code>0xFFE4</code> return value). Supports mmap, file I/O, heap allocation, console I/O, and custom syscalls (e.g. <code>SYS_EXIT=18</code>, <code>SYS_PUTSTR=19</code>).</p>
             <table class="feature-table">
                 <tr><th>Command</th><th class="active" data-lang="zh">说明</th><th data-lang="en">Description</th></tr>
                 <tr><td><code>jvm -v</code></td><td class="active" data-lang="zh">显示版本号</td><td data-lang="en">Show version</td></tr>
