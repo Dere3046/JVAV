@@ -13,6 +13,7 @@ static const map<string, TokenType> keywords = {
     {"void", TOK_KW_VOID}, {"ptr", TOK_KW_PTR}, {"array", TOK_KW_ARRAY},
     {"true", TOK_KW_TRUE}, {"false", TOK_KW_FALSE},
     {"import", TOK_KW_IMPORT},
+    {"syscall", TOK_KW_SYSCALL},
     {"mut", TOK_KW_MUT},
 };
 

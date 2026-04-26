@@ -496,6 +496,9 @@ void CodeGenerator::genProgram(shared_ptr<Program> prog) {
     for (auto &d : prog->decls) {
         if (d->kind == Decl::DECL_FUNC) {
             genFuncDecl(dynamic_pointer_cast<FuncDecl>(d));
+        } else if (d->kind == Decl::DECL_SYSCALL) {
+            auto sd = dynamic_pointer_cast<SyscallDecl>(d);
+            userSyscalls.push_back("    .syscall " + sd->name + ", " + to_string(sd->cmdId) + ", " + to_string(sd->argCount));
         }
     }
 }
@@ -510,6 +513,7 @@ string CodeGenerator::generate(shared_ptr<Program> prog, const string &bp) {
     stringCounter = 0;
     stringLabels.clear();
     generatedFiles.clear();
+    userSyscalls.clear();
     basePath = bp;
 
     // Generate entry point
@@ -529,6 +533,8 @@ string CodeGenerator::generate(shared_ptr<Program> prog, const string &bp) {
     emit("    .syscall free, 13, 1");
     emit("    .syscall exit, 18, 1");
     emit("    .syscall putstr, 19, 2");
+    // User-defined syscalls
+    for (auto &s : userSyscalls) emit(s);
 
     // Append string literals
     if (!stringLabels.empty()) {

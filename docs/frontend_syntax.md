@@ -263,6 +263,32 @@ See `mimiworld_ownership.md` for full details.
 
 ---
 
+## Custom System Calls
+
+JVL supports declaring custom syscalls directly in source code. This generates a `.syscall` wrapper in the output assembly without requiring hand-written assembly files.
+
+```jvl
+syscall my_puthex, 20, 1;
+
+func main(): int {
+    my_puthex(255);
+    return 0;
+}
+```
+
+**Syntax:**
+```jvl
+syscall name, cmd_id, arg_count;
+```
+
+**Constraints:**
+- `arg_count` must be in range `0..3`
+- The declared name becomes a builtin function available in the module
+- The compiler emits `.syscall name, cmd_id, arg_count` at the end of generated assembly
+- The VM must already support the `cmd_id` in its `syscall_dispatch` handler
+
+This is useful for using VM syscalls that are not included in the standard builtins (e.g., file I/O, mmap, or custom syscalls you added to the VM).
+
 ## Import System
 
 ```jvl
