@@ -39,6 +39,7 @@
             <h4 data-lang="en">On This Page</h4>
             <ul>
                 <li><a href="#isa"><span data-lang="zh">128-bit ISA</span><span data-lang="en">128-bit ISA</span></a></li>
+                <li><a href="#syscall">.syscall</a></li>
                 <li><a href="#jvl"><span data-lang="zh">JVL 语言</span><span data-lang="en">JVL Language</span></a></li>
                 <li><a href="#mimiworld"><span data-lang="zh">MimiWorld</span><span data-lang="en">MimiWorld</span></a></li>
                 <li><a href="#stdlib"><span data-lang="zh">Standard Library</span><span data-lang="en">Standard Library</span></a></li>
@@ -75,6 +76,21 @@
                 <tr><td>imm_low</td><td>64-bit</td><td class="active" data-lang="zh">立即数低 64 位</td><td data-lang="en">Lower immediate bits</td></tr>
                 <tr><td>imm_high</td><td>32-bit</td><td class="active" data-lang="zh">立即数高 32 位</td><td data-lang="en">Upper immediate bits</td></tr>
             </table>
+
+            <h2 id="syscall"><span class="active" data-lang="zh">.syscall 系统调用抽象</span><span data-lang="en">.syscall System Call Abstraction</span></h2>
+            <p class="active" data-lang="zh">
+                后端汇编器支持 <code>.syscall name, cmd_id, arg_count</code> 伪指令，
+                自动生成标准函数包装器：保存寄存器、从栈帧读取参数、写入 VM 系统调用邮箱（<code>0xFFE0</code>–<code>0xFFE4</code>）、触发 syscall、恢复寄存器并返回。
+                前端 I/O 函数（<code>putint</code>、<code>putchar</code> 等）不再内联特殊汇编，而是作为普通 <code>CALL</code> 调用。
+            </p>
+            <p data-lang="en">
+                The backend assembler supports the <code>.syscall name, cmd_id, arg_count</code> pseudo-instruction,
+                automatically generating a standard function wrapper: save registers, read arguments from the stack frame,
+                write to the VM syscall mailbox (<code>0xFFE0</code>–<code>0xFFE4</code>), trigger the syscall, restore registers, and return.
+                Frontend I/O functions (<code>putint</code>, <code>putchar</code>, etc.) no longer use inline special assembly;
+                they are ordinary <code>CALL</code> invocations.
+            </p>
+            <pre class="code">    .syscall putint, 15, 1   <span class="cm">; name=putint, cmd=15, 1 arg</span></pre>
 
             <h2 id="jvl"><span class="active" data-lang="zh">JVL 高级语言</span><span data-lang="en">JVL Language</span></h2>
             <p class="active" data-lang="zh">

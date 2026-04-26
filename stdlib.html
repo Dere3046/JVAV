@@ -71,8 +71,8 @@
 <span class="kw">import</span> <span class="str">"std/string.jvl"</span>;</pre>
 
             <h3 id="io">std/io.jvl — Console Output</h3>
-            <p class="active" data-lang="zh">基于 VM 的内存映射 I/O 端口实现（<code>0xFFF0</code> putchar、<code>0xFFF1</code> getchar、<code>0xFFF2</code> putint、<code>0xFFF3</code> getint、<code>0xFFF4</code> puthex）。</p>
-            <p data-lang="en">Built on the VM's memory-mapped I/O ports (<code>0xFFF0</code> putchar, <code>0xFFF1</code> getchar, <code>0xFFF2</code> putint, <code>0xFFF3</code> getint, <code>0xFFF4</code> puthex).</p>
+            <p class="active" data-lang="zh">基于后端 <code>.syscall</code> 指令生成标准函数包装器，通过 VM 系统调用邮箱（<code>0xFFE0</code>–<code>0xFFE4</code>）与宿主交互。支持 <code>putchar</code>、<code>putint</code>、<code>getchar</code>、<code>getint</code>。旧版内存映射端口（<code>0xFFF0</code> / <code>0xFFF2</code>）仍保持向后兼容。</p>
+            <p data-lang="en">Built on the backend <code>.syscall</code> directive, which generates standard function wrappers that interact with the host via the VM syscall mailbox (<code>0xFFE0</code>–<code>0xFFE4</code>). Supports <code>putchar</code>, <code>putint</code>, <code>getchar</code>, <code>getint</code>. Legacy memory-mapped ports (<code>0xFFF0</code> / <code>0xFFF2</code>) remain backward-compatible.</p>
             <table class="stdlib-table">
                 <tr><th>Function</th><th class="active" data-lang="zh">描述</th><th data-lang="en">Description</th></tr>
                 <tr><td>println(x)</td><td class="active" data-lang="zh">打印整数并换行</td><td data-lang="en">Print integer followed by newline</td></tr>
