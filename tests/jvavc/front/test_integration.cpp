@@ -838,5 +838,46 @@ func main(): int {
     }
     test_passed("integration_edge_large_literal");
 
+    test_header("integration_putstr");
+    {
+        const char* src = R"(
+func main(): int {
+    putstr("Hi!", 3);
+    return 0;
+}
+)";
+        std::ofstream("f.jvl") << src;
+        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav");
+        TEST_ASSERT(ret == 0, "front");
+        ret = run_cmd(JVAVC_BACK_EXE " f.jvav f.bin");
+        TEST_ASSERT(ret == 0, "back");
+        ret = run_cmd(JVM_EXE " f.bin > f.out 2>&1");
+        TEST_ASSERT(ret == 0, "run");
+        string out;
+        TEST_ASSERT(read_output("f.out", out), "read");
+        TEST_ASSERT(out == "Hi!", "putstr output");
+        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.bin"); std::remove("f.out");
+    }
+    test_passed("integration_putstr");
+
+    test_header("integration_exit");
+    {
+        const char* src = R"(
+func main(): int {
+    exit(7);
+    return 0;
+}
+)";
+        std::ofstream("f.jvl") << src;
+        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav");
+        TEST_ASSERT(ret == 0, "front");
+        ret = run_cmd(JVAVC_BACK_EXE " f.jvav f.bin");
+        TEST_ASSERT(ret == 0, "back");
+        ret = run_cmd(JVM_EXE " f.bin > f.out 2>&1");
+        TEST_ASSERT(ret == 7, "exit should return 7");
+        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.bin"); std::remove("f.out");
+    }
+    test_passed("integration_exit");
+
     return 0;
 }

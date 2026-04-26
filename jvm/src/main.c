@@ -12,5 +12,5 @@ int main(int argc, char *argv[]) {
     if (jvm_load_program(&vm, argv[1]) != 0) return 1;
     jvm_run(&vm);
     jvm_free(&vm);
-    return 0;
+    return vm.exit_code;
 }

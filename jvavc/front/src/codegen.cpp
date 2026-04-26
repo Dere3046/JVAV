@@ -527,6 +527,8 @@ string CodeGenerator::generate(shared_ptr<Program> prog, const string &bp) {
     emit("    .syscall getint, 17, 0");
     emit("    .syscall alloc, 12, 1");
     emit("    .syscall free, 13, 1");
+    emit("    .syscall exit, 18, 1");
+    emit("    .syscall putstr, 19, 2");
 
     // Append string literals
     if (!stringLabels.empty()) {
