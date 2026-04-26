@@ -27,6 +27,7 @@ This document provides detailed reference for all JVAV system calls. Syscalls ar
 | 17 | `SYS_GETINT` | 0 | int | Assembly only |
 | 18 | `SYS_EXIT` | 1 | 0 | `exit(code)` |
 | 19 | `SYS_PUTSTR` | 2 | 0 | `putstr(s, n)` |
+| 20 | `SYS_SLEEP` | 1 | 0 | `sleep(ms)` |
 
 ---
 
@@ -389,12 +390,34 @@ The VM does **not** set `errno` or provide detailed error messages for syscalls.
 
 ---
 
+### SYS_SLEEP (20)
+
+Pause execution for a specified duration.
+
+**Arguments:**
+- `ARG0`: Duration in milliseconds
+
+**Return:** `0`
+
+**Frontend:** `sleep(ms)`
+
+**Behavior:** Blocks the VM execution loop for the requested duration. On Windows uses `Sleep()`; on POSIX uses `usleep()`. Negative values are clamped to 0.
+
+**JVL example:**
+```jvl
+sleep(500);   // pause for 500ms
+```
+
+---
+
 ## Adding Custom Syscalls
 
-See `AGENTS.md` for the developer guide on adding new syscalls. The general process:
+To add a new syscall to the VM:
 
 1. Add `SYS_FOO` to the enum in `jvm/include/jvm.h`
 2. Add a `case SYS_FOO:` handler in `jvm/src/jvm.c`
 3. Optionally register it as a JVL builtin in `jvavc/front/src/sema.cpp`
 4. Emit the `.syscall` wrapper in `jvavc/front/src/codegen.cpp`
+
+Alternatively, for user-defined syscalls that the VM already supports, use the frontend `syscall` declaration (see `frontend_syntax.md`) without modifying compiler source code.
 5. Add tests and documentation

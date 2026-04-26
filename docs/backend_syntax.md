@@ -145,6 +145,7 @@ Example:
     .syscall putint, 15, 1    ; 1-arg syscall: putint(x)
     .syscall putstr, 19, 2    ; 2-arg syscall: putstr(addr, len)
     .syscall exit, 18, 1      ; 1-arg syscall: exit(code)
+    .syscall sleep, 20, 1     ; 1-arg syscall: sleep(ms)
 ```
 
 ---
