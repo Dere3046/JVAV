@@ -770,5 +770,73 @@ func main(): int {
     }
     test_passed("integration_edge_single_char_file");
 
+    test_header("integration_edge_negative");
+    {
+        const char* src = R"(
+func main(): int {
+    putint(-42);
+    return 0;
+}
+)";
+        std::ofstream("f.jvl") << src;
+        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav");
+        TEST_ASSERT(ret == 0, "front");
+        ret = run_cmd(JVAVC_BACK_EXE " f.jvav f.bin");
+        TEST_ASSERT(ret == 0, "back");
+        ret = run_cmd(JVM_EXE " f.bin > f.out 2>&1");
+        TEST_ASSERT(ret == 0, "run");
+        string out;
+        TEST_ASSERT(read_output("f.out", out), "read");
+        TEST_ASSERT(out == "-42", "negative output");
+        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.bin"); std::remove("f.out");
+    }
+    test_passed("integration_edge_negative");
+
+    test_header("integration_edge_putchar_sequence");
+    {
+        const char* src = R"(
+func main(): int {
+    putchar(72);
+    putchar(105);
+    putchar(33);
+    return 0;
+}
+)";
+        std::ofstream("f.jvl") << src;
+        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav");
+        TEST_ASSERT(ret == 0, "front");
+        ret = run_cmd(JVAVC_BACK_EXE " f.jvav f.bin");
+        TEST_ASSERT(ret == 0, "back");
+        ret = run_cmd(JVM_EXE " f.bin > f.out 2>&1");
+        TEST_ASSERT(ret == 0, "run");
+        string out;
+        TEST_ASSERT(read_output("f.out", out), "read");
+        TEST_ASSERT(out == "Hi!", "putchar sequence output");
+        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.bin"); std::remove("f.out");
+    }
+    test_passed("integration_edge_putchar_sequence");
+
+    test_header("integration_edge_large_literal");
+    {
+        const char* src = R"(
+func main(): int {
+    putint(123456789012345);
+    return 0;
+}
+)";
+        std::ofstream("f.jvl") << src;
+        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav");
+        TEST_ASSERT(ret == 0, "front");
+        ret = run_cmd(JVAVC_BACK_EXE " f.jvav f.bin");
+        TEST_ASSERT(ret == 0, "back");
+        ret = run_cmd(JVM_EXE " f.bin > f.out 2>&1");
+        TEST_ASSERT(ret == 0, "run");
+        string out;
+        TEST_ASSERT(read_output("f.out", out), "read");
+        TEST_ASSERT(out == "123456789012345", "large literal output");
+        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.bin"); std::remove("f.out");
+    }
+    test_passed("integration_edge_large_literal");
+
     return 0;
 }
