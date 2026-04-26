@@ -216,6 +216,7 @@ These functions are recognized by the compiler and do not need to be declared or
 | `free(p)` | `func free(p: ptr<int>): void` | Release heap allocation |
 | `exit(code)` | `func exit(code: int): void` | Terminate with exit code |
 | `putstr(s, n)` | `func putstr(s: ptr<int>, n: int): void` | Print `n` chars from memory address |
+| `sleep(ms)` | `func sleep(ms: int): void` | Pause execution for `ms` milliseconds |
 
 **Note:** `getint()` and `getchar()` are available at the assembly level but are not currently exposed as JVL builtins (they exist in the `.syscall` wrappers but are not registered in the semantic analyzer). To use them from JVL, declare them manually:
 
@@ -268,10 +269,10 @@ See `mimiworld_ownership.md` for full details.
 JVL supports declaring custom syscalls directly in source code. This generates a `.syscall` wrapper in the output assembly without requiring hand-written assembly files.
 
 ```jvl
-syscall my_puthex, 20, 1;
+syscall my_custom, 99, 2;
 
 func main(): int {
-    my_puthex(255);
+    my_custom(255, 1);
     return 0;
 }
 ```
