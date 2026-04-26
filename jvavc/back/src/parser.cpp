@@ -237,6 +237,53 @@ bool Parser::parseLine(const string &line, int lineNum) {
             return true;
         }
     }
+    if (l.substr(0,8)==".syscall") {
+        string rest = trim(l.substr(8));
+        vector<string> parts = split(rest, ',');
+        if (parts.size() != 3) { error="Bad .syntax: .syscall name, cmd_id, arg_count at line "+to_string(lineNum); return false; }
+        string name = trim(parts[0]);
+        int cmd_id = 0, arg_count = 0;
+        try { cmd_id = stoi(trim(parts[1])); } catch(...) { error="Bad .syscall cmd_id at line "+to_string(lineNum); return false; }
+        try { arg_count = stoi(trim(parts[2])); } catch(...) { error="Bad .syscall arg_count at line "+to_string(lineNum); return false; }
+        if (arg_count < 0 || arg_count > 3) { error=".syscall arg_count must be 0..3 at line "+to_string(lineNum); return false; }
+        auto addInstr = [&](const string &mnem, const vector<Operand> &ops) {
+            Instruction instr; instr.lineNum = lineNum; instr.mnemonic = mnem; instr.ops = ops; instr.isPseudo = false;
+            instructions.push_back(instr);
+        };
+        auto regOp = [&](int r)->Operand { Operand op; op.type=OP_REG; op.reg=r; return op; };
+        auto immOp = [&](Int128 v)->Operand { Operand op; op.type=OP_IMM; op.imm=v; return op; };
+        auto memRegOp = [&](int r)->Operand { Operand op; op.type=OP_MEM; op.reg=r; return op; };
+        auto memImmOp = [&](Int128 v)->Operand { Operand op; op.type=OP_MEM; op.imm=v; return op; };
+        // .global name
+        globalSymbols.insert(name);
+        // name:
+        { Instruction instr; instr.lineNum = lineNum; instr.label = name; instructions.push_back(instr); }
+        // PUSH R6
+        addInstr("PUSH", {regOp(6)});
+        // MOV R6, SP
+        addInstr("MOV", {regOp(6), regOp(9)});
+        // Args -> syscall mailbox
+        for (int i = 0; i < arg_count; i++) {
+            int mailbox = 0xFFE1 + i;
+            addInstr("LDI", {regOp(4), immOp(i + 2)});
+            addInstr("ADD", {regOp(4), regOp(6), regOp(4)});
+            addInstr("LDR", {regOp(0), memRegOp(4)});
+            addInstr("STR", {memImmOp(mailbox), regOp(0)});
+        }
+        // LDI R0, cmd_id
+        addInstr("LDI", {regOp(0), immOp(cmd_id)});
+        // STR [0xFFE0], R0
+        addInstr("STR", {memImmOp(0xFFE0), regOp(0)});
+        // LDR R0, [0xFFE4]
+        addInstr("LDR", {regOp(0), memImmOp(0xFFE4)});
+        // MOV SP, R6
+        addInstr("MOV", {regOp(9), regOp(6)});
+        // POP R6
+        addInstr("POP", {regOp(6)});
+        // RET
+        addInstr("RET", {});
+        return true;
+    }
     size_t colon = l.find(':');
     string lbl, rest = l;
     if (colon != string::npos) {

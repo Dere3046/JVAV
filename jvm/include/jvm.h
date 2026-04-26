@@ -48,13 +48,6 @@ typedef struct {
 } instruction_t;
 #pragma pack(pop)
 
-/* Legacy basic I/O ports */
-#define IO_ADDR_PUTCHAR   0xFFF0
-#define IO_ADDR_GETCHAR   0xFFF1
-#define IO_ADDR_PUTINT    0xFFF2
-#define IO_ADDR_GETINT    0xFFF3
-#define IO_ADDR_PUTHEX    0xFFF4
-
 /* System-call mailbox */
 #define SYSCALL_CMD       0xFFE0
 #define SYSCALL_ARG0      0xFFE1
@@ -75,7 +68,11 @@ enum {
     SYS_MEMCPY,          /* ARG0=dst, ARG1=src, ARG2=count_words */
     SYS_MEMSET,          /* ARG0=dst, ARG1=value, ARG2=count_words */
     SYS_MALLOC,          /* ARG0=size_words -> RET=addr or 0 */
-    SYS_FREE             /* ARG0=addr -> RET=0 or -1 */
+    SYS_FREE,            /* ARG0=addr -> RET=0 or -1 */
+    SYS_PUTCHAR,         /* ARG0=char_code -> RET=0 */
+    SYS_PUTINT,          /* ARG0=integer -> RET=0 */
+    SYS_GETCHAR,         /* RET=char_code or -1 */
+    SYS_GETINT           /* RET=integer or -1 */
 };
 
 typedef struct {
