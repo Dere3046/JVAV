@@ -515,7 +515,7 @@ func main(): int { return 0; }
         TEST_ASSERT(ret == 0, "jvlc -v exit code");
         string out;
         TEST_ASSERT(read_output("version.out", out), "read version output");
-        TEST_ASSERT(out.find("jvlc 0.3.0") != string::npos, "jvlc version string");
+        TEST_ASSERT(out.find("jvlc 0.3.1") != string::npos, "jvlc version string");
         std::remove("version.out");
     }
     test_passed("integration_version_jvlc");
@@ -526,7 +526,7 @@ func main(): int { return 0; }
         TEST_ASSERT(ret == 0, "jvavc -v exit code");
         string out;
         TEST_ASSERT(read_output("version.out", out), "read version output");
-        TEST_ASSERT(out.find("jvavc 0.3.0") != string::npos, "jvavc version string");
+        TEST_ASSERT(out.find("jvavc 0.3.1") != string::npos, "jvavc version string");
         std::remove("version.out");
     }
     test_passed("integration_version_jvavc");
@@ -537,7 +537,7 @@ func main(): int { return 0; }
         TEST_ASSERT(ret == 0, "jvm -v exit code");
         string out;
         TEST_ASSERT(read_output("version.out", out), "read version output");
-        TEST_ASSERT(out.find("jvm 0.3.0") != string::npos, "jvm version string");
+        TEST_ASSERT(out.find("jvm 0.3.1") != string::npos, "jvm version string");
         std::remove("version.out");
     }
     test_passed("integration_version_jvm");
@@ -548,7 +548,7 @@ func main(): int { return 0; }
         TEST_ASSERT(ret == 0, "disasm -v exit code");
         string out;
         TEST_ASSERT(read_output("version.out", out), "read version output");
-        TEST_ASSERT(out.find("disasm 0.3.0") != string::npos, "disasm version string");
+        TEST_ASSERT(out.find("disasm 0.3.1") != string::npos, "disasm version string");
         std::remove("version.out");
     }
     test_passed("integration_version_disasm");
@@ -955,6 +955,286 @@ func main(): int {
         std::remove("f.out");
     }
     test_passed("integration_syscall_fileio_frontend");
+
+    test_header("integration_stdlib_io_newline_space");
+    {
+        const char* src = R"(
+import "std/io.jvl";
+
+func main(): int {
+    print_space();
+    print_newline();
+    return 0;
+}
+)";
+        std::ofstream("f.jvl") << src;
+        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav");
+        TEST_ASSERT(ret == 0, "front");
+        ret = run_cmd(JVAVC_BACK_EXE " f.jvav f.bin");
+        TEST_ASSERT(ret == 0, "back");
+        ret = run_cmd(JVM_EXE " f.bin > f.out 2>&1");
+        TEST_ASSERT(ret == 0, "run");
+        string out;
+        TEST_ASSERT(read_output("f.out", out), "read");
+        TEST_ASSERT(out == " \n", "space+newline output");
+        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.bin"); std::remove("f.out");
+    }
+    test_passed("integration_stdlib_io_newline_space");
+
+    test_header("integration_stdlib_mem");
+    {
+        // Test std/mem.jvl import compiles correctly
+        const char* src = R"(
+import "std/mem.jvl";
+func main(): int { return 0; }
+)";
+        std::ofstream("f.jvl") << src;
+        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav");
+        TEST_ASSERT(ret == 0, "std/mem.jvl import compiles");
+        std::remove("f.jvl"); std::remove("f.jvav");
+    }
+    test_passed("integration_stdlib_mem");
+
+    test_header("integration_memcpy_memset_inline");
+    {
+        // Inline memory operations (std/mem.jvl functions cannot be called directly
+        // due to Move semantics on ptr<int> parameters)
+        const char* src = R"(
+func main(): int {
+    var a: ptr<int> = alloc(3);
+    a[0] = 1; a[1] = 2; a[2] = 3;
+    var b: ptr<int> = alloc(3);
+    var i = 0;
+    while (i < 3) {
+        b[i] = a[i];
+        i = i + 1;
+    }
+    putint(b[0]); putint(b[1]); putint(b[2]);
+    i = 0;
+    while (i < 3) {
+        a[i] = 0;
+        i = i + 1;
+    }
+    putint(a[0]); putint(a[1]); putint(a[2]);
+    free(a); free(b);
+    return 0;
+}
+)";
+        std::ofstream("f.jvl") << src;
+        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav");
+        TEST_ASSERT(ret == 0, "front");
+        ret = run_cmd(JVAVC_BACK_EXE " f.jvav f.bin");
+        TEST_ASSERT(ret == 0, "back");
+        ret = run_cmd(JVM_EXE " f.bin > f.out 2>&1");
+        TEST_ASSERT(ret == 0, "run");
+        string out;
+        TEST_ASSERT(read_output("f.out", out), "read");
+        TEST_ASSERT(out == "123000", "memcpy+memset inline output");
+        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.bin"); std::remove("f.out");
+    }
+    test_passed("integration_memcpy_memset_inline");
+
+    test_header("integration_disasm_static");
+    {
+        const char* asm_src = R"(
+    .global _start
+_start:
+    LDI R0, 42
+    HALT
+)";
+        std::ofstream("test_disasm.jvav") << asm_src;
+        int ret = run_cmd(JVAVC_BACK_EXE " test_disasm.jvav test_disasm.bin");
+        TEST_ASSERT(ret == 0, "compile for disasm");
+        ret = run_cmd(DISASM_EXE " test_disasm.bin > test_disasm.out 2>&1");
+        TEST_ASSERT(ret == 0, "disasm static");
+        string out;
+        TEST_ASSERT(read_output("test_disasm.out", out), "read disasm");
+        TEST_ASSERT(out.find("LDI") != string::npos, "disasm contains LDI");
+        TEST_ASSERT(out.find("HALT") != string::npos, "disasm contains HALT");
+        std::remove("test_disasm.jvav"); std::remove("test_disasm.bin"); std::remove("test_disasm.out");
+    }
+    test_passed("integration_disasm_static");
+
+    test_header("integration_disasm_trace");
+    {
+        const char* asm_src = R"(
+    .global _start
+_start:
+    LDI R0, 42
+    HALT
+)";
+        std::ofstream("test_disasm.jvav") << asm_src;
+        int ret = run_cmd(JVAVC_BACK_EXE " test_disasm.jvav test_disasm.bin");
+        TEST_ASSERT(ret == 0, "compile for disasm trace");
+        ret = run_cmd(DISASM_EXE " -t test_disasm.bin > test_disasm.out 2>&1");
+        TEST_ASSERT(ret == 0, "disasm trace");
+        string out;
+        TEST_ASSERT(read_output("test_disasm.out", out), "read trace");
+        TEST_ASSERT(out.find("Trace Summary") != string::npos, "trace header");
+        TEST_ASSERT(out.find("Halted cleanly") != string::npos, "halted cleanly");
+        std::remove("test_disasm.jvav"); std::remove("test_disasm.bin"); std::remove("test_disasm.out");
+    }
+    test_passed("integration_disasm_trace");
+
+    test_header("integration_disasm_complex");
+    {
+        const char* asm_src = R"(
+    .global _start
+_start:
+    LDI R0, 5
+    LDI R1, 3
+    ADD R2, R0, R1
+    CMP R2, R1
+    JE equal
+    JMP done
+equal:
+    SUB R2, R2, R1
+done:
+    HALT
+)";
+        std::ofstream("test_disasm.jvav") << asm_src;
+        int ret = run_cmd(JVAVC_BACK_EXE " test_disasm.jvav test_disasm.bin");
+        TEST_ASSERT(ret == 0, "compile for disasm complex");
+        // Static disasm: verify multiple mnemonics appear
+        ret = run_cmd(DISASM_EXE " test_disasm.bin > test_disasm_static.out 2>&1");
+        TEST_ASSERT(ret == 0, "disasm complex static");
+        string out_static;
+        TEST_ASSERT(read_output("test_disasm_static.out", out_static), "read static");
+        TEST_ASSERT(out_static.find("ADD") != string::npos, "disasm contains ADD");
+        TEST_ASSERT(out_static.find("CMP") != string::npos, "disasm contains CMP");
+        TEST_ASSERT(out_static.find("JE") != string::npos, "disasm contains JE");
+        TEST_ASSERT(out_static.find("JMP") != string::npos, "disasm contains JMP");
+        TEST_ASSERT(out_static.find("SUB") != string::npos, "disasm contains SUB");
+        // Trace disasm: verify coverage and executed/unexecuted markers
+        ret = run_cmd(DISASM_EXE " -t test_disasm.bin > test_disasm_trace.out 2>&1");
+        TEST_ASSERT(ret == 0, "disasm complex trace");
+        string out_trace;
+        TEST_ASSERT(read_output("test_disasm_trace.out", out_trace), "read trace");
+        TEST_ASSERT(out_trace.find("Executed:           9 (90.0%)") != string::npos, "coverage 90%");
+        TEST_ASSERT(out_trace.find(">>> HALT") != string::npos, "HALT executed");
+        // The SUB instruction at 'equal' label should NOT have >>> prefix (not executed)
+        // Find the line containing "SUB" in trace output
+        size_t sub_pos = out_trace.find("SUB");
+        TEST_ASSERT(sub_pos != string::npos, "trace contains SUB");
+        // Verify the SUB line does NOT start with ">>>"
+        size_t line_start = out_trace.rfind('\n', sub_pos);
+        if (line_start == string::npos) line_start = 0; else line_start++;
+        string sub_line = out_trace.substr(line_start, sub_pos - line_start);
+        TEST_ASSERT(sub_line.find(">>>") == string::npos, "unexecuted SUB not marked >>>");
+        std::remove("test_disasm.jvav"); std::remove("test_disasm.bin");
+        std::remove("test_disasm_static.out"); std::remove("test_disasm_trace.out");
+    }
+    test_passed("integration_disasm_complex");
+
+    test_header("integration_sleep_negative");
+    {
+        const char* src = R"(
+func main(): int {
+    sleep(-100);
+    putchar(65);
+    return 0;
+}
+)";
+        std::ofstream("f.jvl") << src;
+        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav");
+        TEST_ASSERT(ret == 0, "front");
+        ret = run_cmd(JVAVC_BACK_EXE " f.jvav f.bin");
+        TEST_ASSERT(ret == 0, "back");
+        ret = run_cmd(JVM_EXE " f.bin > f.out 2>&1");
+        TEST_ASSERT(ret == 0, "run");
+        string out;
+        TEST_ASSERT(read_output("f.out", out), "read");
+        TEST_ASSERT(out == "A", "sleep negative clamped to 0");
+        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.bin"); std::remove("f.out");
+    }
+    test_passed("integration_sleep_negative");
+
+    test_header("integration_putstr_empty");
+    {
+        const char* src = R"(
+func main(): int {
+    putstr("", 0);
+    putchar(88);
+    return 0;
+}
+)";
+        std::ofstream("f.jvl") << src;
+        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav");
+        TEST_ASSERT(ret == 0, "front");
+        ret = run_cmd(JVAVC_BACK_EXE " f.jvav f.bin");
+        TEST_ASSERT(ret == 0, "back");
+        ret = run_cmd(JVM_EXE " f.bin > f.out 2>&1");
+        TEST_ASSERT(ret == 0, "run");
+        string out;
+        TEST_ASSERT(read_output("f.out", out), "read");
+        TEST_ASSERT(out == "X", "putstr empty output");
+        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.bin"); std::remove("f.out");
+    }
+    test_passed("integration_putstr_empty");
+
+    test_header("integration_stdlib_math_edge");
+    {
+        const char* src = R"(
+import "std/math.jvl";
+
+func main(): int {
+    putint(abs(0));
+    putint(pow(0, 0));
+    putint(pow(1, 100));
+    putint(clamp(5, 0, 10));
+    putint(clamp(-5, 0, 10));
+    putint(clamp(15, 0, 10));
+    return 0;
+}
+)";
+        std::ofstream("f.jvl") << src;
+        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav");
+        TEST_ASSERT(ret == 0, "front");
+        ret = run_cmd(JVAVC_BACK_EXE " f.jvav f.bin");
+        TEST_ASSERT(ret == 0, "back");
+        ret = run_cmd(JVM_EXE " f.bin > f.out 2>&1");
+        TEST_ASSERT(ret == 0, "run");
+        string out;
+        TEST_ASSERT(read_output("f.out", out), "read");
+        // abs(0)=0, pow(0,0)=1, pow(1,100)=1, clamp(5,0,10)=5, clamp(-5,0,10)=0, clamp(15,0,10)=10
+        TEST_ASSERT(out == "0115010", "math edge cases");
+        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.bin"); std::remove("f.out");
+    }
+    test_passed("integration_stdlib_math_edge");
+
+    test_header("integration_nested_import");
+    {
+        const char* lib = R"(
+func greet(): int {
+    putchar(72);
+    return 0;
+}
+)";
+        const char* main_src = R"(
+import "lib.jvl";
+import "std/io.jvl";
+
+func main(): int {
+    greet();
+    println(42);
+    return 0;
+}
+)";
+        std::ofstream("lib.jvl") << lib;
+        std::ofstream("main.jvl") << main_src;
+        int ret = run_cmd(JVAVC_FRONT_EXE " main.jvl main.jvav");
+        TEST_ASSERT(ret == 0, "front nested import");
+        ret = run_cmd(JVAVC_BACK_EXE " main.jvav main.bin");
+        TEST_ASSERT(ret == 0, "back nested import");
+        ret = run_cmd(JVM_EXE " main.bin > main.out 2>&1");
+        TEST_ASSERT(ret == 0, "run nested import");
+        string out;
+        TEST_ASSERT(read_output("main.out", out), "read");
+        TEST_ASSERT(out == "H42\n", "nested import output");
+        std::remove("lib.jvl"); std::remove("main.jvl");
+        std::remove("main.jvav"); std::remove("main.bin"); std::remove("main.out");
+    }
+    test_passed("integration_nested_import");
 
     return 0;
 }
