@@ -127,6 +127,7 @@ The `.syscall` assembler directive automates this by generating a standard funct
 | 17 | `SYS_GETINT` | — | integer | Read integer from stdin |
 | 18 | `SYS_EXIT` | ARG0=exit_code | 0 | Set exit code and halt VM |
 | 19 | `SYS_PUTSTR` | ARG0=addr, ARG1=len | 0 | Print `len` chars from memory |
+| 20 | `SYS_SLEEP` | ARG0=milliseconds | 0 | Sleep for specified duration |
 
 ### String Arguments
 
