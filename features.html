@@ -90,7 +90,9 @@
                 Frontend I/O functions (<code>putint</code>, <code>putchar</code>, etc.) no longer use inline special assembly;
                 they are ordinary <code>CALL</code> invocations.
             </p>
-            <pre class="code">    .syscall putint, 15, 1   <span class="cm">; name=putint, cmd=15, 1 arg</span></pre>
+            <pre class="code">    .syscall putint, 15, 1   <span class="cm">; name=putint, cmd=15, 1 arg</span>
+    .syscall exit, 18, 1     <span class="cm">; set process exit code</span>
+    .syscall putstr, 19, 2   <span class="cm">; print string (addr, len)</span></pre>
 
             <h2 id="jvl"><span class="active" data-lang="zh">JVL 高级语言</span><span data-lang="en">JVL Language</span></h2>
             <p class="active" data-lang="zh">
