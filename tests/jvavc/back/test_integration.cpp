@@ -1111,5 +1111,93 @@ _start:
     std::remove("test_sc_exit.out");
     test_passed("integration_syscall_exit");
 
+    test_header("integration_syscall_sleep");
+    src = R"(
+    .global _start
+_start:
+    LDI R0, 0
+    PUSH R0
+    CALL sleep
+    LDI R4, 1
+    ADD SP, SP, R4
+    LDI R0, 65
+    PUSH R0
+    CALL putchar
+    LDI R4, 1
+    ADD SP, SP, R4
+    HALT
+    .syscall sleep, 20, 1
+    .syscall putchar, 14, 1
+)";
+    std::ofstream("test_sc_sleep.jvav") << src;
+    ret = system(JVAVC_BACK_EXE " test_sc_sleep.jvav test_sc_sleep.bin");
+    TEST_ASSERT(ret == 0, "syscall sleep compile failed");
+    ret = system(JVM_EXE " test_sc_sleep.bin > test_sc_sleep.out 2>&1");
+    TEST_ASSERT(ret == 0, "syscall sleep execution failed");
+    {
+        std::ifstream out_sleep("test_sc_sleep.out");
+        std::string output_sleep((std::istreambuf_iterator<char>(out_sleep)), std::istreambuf_iterator<char>());
+        TEST_ASSERT(output_sleep == "A", "syscall sleep output");
+    }
+    std::remove("test_sc_sleep.jvav");
+    std::remove("test_sc_sleep.bin");
+    std::remove("test_sc_sleep.out");
+    test_passed("integration_syscall_sleep");
+
+    test_header("integration_syscall_fwrite");
+    src = R"(
+    .global _start
+_start:
+    LDI R0, path
+    LDI R1, mode
+    PUSH R1
+    PUSH R0
+    CALL fopen
+    LDI R4, 2
+    ADD SP, SP, R4
+    MOV R5, R0
+
+    MOV R0, R5
+    LDI R1, data
+    LDI R2, 5
+    PUSH R2
+    PUSH R1
+    PUSH R0
+    CALL fwrite
+    LDI R4, 3
+    ADD SP, SP, R4
+
+    MOV R0, R5
+    PUSH R0
+    CALL fclose
+    LDI R4, 1
+    ADD SP, SP, R4
+
+    HALT
+
+path: DB "test_sc_file.txt", 0
+mode: DB "w", 0
+data: DB "HELLO", 0
+
+    .syscall fopen, 4, 2
+    .syscall fwrite, 7, 3
+    .syscall fclose, 5, 1
+)";
+    std::ofstream("test_sc_fw.jvav") << src;
+    ret = system(JVAVC_BACK_EXE " test_sc_fw.jvav test_sc_fw.bin");
+    TEST_ASSERT(ret == 0, "syscall fwrite compile failed");
+    ret = system(JVM_EXE " test_sc_fw.bin > test_sc_fw.out 2>&1");
+    TEST_ASSERT(ret == 0, "syscall fwrite execution failed");
+    {
+        std::ifstream fcheck("test_sc_file.txt");
+        std::string fcontent((std::istreambuf_iterator<char>(fcheck)), std::istreambuf_iterator<char>());
+        TEST_ASSERT(fcontent == "HELLO", "file content mismatch");
+    }
+    std::remove("test_sc_fw.jvav");
+    std::remove("test_sc_fw.bin");
+    std::remove("test_sc_fw.out");
+    std::remove("test_sc_file.txt");
+    test_passed("integration_syscall_fwrite");
+
     return 0;
 }
