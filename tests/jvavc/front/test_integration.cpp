@@ -900,5 +900,61 @@ func main(): int {
     }
     test_passed("integration_exit");
 
+    test_header("integration_sleep");
+    {
+        const char* src = R"(
+func main(): int {
+    sleep(0);
+    putchar(65);
+    return 0;
+}
+)";
+        std::ofstream("f.jvl") << src;
+        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav");
+        TEST_ASSERT(ret == 0, "front");
+        ret = run_cmd(JVAVC_BACK_EXE " f.jvav f.bin");
+        TEST_ASSERT(ret == 0, "back");
+        ret = run_cmd(JVM_EXE " f.bin > f.out 2>&1");
+        TEST_ASSERT(ret == 0, "run");
+        string out;
+        TEST_ASSERT(read_output("f.out", out), "read");
+        TEST_ASSERT(out == "A", "sleep output");
+        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.bin"); std::remove("f.out");
+    }
+    test_passed("integration_sleep");
+
+    test_header("integration_syscall_fileio_frontend");
+    {
+        const char* src = R"(
+syscall fopen, 4, 2;
+syscall fclose, 5, 1;
+syscall fwrite, 7, 3;
+
+func main(): int {
+    var fd = fopen("test_front_fio.txt", "w");
+    var data = "HELLO";
+    fwrite(fd, data, 5);
+    fclose(fd);
+    return 0;
+}
+)";
+        std::ofstream("f.jvl") << src;
+        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav");
+        TEST_ASSERT(ret == 0, "front compile");
+        // Verify .syscall appears in generated assembly
+        string jvav;
+        TEST_ASSERT(read_output("f.jvav", jvav), "read jvav");
+        TEST_ASSERT(jvav.find(".syscall fopen, 4, 2") != string::npos, "fopen decl in asm");
+        TEST_ASSERT(jvav.find(".syscall fclose, 5, 1") != string::npos, "fclose decl in asm");
+        TEST_ASSERT(jvav.find(".syscall fwrite, 7, 3") != string::npos, "fwrite decl in asm");
+        ret = run_cmd(JVAVC_BACK_EXE " f.jvav f.bin");
+        TEST_ASSERT(ret == 0, "back compile");
+        ret = run_cmd(JVM_EXE " f.bin > f.out 2>&1");
+        TEST_ASSERT(ret == 0, "run");
+        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.bin");
+        std::remove("f.out");
+    }
+    test_passed("integration_syscall_fileio_frontend");
+
     return 0;
 }
