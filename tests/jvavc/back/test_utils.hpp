@@ -4,6 +4,19 @@
 #include <cstdlib>
 #include <string>
 
+#ifndef _WIN32
+#include <sys/wait.h>
+#endif
+
+inline int system_exit_code(int status) {
+#ifdef _WIN32
+    return status;
+#else
+    if (WIFEXITED(status)) return WEXITSTATUS(status);
+    return -1;
+#endif
+}
+
 inline int g_tests_passed = 0;
 inline int g_tests_failed = 0;
 
