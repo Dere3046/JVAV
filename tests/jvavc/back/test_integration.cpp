@@ -1105,7 +1105,7 @@ _start:
     ret = system(JVAVC_BACK_EXE " test_sc_exit.jvav test_sc_exit.bin");
     TEST_ASSERT(ret == 0, "syscall exit compile failed");
     ret = system(JVM_EXE " test_sc_exit.bin > test_sc_exit.out 2>&1");
-    TEST_ASSERT(ret == 42, "syscall exit should return 42");
+    TEST_ASSERT(system_exit_code(ret) == 42, "syscall exit should return 42");
     std::remove("test_sc_exit.jvav");
     std::remove("test_sc_exit.bin");
     std::remove("test_sc_exit.out");
