@@ -74,7 +74,8 @@ enum {
     SYS_GETCHAR,         /* RET=char_code or -1 */
     SYS_GETINT,          /* RET=integer or -1 */
     SYS_EXIT,            /* ARG0=exit_code -> stops VM */
-    SYS_PUTSTR           /* ARG0=addr, ARG1=len -> RET=0 */
+    SYS_PUTSTR,          /* ARG0=addr, ARG1=len -> RET=0 */
+    SYS_SLEEP            /* ARG0=milliseconds -> RET=0 */
 };
 
 typedef struct {

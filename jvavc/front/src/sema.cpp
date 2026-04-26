@@ -286,6 +286,7 @@ bool Sema::analyze(shared_ptr<Program> prog, const string &bp) {
     declare("free", Symbol::SYM_FUNC, voidType, 0, true);
     declare("exit", Symbol::SYM_FUNC, voidType, 0, true);
     declare("putstr", Symbol::SYM_FUNC, voidType, 0, true);
+    declare("sleep", Symbol::SYM_FUNC, voidType, 0, true);
 
     for (auto &d : prog->decls) {
         checkDecl(d);

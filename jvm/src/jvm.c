@@ -2,6 +2,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
 
 static int ensure_mem(JVM *vm, var addr) {
     if (addr < 0) return -1;
@@ -278,6 +283,18 @@ static void syscall_dispatch(JVM *vm, var cmd) {
                 putchar((int)c);
             }
             fflush(stdout);
+            vm->syscall_ret = 0;
+            break;
+        }
+        case SYS_SLEEP: {
+            int ms = (int)a0;
+            if (ms > 0) {
+#ifdef _WIN32
+                Sleep((DWORD)ms);
+#else
+                usleep((useconds_t)ms * 1000);
+#endif
+            }
             vm->syscall_ret = 0;
             break;
         }
