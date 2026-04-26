@@ -895,7 +895,7 @@ func main(): int {
         ret = run_cmd(JVAVC_BACK_EXE " f.jvav f.bin");
         TEST_ASSERT(ret == 0, "back");
         ret = run_cmd(JVM_EXE " f.bin > f.out 2>&1");
-        TEST_ASSERT(ret == 7, "exit should return 7");
+        TEST_ASSERT(system_exit_code(ret) == 7, "exit should return 7");
         std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.bin"); std::remove("f.out");
     }
     test_passed("integration_exit");
