@@ -966,5 +966,98 @@ _start:
     std::remove("test_sc_mix.out");
     test_passed("integration_syscall_with_user_func");
 
+    test_header("integration_syscall_negative");
+    src = R"(
+    .global _start
+_start:
+    LDI R0, 42
+    SUB R0, R4, R0
+    PUSH R0
+    CALL putint
+    LDI R4, 1
+    ADD SP, SP, R4
+    HALT
+    .syscall putint, 15, 1
+)";
+    std::ofstream("test_sc_neg.jvav") << src;
+    ret = system(JVAVC_BACK_EXE " test_sc_neg.jvav test_sc_neg.bin");
+    TEST_ASSERT(ret == 0, "syscall negative compile failed");
+    ret = system(JVM_EXE " test_sc_neg.bin > test_sc_neg.out 2>&1");
+    TEST_ASSERT(ret == 0, "syscall negative execution failed");
+    {
+        std::ifstream out_neg("test_sc_neg.out");
+        std::string output_neg((std::istreambuf_iterator<char>(out_neg)), std::istreambuf_iterator<char>());
+        TEST_ASSERT(output_neg == "-42", "syscall negative output");
+    }
+    std::remove("test_sc_neg.jvav");
+    std::remove("test_sc_neg.bin");
+    std::remove("test_sc_neg.out");
+    test_passed("integration_syscall_negative");
+
+    test_header("integration_syscall_zero");
+    src = R"(
+    .global _start
+_start:
+    LDI R0, 0
+    PUSH R0
+    CALL putint
+    LDI R4, 1
+    ADD SP, SP, R4
+    HALT
+    .syscall putint, 15, 1
+)";
+    std::ofstream("test_sc_zero.jvav") << src;
+    ret = system(JVAVC_BACK_EXE " test_sc_zero.jvav test_sc_zero.bin");
+    TEST_ASSERT(ret == 0, "syscall zero compile failed");
+    ret = system(JVM_EXE " test_sc_zero.bin > test_sc_zero.out 2>&1");
+    TEST_ASSERT(ret == 0, "syscall zero execution failed");
+    {
+        std::ifstream out_zero("test_sc_zero.out");
+        std::string output_zero((std::istreambuf_iterator<char>(out_zero)), std::istreambuf_iterator<char>());
+        TEST_ASSERT(output_zero == "0", "syscall zero output");
+    }
+    std::remove("test_sc_zero.jvav");
+    std::remove("test_sc_zero.bin");
+    std::remove("test_sc_zero.out");
+    test_passed("integration_syscall_zero");
+
+    test_header("integration_syscall_seq");
+    src = R"(
+    .global _start
+_start:
+    LDI R0, 65
+    PUSH R0
+    CALL putchar
+    LDI R4, 1
+    ADD SP, SP, R4
+    LDI R0, 1
+    PUSH R0
+    CALL putint
+    LDI R4, 1
+    ADD SP, SP, R4
+    LDI R0, 66
+    PUSH R0
+    CALL putchar
+    LDI R4, 1
+    ADD SP, SP, R4
+    HALT
+    .syscall putchar, 14, 1
+    .syscall putint, 15, 1
+)";
+    std::ofstream("test_sc_seq.jvav") << src;
+    ret = system(JVAVC_BACK_EXE " test_sc_seq.jvav test_sc_seq.bin");
+    TEST_ASSERT(ret == 0, "syscall seq compile failed");
+    ret = system(JVM_EXE " test_sc_seq.bin > test_sc_seq.out 2>&1");
+    TEST_ASSERT(ret == 0, "syscall seq execution failed");
+    {
+        std::ifstream out_seq("test_sc_seq.out");
+        std::string output_seq((std::istreambuf_iterator<char>(out_seq)), std::istreambuf_iterator<char>());
+        TEST_ASSERT(output_seq == "A1B", "syscall seq output");
+    }
+    std::remove("test_sc_seq.jvav");
+    std::remove("test_sc_seq.bin");
+    std::remove("test_sc_seq.out");
+    test_passed("integration_syscall_seq");
+
     return 0;
 }
