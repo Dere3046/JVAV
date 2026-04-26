@@ -170,7 +170,7 @@ struct ReturnStmt : Stmt {
 
 // Declaration
 struct Decl {
-    enum Kind { DECL_FUNC, DECL_VAR, DECL_CONST, DECL_IMPORT };
+    enum Kind { DECL_FUNC, DECL_VAR, DECL_CONST, DECL_IMPORT, DECL_SYSCALL };
     Kind kind;
     int line;
     Decl(Kind k, int l) : kind(k), line(l) {}
@@ -210,6 +210,14 @@ struct ImportDecl : Decl {
     std::string path;
     std::shared_ptr<Program> module;  // parsed AST of imported module
     ImportDecl(const std::string &p, int l) : Decl(DECL_IMPORT, l), path(p) {}
+};
+
+struct SyscallDecl : Decl {
+    std::string name;
+    int cmdId;
+    int argCount;
+    SyscallDecl(const std::string &n, int cmd, int args, int l)
+        : Decl(DECL_SYSCALL, l), name(n), cmdId(cmd), argCount(args) {}
 };
 
 struct Program {

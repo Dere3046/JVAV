@@ -20,7 +20,7 @@ bool FrontParser::expect(TokenType t) {
         "EOF", "identifier", "number", "string", "char",
         "func", "var", "const", "if", "else", "while", "for", "return",
         "int", "char", "bool", "void", "ptr", "array",
-        "true", "false", "import", "mut",
+        "true", "false", "import", "syscall", "mut",
         "+", "-", "*", "/", "%", "=", "==", "!=", "<", ">", "<=", ">=",
         "&&", "||", "&", "|", "^", "~", "<<", ">>", "!",
         "(", ")", "[", "]", "{", "}", ",", ";", ":"
@@ -482,6 +482,7 @@ shared_ptr<Decl> FrontParser::parseDecl() {
         if (!expect(TOK_SEMI)) return nullptr;
         return make_shared<ImportDecl>(peek(-2).text, line);
     }
+    if (check(TOK_KW_SYSCALL)) return parseSyscallDecl();
     if (check(TOK_KW_FUNC)) return parseFuncDecl();
     if (check(TOK_KW_VAR)) {
         auto s = parseVarDecl();
@@ -497,8 +498,29 @@ shared_ptr<Decl> FrontParser::parseDecl() {
     }
     errorLine = CURRENT.line;
     errorCol = CURRENT.col;
-    error = "expected a declaration (function, variable, or constant), but found `" + CURRENT.text + "`";
+    error = "expected a declaration (function, variable, constant, or syscall), but found `" + CURRENT.text + "`";
     return nullptr;
+}
+
+shared_ptr<SyscallDecl> FrontParser::parseSyscallDecl() {
+    int line = CURRENT.line;
+    if (!expect(TOK_KW_SYSCALL)) return nullptr;
+    if (!expect(TOK_IDENT)) return nullptr;
+    string name = peek(-1).text;
+    if (!expect(TOK_COMMA)) return nullptr;
+    if (!expect(TOK_NUMBER)) return nullptr;
+    int cmdId = (int)(long long)peek(-1).value;
+    if (!expect(TOK_COMMA)) return nullptr;
+    if (!expect(TOK_NUMBER)) return nullptr;
+    int argCount = (int)(long long)peek(-1).value;
+    if (!expect(TOK_SEMI)) return nullptr;
+    if (argCount < 0 || argCount > 3) {
+        errorLine = line;
+        errorCol = CURRENT.col;
+        error = "syscall arg_count must be 0..3";
+        return nullptr;
+    }
+    return make_shared<SyscallDecl>(name, cmdId, argCount, line);
 }
 
 shared_ptr<FuncDecl> FrontParser::parseFuncDecl() {
