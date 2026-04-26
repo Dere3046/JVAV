@@ -54,6 +54,7 @@ private:
     std::shared_ptr<Stmt> parseReturnStmt();
 
     std::shared_ptr<Decl> parseDecl();
+    std::shared_ptr<SyscallDecl> parseSyscallDecl();
     std::shared_ptr<FuncDecl> parseFuncDecl();
 };
 

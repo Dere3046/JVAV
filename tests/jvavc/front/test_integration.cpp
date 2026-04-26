@@ -745,6 +745,27 @@ func main(): int {
     }
     test_passed("integration_edge_crlf_source");
 
+    test_header("integration_syscall_frontend_decl");
+    {
+        const char* src = R"(
+syscall my_puthex, 20, 1;
+
+func main(): int {
+    my_puthex(255);
+    return 0;
+}
+)";
+        std::ofstream("f.jvl") << src;
+        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav");
+        TEST_ASSERT(ret == 0, "front compile");
+        // Verify .syscall appears in generated assembly
+        string jvav;
+        TEST_ASSERT(read_output("f.jvav", jvav), "read jvav");
+        TEST_ASSERT(jvav.find(".syscall my_puthex, 20, 1") != string::npos, "syscall decl in asm");
+        std::remove("f.jvl"); std::remove("f.jvav");
+    }
+    test_passed("integration_syscall_frontend_decl");
+
     test_header("integration_edge_long_line");
     {
         string src = "func main(): int { var x = " + string(200, '1') + " return 0; }";
