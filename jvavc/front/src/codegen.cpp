@@ -533,6 +533,7 @@ string CodeGenerator::generate(shared_ptr<Program> prog, const string &bp) {
     emit("    .syscall free, 13, 1");
     emit("    .syscall exit, 18, 1");
     emit("    .syscall putstr, 19, 2");
+    emit("    .syscall sleep, 20, 1");
     // User-defined syscalls
     for (auto &s : userSyscalls) emit(s);
 
