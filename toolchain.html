@@ -73,18 +73,19 @@
             </table>
 
             <h2 id="jvavc"><span class="active" data-lang="zh">jvavc — 后端汇编器</span><span data-lang="en">jvavc — Backend Assembler</span></h2>
-            <p class="active" data-lang="zh">将 JVAV 汇编编码为 128-bit 二进制。支持多文件链接、标签解析、EQU 定义。</p>
-            <p data-lang="en">Encodes JVAV assembly into 128-bit binary. Supports multi-file linking, label resolution, and EQU definitions.</p>
+            <p class="active" data-lang="zh">将 JVAV 汇编编码为 128-bit 二进制。支持多文件链接、标签解析、EQU 定义，以及 <code>.syscall</code> 伪指令自动生成系统调用包装器。</p>
+            <p data-lang="en">Encodes JVAV assembly into 128-bit binary. Supports multi-file linking, label resolution, EQU definitions, and the <code>.syscall</code> pseudo-instruction for auto-generating syscall wrappers.</p>
             <table class="feature-table">
                 <tr><th>Command</th><th class="active" data-lang="zh">说明</th><th data-lang="en">Description</th></tr>
                 <tr><td><code>jvavc -v</code></td><td class="active" data-lang="zh">显示版本号</td><td data-lang="en">Show version</td></tr>
                 <tr><td><code>jvavc a.jvav out.bin</code></td><td class="active" data-lang="zh">单文件汇编</td><td data-lang="en">Single-file assemble</td></tr>
                 <tr><td><code>jvavc a.jvav b.jvav -o out.bin</code></td><td class="active" data-lang="zh">多文件链接</td><td data-lang="en">Multi-file link</td></tr>
             </table>
+            <pre class="code">    .syscall putint, 15, 1   <span class="cm">; name, cmd_id, arg_count</span></pre>
 
             <h2 id="jvm"><span class="active" data-lang="zh">jvm — 虚拟机</span><span data-lang="en">jvm — Virtual Machine</span></h2>
-            <p class="active" data-lang="zh">128-bit 字寻址虚拟机，C99 实现。执行 JVAV 二进制文件。</p>
-            <p data-lang="en">128-bit word-addressable virtual machine, implemented in C99. Executes JVAV binary files.</p>
+            <p class="active" data-lang="zh">128-bit 字寻址虚拟机，C99 实现。执行 JVAV 二进制文件。通过系统调用邮箱（<code>0xFFE0</code> 命令、<code>0xFFE1</code>–<code>0xFFE3</code> 参数、<code>0xFFE4</code> 返回值）与宿主操作系统交互。</p>
+            <p data-lang="en">128-bit word-addressable virtual machine, implemented in C99. Executes JVAV binary files. Interacts with the host OS via a syscall mailbox (<code>0xFFE0</code> command, <code>0xFFE1</code>–<code>0xFFE3</code> arguments, <code>0xFFE4</code> return value).</p>
             <table class="feature-table">
                 <tr><th>Command</th><th class="active" data-lang="zh">说明</th><th data-lang="en">Description</th></tr>
                 <tr><td><code>jvm -v</code></td><td class="active" data-lang="zh">显示版本号</td><td data-lang="en">Show version</td></tr>
