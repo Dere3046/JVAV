@@ -1059,5 +1059,57 @@ _start:
     std::remove("test_sc_seq.out");
     test_passed("integration_syscall_seq");
 
+    test_header("integration_syscall_putstr");
+    src = R"(
+    .global _start
+_start:
+    LDI R0, msg
+    LDI R1, 3
+    PUSH R1
+    PUSH R0
+    CALL putstr
+    LDI R4, 2
+    ADD SP, SP, R4
+    HALT
+msg: DB "Hi!"
+    .syscall putstr, 19, 2
+)";
+    std::ofstream("test_sc_str.jvav") << src;
+    ret = system(JVAVC_BACK_EXE " test_sc_str.jvav test_sc_str.bin");
+    TEST_ASSERT(ret == 0, "syscall putstr compile failed");
+    ret = system(JVM_EXE " test_sc_str.bin > test_sc_str.out 2>&1");
+    TEST_ASSERT(ret == 0, "syscall putstr execution failed");
+    {
+        std::ifstream out_str("test_sc_str.out");
+        std::string output_str((std::istreambuf_iterator<char>(out_str)), std::istreambuf_iterator<char>());
+        TEST_ASSERT(output_str == "Hi!", "syscall putstr output");
+    }
+    std::remove("test_sc_str.jvav");
+    std::remove("test_sc_str.bin");
+    std::remove("test_sc_str.out");
+    test_passed("integration_syscall_putstr");
+
+    test_header("integration_syscall_exit");
+    src = R"(
+    .global _start
+_start:
+    LDI R0, 42
+    PUSH R0
+    CALL exit
+    LDI R4, 1
+    ADD SP, SP, R4
+    HALT
+    .syscall exit, 18, 1
+)";
+    std::ofstream("test_sc_exit.jvav") << src;
+    ret = system(JVAVC_BACK_EXE " test_sc_exit.jvav test_sc_exit.bin");
+    TEST_ASSERT(ret == 0, "syscall exit compile failed");
+    ret = system(JVM_EXE " test_sc_exit.bin > test_sc_exit.out 2>&1");
+    TEST_ASSERT(ret == 42, "syscall exit should return 42");
+    std::remove("test_sc_exit.jvav");
+    std::remove("test_sc_exit.bin");
+    std::remove("test_sc_exit.out");
+    test_passed("integration_syscall_exit");
+
     return 0;
 }

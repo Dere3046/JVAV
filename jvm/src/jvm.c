@@ -262,6 +262,25 @@ static void syscall_dispatch(JVM *vm, var cmd) {
             vm->syscall_ret = (var)v;
             break;
         }
+        case SYS_EXIT: {
+            vm->exit_code = (int)a0;
+            vm->running = 0;
+            vm->syscall_ret = 0;
+            break;
+        }
+        case SYS_PUTSTR: {
+            var addr = a0;
+            var len = a1;
+            if (addr < 0 || len < 0) { vm->syscall_ret = -1; break; }
+            for (var i = 0; i < len; i++) {
+                if (ensure_mem(vm, addr + i) < 0) { vm->syscall_ret = -1; break; }
+                unsigned char c = (unsigned char)(long long)(vm->mem[(size_t)(unsigned long long)(addr + i)] & 0xFF);
+                putchar((int)c);
+            }
+            fflush(stdout);
+            vm->syscall_ret = 0;
+            break;
+        }
         default:
             vm->syscall_ret = -1;
             break;
@@ -316,6 +335,7 @@ void jvm_init(JVM *vm) {
     vm->heap_ptr = 0;
     memset(vm->mmap_table, 0, sizeof(vm->mmap_table));
     memset(vm->fd_table, 0, sizeof(vm->fd_table));
+    vm->exit_code = 0;
 }
 
 void jvm_free(JVM *vm) {

@@ -284,6 +284,8 @@ bool Sema::analyze(shared_ptr<Program> prog, const string &bp) {
     ptrIntType->sub = make_shared<Type>(Type{TYPE_INT});
     declare("alloc", Symbol::SYM_FUNC, ptrIntType, 0, true);
     declare("free", Symbol::SYM_FUNC, voidType, 0, true);
+    declare("exit", Symbol::SYM_FUNC, voidType, 0, true);
+    declare("putstr", Symbol::SYM_FUNC, voidType, 0, true);
 
     for (auto &d : prog->decls) {
         checkDecl(d);
