@@ -1,7 +1,13 @@
+#ifdef _WIN32
+#include <windows.h>
+#endif
 #include "jvm.h"
 #include <stdlib.h>
 
 int main(int argc, char *argv[]) {
+#ifdef _WIN32
+    SetConsoleOutputCP(CP_UTF8);
+#endif
     if (argc >= 2 && (strcmp(argv[1], "-v") == 0 || strcmp(argv[1], "--version") == 0)) {
         printf("jvm " JVAV_VERSION "\n");
         return 0;

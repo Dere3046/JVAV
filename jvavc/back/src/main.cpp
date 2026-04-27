@@ -1,3 +1,6 @@
+#ifdef _WIN32
+#include <windows.h>
+#endif
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -14,6 +17,9 @@ static void printUsage(const char *prog) {
 }
 
 int main(int argc, char *argv[]) {
+#ifdef _WIN32
+    SetConsoleOutputCP(CP_UTF8);
+#endif
     if (argc >= 2) {
         string arg = argv[1];
         if (arg == "-v" || arg == "--version") {

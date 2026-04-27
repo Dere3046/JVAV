@@ -1199,5 +1199,73 @@ data: DB "HELLO", 0
     std::remove("test_sc_file.txt");
     test_passed("integration_syscall_fwrite");
 
+    test_header("integration_db_string_colon");
+    {
+        const char* src = R"(
+    LDI R0, msg
+    LDI R1, 3
+    LDI R2, 1
+    LDI R4, 0
+loop:
+    LDR R7, [R0]
+    STR [0xFFE1], R7
+    LDI R7, 14
+    STR [0xFFE0], R7
+    LDR R7, [0xFFE4]
+    ADD R0, R0, R2
+    SUB R1, R1, R2
+    CMP R1, R4
+    JNZ loop
+    HALT
+msg: DB "A:B", 0
+)";
+        std::ofstream("test_db_colon.jvav") << src;
+        int ret = system(JVAVC_BACK_EXE " test_db_colon.jvav test_db_colon.bin");
+        TEST_ASSERT(ret == 0, "db colon compile failed");
+        ret = system(JVM_EXE " test_db_colon.bin > test_db_colon.out 2>&1");
+        TEST_ASSERT(ret == 0, "db colon execution failed");
+        std::ifstream out("test_db_colon.out");
+        std::string output((std::istreambuf_iterator<char>(out)), std::istreambuf_iterator<char>());
+        TEST_ASSERT(output == "A:B", "db colon output");
+        std::remove("test_db_colon.jvav");
+        std::remove("test_db_colon.bin");
+        std::remove("test_db_colon.out");
+    }
+    test_passed("integration_db_string_colon");
+
+    test_header("integration_db_string_path");
+    {
+        const char* src = R"(
+    LDI R0, msg
+    LDI R1, 11
+    LDI R2, 1
+    LDI R4, 0
+loop:
+    LDR R7, [R0]
+    STR [0xFFE1], R7
+    LDI R7, 14
+    STR [0xFFE0], R7
+    LDR R7, [0xFFE4]
+    ADD R0, R0, R2
+    SUB R1, R1, R2
+    CMP R1, R4
+    JNZ loop
+    HALT
+msg: DB "D:/test.txt", 0
+)";
+        std::ofstream("test_db_path.jvav") << src;
+        int ret = system(JVAVC_BACK_EXE " test_db_path.jvav test_db_path.bin");
+        TEST_ASSERT(ret == 0, "db path compile failed");
+        ret = system(JVM_EXE " test_db_path.bin > test_db_path.out 2>&1");
+        TEST_ASSERT(ret == 0, "db path execution failed");
+        std::ifstream out("test_db_path.out");
+        std::string output((std::istreambuf_iterator<char>(out)), std::istreambuf_iterator<char>());
+        TEST_ASSERT(output == "D:/test.txt", "db path output");
+        std::remove("test_db_path.jvav");
+        std::remove("test_db_path.bin");
+        std::remove("test_db_path.out");
+    }
+    test_passed("integration_db_string_path");
+
     return 0;
 }

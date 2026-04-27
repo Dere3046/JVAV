@@ -361,8 +361,8 @@ bool Sema::checkDecl(shared_ptr<Decl> d) {
         return processImport(dynamic_pointer_cast<ImportDecl>(d));
     } else if (d->kind == Decl::DECL_SYSCALL) {
         auto sd = dynamic_pointer_cast<SyscallDecl>(d);
-        auto voidType = make_shared<Type>(Type{TYPE_VOID});
-        declare(sd->name, Symbol::SYM_FUNC, voidType, 0, true);
+        auto intType = make_shared<Type>(Type{TYPE_INT});
+        declare(sd->name, Symbol::SYM_FUNC, intType, 0, true);
     }
     return true;
 }
@@ -430,7 +430,7 @@ bool Sema::processImport(shared_ptr<ImportDecl> id) {
             declare(cd->name, Symbol::SYM_CONST, make_shared<Type>(Type{TYPE_INT}), 0, true);
         } else if (subd->kind == Decl::DECL_SYSCALL) {
             auto sd = dynamic_pointer_cast<SyscallDecl>(subd);
-            declare(sd->name, Symbol::SYM_FUNC, make_shared<Type>(Type{TYPE_VOID}), 0, true);
+            declare(sd->name, Symbol::SYM_FUNC, make_shared<Type>(Type{TYPE_INT}), 0, true);
         }
     }
     id->module = par.getProgram();

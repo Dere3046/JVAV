@@ -24,7 +24,7 @@ Relative imports (e.g. `import "./lib/util.jvl";`) resolve from the source file'
 
 ### `std/io.jvl` — Console Output
 
-Built on top of the VM's memory-mapped I/O ports (`0xFFF0` putchar, `0xFFF1` getchar, `0xFFF2` putint, `0xFFF3` getint, `0xFFF4` puthex).
+Built on top of the VM's syscall mailbox (`0xFFE0`–`0xFFE4`) and legacy I/O ports (`0xFFF0` putchar, `0xFFF2` putint).
 
 | Function | Description | Example Output |
 |----------|-------------|----------------|
@@ -98,6 +98,47 @@ func main(): int {
 ```
 
 **Ownership interaction:** Both `dst` and `src` are borrowed (not moved) because `ptr<T>` arguments in JVL are passed by value — the pointer itself is copied, the pointed-to memory is not.
+
+### `std/file.jvl` — File I/O
+
+Provides wrappers around the VM's file system syscalls. All functions return `int`: positive values indicate success (fd, handle, bytes read/written), while `0` or `-1` indicate failure.
+
+| Function | Description |
+|----------|-------------|
+| `fopen(path, mode)` | Open a file. Returns fd (>0) or 0 on failure |
+| `fclose(fd)` | Close a file descriptor |
+| `fread(fd, buf, count)` | Read `count` words into `buf` |
+| `fwrite(fd, buf, count)` | Write `count` words from `buf` |
+| `fseek(fd, offset, whence)` | Seek to position (`whence`: 0=SET, 1=CUR, 2=END) |
+| `ftell(fd)` | Get current file position |
+| `mmap_file(path, addr, size)` | Memory-map a file starting at VM address `addr` |
+| `munmap(slot)` | Unmap a memory-mapped file |
+| `msync(slot)` | Flush memory-mapped changes to disk |
+
+```jvl
+import "std/file.jvl";
+import "std/io.jvl";
+
+func main(): int {
+    var path = "test.txt";
+    var mode = "wb";
+    var fd = fopen(path, mode);
+    if (fd == 0) {
+        println(999);   // failed to open
+        return 1;
+    }
+    var data = alloc(3);
+    data[0] = 65; data[1] = 66; data[2] = 67;   // ABC
+    fwrite(fd, data, 3);
+    fclose(fd);
+    free(data);
+    return 0;
+}
+```
+
+**Path strings:** Use forward slashes (`/`) in paths. The VM passes the path verbatim to the host C library, which handles platform-specific path resolution.
+
+**Important:** File I/O operates on **words** (128-bit units), not bytes. `fread`/`fwrite` `count` is in words, not bytes.
 
 ### `std/string.jvl` — String Output
 

@@ -23,6 +23,7 @@ private:
     std::string basePath;
     std::vector<std::string> importPaths;
     std::set<std::string> generatedFiles;
+    std::set<Program*> generatedModules;
     std::vector<std::string> userSyscalls;
 
     std::string nextLabel(const std::string &prefix);

@@ -361,7 +361,7 @@ void jvm_free(JVM *vm) {
 
 int jvm_load_program(JVM *vm, const char *filename) {
     FILE *f = fopen(filename, "rb");
-    if (!f) { perror("fopen"); return -1; }
+    if (!f) { fprintf(stderr, "Cannot open bytecode file: %s\n", filename); return -1; }
     fseek(f, 0, SEEK_END);
     long sz = ftell(f);
     fseek(f, 0, SEEK_SET);
