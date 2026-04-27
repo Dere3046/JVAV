@@ -25,28 +25,62 @@ body {
 
 /* Deprecation banner */
 .deprecation-banner {
-    background: linear-gradient(90deg, #c0392b, #e74c3c);
-    color: #fff;
-    text-align: center;
-    padding: 12px 24px;
+    background: linear-gradient(135deg, var(--jvav-dark) 0%, var(--jvav-mid) 100%);
+    color: rgba(255,255,255,0.92);
+    border-bottom: 2px solid var(--java-orange);
+    padding: 0;
     font-size: 14px;
     font-weight: 500;
     line-height: 1.6;
     position: relative;
     z-index: 101;
 }
+.deprecation-banner::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--java-gold), transparent);
+    opacity: 0.6;
+}
+.deprecation-banner-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+}
 .deprecation-banner a {
-    color: #ffeb3b;
-    text-decoration: underline;
+    color: var(--java-gold);
+    text-decoration: none;
     font-weight: 600;
+    border-bottom: 1px solid rgba(248,152,29,0.4);
+    transition: all 0.2s;
 }
 .deprecation-banner a:hover {
     color: #fff;
+    border-bottom-color: var(--java-gold);
+}
+.deprecation-banner .sep {
+    color: rgba(255,255,255,0.25);
+    font-weight: 300;
+    user-select: none;
 }
 @media (max-width: 768px) {
-    .deprecation-banner {
-        font-size: 12px;
+    .deprecation-banner-inner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
         padding: 10px 16px;
+        font-size: 12px;
+    }
+    .deprecation-banner .sep {
+        display: none;
     }
 }
 
