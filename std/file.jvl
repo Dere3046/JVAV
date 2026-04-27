@@ -1,0 +1,48 @@
+// Standard file I/O library for JVAV
+// Wraps low-level syscalls into usable functions.
+
+syscall fopen_, 4, 2;
+syscall fclose_, 5, 1;
+syscall fread_, 6, 3;
+syscall fwrite_, 7, 3;
+syscall fseek_, 8, 3;
+syscall ftell_, 9, 1;
+syscall mmap_file_, 1, 3;
+syscall munmap_, 2, 1;
+syscall msync_, 3, 1;
+
+func fopen(path: ptr<int>, mode: ptr<int>): int {
+    return fopen_(path, mode);
+}
+
+func fclose(fd: int): int {
+    return fclose_(fd);
+}
+
+func fread(fd: int, buf: ptr<int>, count: int): int {
+    return fread_(fd, buf, count);
+}
+
+func fwrite(fd: int, buf: ptr<int>, count: int): int {
+    return fwrite_(fd, buf, count);
+}
+
+func fseek(fd: int, offset: int, whence: int): int {
+    return fseek_(fd, offset, whence);
+}
+
+func ftell(fd: int): int {
+    return ftell_(fd);
+}
+
+func mmap_file(path: ptr<int>, addr: int, size: int): int {
+    return mmap_file_(path, addr, size);
+}
+
+func munmap(slot: int): int {
+    return munmap_(slot);
+}
+
+func msync(slot: int): int {
+    return msync_(slot);
+}

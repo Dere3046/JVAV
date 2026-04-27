@@ -515,7 +515,7 @@ func main(): int { return 0; }
         TEST_ASSERT(ret == 0, "jvlc -v exit code");
         string out;
         TEST_ASSERT(read_output("version.out", out), "read version output");
-        TEST_ASSERT(out.find("jvlc 0.3.1") != string::npos, "jvlc version string");
+        TEST_ASSERT(out.find("jvlc 0.3.2") != string::npos, "jvlc version string");
         std::remove("version.out");
     }
     test_passed("integration_version_jvlc");
@@ -526,7 +526,7 @@ func main(): int { return 0; }
         TEST_ASSERT(ret == 0, "jvavc -v exit code");
         string out;
         TEST_ASSERT(read_output("version.out", out), "read version output");
-        TEST_ASSERT(out.find("jvavc 0.3.1") != string::npos, "jvavc version string");
+        TEST_ASSERT(out.find("jvavc 0.3.2") != string::npos, "jvavc version string");
         std::remove("version.out");
     }
     test_passed("integration_version_jvavc");
@@ -537,7 +537,7 @@ func main(): int { return 0; }
         TEST_ASSERT(ret == 0, "jvm -v exit code");
         string out;
         TEST_ASSERT(read_output("version.out", out), "read version output");
-        TEST_ASSERT(out.find("jvm 0.3.1") != string::npos, "jvm version string");
+        TEST_ASSERT(out.find("jvm 0.3.2") != string::npos, "jvm version string");
         std::remove("version.out");
     }
     test_passed("integration_version_jvm");
@@ -548,7 +548,7 @@ func main(): int { return 0; }
         TEST_ASSERT(ret == 0, "disasm -v exit code");
         string out;
         TEST_ASSERT(read_output("version.out", out), "read version output");
-        TEST_ASSERT(out.find("disasm 0.3.1") != string::npos, "disasm version string");
+        TEST_ASSERT(out.find("disasm 0.3.2") != string::npos, "disasm version string");
         std::remove("version.out");
     }
     test_passed("integration_version_disasm");
@@ -1235,6 +1235,176 @@ func main(): int {
         std::remove("main.jvav"); std::remove("main.bin"); std::remove("main.out");
     }
     test_passed("integration_nested_import");
+
+    test_header("integration_syscall_return_int");
+    {
+        const char* src = R"(
+syscall myopen, 4, 2;
+syscall myclose, 5, 1;
+
+func main(): int {
+    var path = "test_return.txt";
+    var mode = "wb";
+    var fd: int = myopen(path, mode);
+    putint(fd);
+    if (fd > 0) {
+        myclose(fd);
+    }
+    return 0;
+}
+)";
+        std::ofstream("test_sc_ret.jvl") << src;
+        int ret = run_cmd(JVAVC_FRONT_EXE " test_sc_ret.jvl test_sc_ret.jvav");
+        TEST_ASSERT(ret == 0, "front compile failed");
+        ret = run_cmd(JVAVC_BACK_EXE " test_sc_ret.jvav test_sc_ret.bin");
+        TEST_ASSERT(ret == 0, "back compile failed");
+        ret = run_cmd(JVM_EXE " test_sc_ret.bin > test_sc_ret.out 2>&1");
+        TEST_ASSERT(ret == 0, "execution failed");
+        string out;
+        TEST_ASSERT(read_output("test_sc_ret.out", out), "read output");
+        // fd should be > 0 (1 or more), printed as integer
+        TEST_ASSERT(out == "1", "fd should be 1");
+        std::remove("test_sc_ret.jvl"); std::remove("test_sc_ret.jvav");
+        std::remove("test_sc_ret.bin"); std::remove("test_sc_ret.out");
+        std::remove("test_return.txt");
+    }
+    test_passed("integration_syscall_return_int");
+
+    test_header("integration_import_dup_cross_dir");
+    {
+        // Create directory structure: dir_a/c.jvl, dir_b/c.jvl
+        // But we simulate cross-dir import by using different relative paths
+        // A imports "sub/c.jvl" from "dir_a/", B imports "sub/c.jvl" from "dir_b/"
+        // main imports A and B. C should only be emitted once.
+#ifdef _WIN32
+        system("mkdir dir_a 2>nul");
+        system("mkdir dir_b 2>nul");
+        system("mkdir dir_a\\sub 2>nul");
+        system("mkdir dir_b\\sub 2>nul");
+#else
+        system("mkdir -p dir_a/sub dir_b/sub");
+#endif
+        const char* c_src = R"(
+func helper(): int {
+    return 42;
+}
+)";
+        const char* a_src = R"(
+import "sub/c.jvl";
+
+func get_a(): int {
+    return helper();
+}
+)";
+        const char* b_src = R"(
+import "sub/c.jvl";
+
+func get_b(): int {
+    return helper();
+}
+)";
+        const char* main_src = R"(
+import "dir_a/a.jvl";
+import "dir_b/b.jvl";
+
+func main(): int {
+    putint(get_a());
+    putint(get_b());
+    return 0;
+}
+)";
+        std::ofstream("dir_a/sub/c.jvl") << c_src;
+        std::ofstream("dir_a/a.jvl") << a_src;
+        std::ofstream("dir_b/sub/c.jvl") << c_src;
+        std::ofstream("dir_b/b.jvl") << b_src;
+        std::ofstream("main_dup.jvl") << main_src;
+        int ret = run_cmd(JVAVC_FRONT_EXE " main_dup.jvl main_dup.jvav");
+        TEST_ASSERT(ret == 0, "front cross-dir dup import");
+        ret = run_cmd(JVAVC_BACK_EXE " main_dup.jvav main_dup.bin");
+        TEST_ASSERT(ret == 0, "back cross-dir dup import");
+        ret = run_cmd(JVM_EXE " main_dup.bin > main_dup.out 2>&1");
+        TEST_ASSERT(ret == 0, "run cross-dir dup import");
+        string out;
+        TEST_ASSERT(read_output("main_dup.out", out), "read");
+        TEST_ASSERT(out == "4242", "cross-dir dup import output");
+        std::remove("dir_a/sub/c.jvl"); std::remove("dir_a/a.jvl");
+        std::remove("dir_b/sub/c.jvl"); std::remove("dir_b/b.jvl");
+        std::remove("main_dup.jvl"); std::remove("main_dup.jvav");
+        std::remove("main_dup.bin"); std::remove("main_dup.out");
+#ifdef _WIN32
+        system("rmdir /s /q dir_a 2>nul");
+        system("rmdir /s /q dir_b 2>nul");
+#else
+        system("rm -rf dir_a dir_b");
+#endif
+    }
+    test_passed("integration_import_dup_cross_dir");
+
+    test_header("integration_stdlib_file");
+    {
+        // Use absolute path to std/file.jvl since we're in the test working dir
+        const char* src = R"(
+import "std/file.jvl";
+import "std/io.jvl";
+
+func main(): int {
+    var path = "test_file_io.txt";
+    var mode = "wb";
+    var fd = fopen(path, mode);
+    if (fd == 0) {
+        println(999);
+        return 1;
+    }
+    var data = alloc(3);
+    data[0] = 88; data[1] = 89; data[2] = 90;   // XYZ
+    fwrite(fd, data, 3);
+    fclose(fd);
+    free(data);
+
+    // Read back
+    var rmode = "rb";
+    var rfd = fopen(path, rmode);
+    if (rfd == 0) {
+        println(998);
+        return 1;
+    }
+    var buf = alloc(3);
+    fread(rfd, buf, 3);
+    putchar(buf[0]);
+    putchar(buf[1]);
+    putchar(buf[2]);
+    fclose(rfd);
+    free(buf);
+    return 0;
+}
+)";
+        std::ofstream("test_file.jvl") << src;
+        int ret = run_cmd(JVAVC_FRONT_EXE " test_file.jvl test_file.jvav");
+        TEST_ASSERT(ret == 0, "front stdlib file compile");
+        ret = run_cmd(JVAVC_BACK_EXE " test_file.jvav test_file.bin");
+        TEST_ASSERT(ret == 0, "back stdlib file compile");
+        ret = run_cmd(JVM_EXE " test_file.bin > test_file.out 2>&1");
+        TEST_ASSERT(ret == 0, "run stdlib file");
+        string out;
+        TEST_ASSERT(read_output("test_file.out", out), "read");
+        TEST_ASSERT(out == "XYZ", "file io output");
+        std::remove("test_file.jvl"); std::remove("test_file.jvav");
+        std::remove("test_file.bin"); std::remove("test_file.out");
+        std::remove("test_file_io.txt");
+    }
+    test_passed("integration_stdlib_file");
+
+    test_header("integration_jvm_load_error_msg");
+    {
+        int ret = run_cmd(JVM_EXE " nonexistent_file_xyz.bin > jvm_err.out 2>&1");
+        // jvm returns 1 on failure
+        TEST_ASSERT(system_exit_code(ret) == 1, "jvm should fail");
+        string out;
+        TEST_ASSERT(read_output("jvm_err.out", out), "read");
+        TEST_ASSERT(out.find("nonexistent_file_xyz.bin") != string::npos, "error should contain filename");
+        std::remove("jvm_err.out");
+    }
+    test_passed("integration_jvm_load_error_msg");
 
     return 0;
 }

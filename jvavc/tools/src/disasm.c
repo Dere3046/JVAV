@@ -4,6 +4,9 @@
  *   disasm file.bin          static disassembly
  *   disasm -t file.bin       dynamic trace (executes in embedded VM)
  */
+#ifdef _WIN32
+#include <windows.h>
+#endif
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -330,6 +333,9 @@ static void print_instr(size_t idx, const Instr *in, Int128 imm,
 
 /* ---------- main ---------- */
 int main(int argc, char *argv[]) {
+#ifdef _WIN32
+    SetConsoleOutputCP(CP_UTF8);
+#endif
     int trace_mode = 0;
     int argi = 1;
     if (argi < argc && (strcmp(argv[argi], "-v") == 0 || strcmp(argv[argi], "--version") == 0)) {

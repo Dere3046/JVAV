@@ -262,7 +262,7 @@ void CodeGenerator::genExpr(shared_ptr<Expr> e, int destReg) {
         case Expr::EXPR_STRING: {
             auto str = dynamic_pointer_cast<StringExpr>(e);
             string lbl = ".str_" + to_string(stringCounter++);
-            stringLabels.push_back(lbl + ":\n    DB \"" + escapeString(str->value) + "\"");
+            stringLabels.push_back(lbl + ":\n    DB \"" + escapeString(str->value) + "\", 0");
             emit("    LDI R" + to_string(destReg) + ", " + lbl);
             break;
         }
@@ -488,7 +488,9 @@ void CodeGenerator::genProgram(shared_ptr<Program> prog) {
                 }
             }
             if (generatedFiles.find(absPath) != generatedFiles.end()) continue;
+            if (id->module && generatedModules.find(id->module.get()) != generatedModules.end()) continue;
             generatedFiles.insert(absPath);
+            if (id->module) generatedModules.insert(id->module.get());
             genProgram(id->module);
         }
     }
@@ -513,6 +515,7 @@ string CodeGenerator::generate(shared_ptr<Program> prog, const string &bp) {
     stringCounter = 0;
     stringLabels.clear();
     generatedFiles.clear();
+    generatedModules.clear();
     userSyscalls.clear();
     basePath = bp;
 

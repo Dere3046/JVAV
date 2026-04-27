@@ -197,3 +197,20 @@ The VM supports `mmap`-style file mapping via `SYS_MMAP_FILE`:
 - Multiple non-overlapping mappings are supported (`MAX_MMAP`, typically 16)
 - `SYS_MSYNC` flushes changes to disk
 - `SYS_MUNMAP` closes the file and releases the slot
+
+For a higher-level interface, import `std/file.jvl` from JVL:
+
+```jvl
+import "std/file.jvl";
+
+func main(): int {
+    var path = "data.bin";
+    var fd = fopen(path, "rb");
+    if (fd == 0) { return 1; }
+    var buf = alloc(10);
+    fread(fd, buf, 10);
+    fclose(fd);
+    free(buf);
+    return 0;
+}
+```
