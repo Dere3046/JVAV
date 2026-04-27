@@ -95,8 +95,11 @@ JVAV/
 
 ## Documentation
 
+All documentation lives in the `docs/` directory on GitHub (no separate website).
+
 | Document | Description |
 |----------|-------------|
+| [docs/quickstart.md](docs/quickstart.md) | 5-minute getting started guide |
 | [docs/frontend_syntax.md](docs/frontend_syntax.md) | JVL language syntax, type system, inference, ownership |
 | [docs/backend_syntax.md](docs/backend_syntax.md) | JVAV assembly syntax and instruction set |
 | [docs/jvm_features.md](docs/jvm_features.md) | VM architecture, memory model, syscalls |
