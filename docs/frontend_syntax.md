@@ -215,6 +215,20 @@ These functions are recognized by the compiler and do not need to be declared or
 | `getchar()` | `func getchar(): int` | Read character from stdin |
 
 **Note:** `getint()` and `getchar()` are registered as builtins and available without declaration.
+
+### Built-in Function Signatures (Exact)
+
+| Function | Effective Signature | Notes |
+|----------|---------------------|-------|
+| `putint(x)` | `func putint(x: int): int` | Returns 0; prints signed decimal |
+| `putchar(c)` | `func putchar(c: int): void` | Prints low byte as ASCII |
+| `getint()` | `func getint(): int` | Reads signed decimal from stdin |
+| `getchar()` | `func getchar(): int` | Reads one byte from stdin |
+| `alloc(n)` | `func alloc(n: int): ptr<int>` | Bump allocator; no alignment |
+| `free(p)` | `func free(p: ptr<int>): void` | Writes tombstone; does not reclaim |
+| `exit(code)` | `func exit(code: int): void` | Stops VM immediately |
+| `putstr(s, n)` | `func putstr(s: ptr<int>, n: int): void` | Prints `n` chars starting at `s` |
+| `sleep(ms)` | `func sleep(ms: int): void` | Windows: `Sleep()`; POSIX: `usleep()` |
 | `alloc(n)` | `func alloc(n: int): ptr<int>` | Allocate `n` 128-bit words on heap |
 | `free(p)` | `func free(p: ptr<int>): void` | Release heap allocation |
 | `exit(code)` | `func exit(code: int): void` | Terminate with exit code |
@@ -291,6 +305,22 @@ syscall name, cmd_id, arg_count;
 This is useful for using VM syscalls that are not included in the standard builtins (e.g., file I/O, mmap, or custom syscalls you added to the VM).
 
 **Return value:** Syscalls return the value from `0xFFE4` (SYSCALL_RET mailbox). For file operations, this is typically a handle or fd (>0) on success, or 0/-1 on failure.
+
+**Example — custom file I/O without stdlib:**
+```jvl
+syscall myopen, 4, 2;
+syscall myclose, 5, 1;
+
+func main(): int {
+    var path = "test.txt";
+    var mode = "wb";
+    var fd = myopen(path, mode);
+    if (fd > 0) {
+        myclose(fd);
+    }
+    return 0;
+}
+```
 
 ## Import System
 
@@ -370,12 +400,12 @@ Borrowing rules (enforced at compile time):
 
 The compiler emits Rust-style diagnostics with error codes:
 
-| Code Range | Category |
-|------------|----------|
-| E0100–E0199 | Lexer errors (invalid characters, unterminated strings, etc.) |
-| E0200–E0299 | Parser errors (missing semicolons, mismatched braces, etc.) |
-| E0300–E0399 | I/O errors (file not found, import resolution, etc.) |
-| E1000+ | Semantic errors (undefined variables, type mismatches, ownership violations, etc.) |
+| Code Range | Category | Common Examples |
+|------------|----------|-----------------|
+| E0100–E0199 | Lexer errors | Invalid characters, unterminated strings, unknown escape sequences |
+| E0200–E0299 | Parser errors | Missing semicolons, mismatched braces/parens, unexpected tokens |
+| E0300–E0399 | I/O errors | Import file not found, cannot read file, standard library missing |
+| E1000–E1999 | Semantic / MimiWorld errors | Undefined variables, type mismatches, ownership violations, missing returns |
 
 Each error includes:
 - Error code and message
@@ -384,7 +414,47 @@ Each error includes:
 - `^` caret underline pointing to the error position
 - Help/note text where applicable
 
+### Common Semantic Errors
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `cannot find function X in this scope` | Function not declared or imported | Add `import`, `extern`, or `syscall` declaration |
+| `use of moved value X` | Variable was moved and used again | Reassign or borrow (`&X`) instead of moving |
+| `cannot mutably borrow X because it is already borrowed` | Multiple overlapping borrows | Drop existing borrows before taking `&mut` |
+| `missing return statement` | Non-void function lacks `return` on some path | Add `return` to all branches |
+| `cannot find standard library std/X.jvl` | `std/` directory not in search path | Run from project root or copy `std/` next to binary |
+
 ---
+
+## Implicit Conversions
+
+### `int` → `ptr<T>` (Literal Addresses)
+
+Integer literals can be implicitly converted to pointer types. This is primarily used for accessing memory-mapped I/O addresses:
+
+```jvl
+func write_mailbox(addr: int, val: int): void {
+    var p: ptr<int> = addr;   // implicit conversion
+    p[0] = val;
+}
+
+func main(): int {
+    write_mailbox(0xFFE0, 14);   // trigger putchar syscall
+    return 0;
+}
+```
+
+**Note:** This only works for literal integer values. Assigning a variable `int` to `ptr<T>` without an explicit cast is a type error.
+
+## `jvlc --run` Behavior
+
+`jvlc --run` (or `-r`) is **not** an embedded VM. It performs three external subprocess calls in sequence:
+
+1. `jvlc source.jvl → source.jvav` (frontend compile)
+2. `jvavc source.jvav → source.bin` (backend assemble)
+3. `jvm source.bin` (execute)
+
+Intermediate files are cleaned up automatically unless `-o` is used. The working directory for all three steps is the same (the directory where `jvlc --run` was invoked).
 
 ## Complete Example
 

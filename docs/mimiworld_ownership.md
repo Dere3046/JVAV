@@ -152,6 +152,66 @@ MimiWorld is a **simplified** ownership system compared to Rust:
 - Bump allocator does not reclaim freed memory (fragments over time)
 - Borrow checker operates at the semantic analysis level; runtime behavior is unchanged
 
+## Common Patterns
+
+### Pattern 1: Borrow instead of move
+
+If you need to use a pointer after passing it to a function, borrow it:
+
+```jvl
+func print_first(p: &int): void {
+    putint(p[0]);
+}
+
+func main(): int {
+    var arr = alloc(3);
+    arr[0] = 7; arr[1] = 8; arr[2] = 9;
+    print_first(&arr);     // borrow — arr remains valid
+    putint(arr[1]);        // OK
+    free(arr);
+    return 0;
+}
+```
+
+### Pattern 2: Reassign after move
+
+If a function consumes ownership, reassign the result if you need to keep using it:
+
+```jvl
+func dup(src: ptr<int>): ptr<int> {
+    var dst = alloc(3);
+    dst[0] = src[0];
+    dst[1] = src[1];
+    dst[2] = src[2];
+    return dst;
+}
+
+func main(): int {
+    var a = alloc(3);
+    a[0] = 1; a[1] = 2; a[2] = 3;
+    var b = dup(a);        // a is moved into dup
+    // a is invalid here
+    free(b);
+    return 0;
+}
+```
+
+### Pattern 3: Scope-based borrowing
+
+Borrows automatically end when the scope exits:
+
+```jvl
+func main(): int {
+    var x = 42;
+    {
+        var b = &mut x;
+        b[0] = 100;
+    }   // mutable borrow ends here
+    putint(x);   // OK — x is no longer borrowed
+    return 0;
+}
+```
+
 ## Example: Safe Pointer Usage
 
 ```jvl

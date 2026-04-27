@@ -133,9 +133,43 @@ The `.syscall` assembler directive automates this by generating a standard funct
 
 Syscalls that take file names (`SYS_MMAP_FILE`, `SYS_FOPEN`) expect the string address in VM memory. Since JVAV is word-addressable, each character occupies one word. The VM reads consecutive words and extracts the low byte of each until it forms a valid C string.
 
+**Important:** The string must be null-terminated in VM memory. JVL string literals (`"hello"`) are automatically null-terminated by the frontend codegen. Hand-written assembly must append `, 0`:
+
+```asm
+path: DB "data.txt", 0
+mode: DB "rb", 0
+```
+
+If the string is not null-terminated, `read_vm_string()` will read past the end into adjacent memory, producing garbage paths and causing `fopen` to fail.
+
 ### Exit Codes
 
 `SYS_EXIT` sets `vm->exit_code` and immediately stops the VM (`vm->running = 0`). The `jvm` executable returns this code to the host OS. If `SYS_EXIT` is never called, the default exit code is 0.
+
+### Error Handling
+
+Most syscalls return `0` or `-1` on failure:
+- `SYS_FOPEN`: returns `0` if file cannot be opened
+- `SYS_FREAD`/`SYS_FWRITE`: return `-1` if fd is invalid; otherwise return bytes read/written
+- `SYS_MALLOC`: returns `0` if out of memory
+
+Always check return values when doing file I/O:
+
+```jvl
+import "std/file.jvl";
+import "std/io.jvl";
+
+func main(): int {
+    var fd = fopen("data.bin", "rb");
+    if (fd == 0) {
+        println(999);   // open failed
+        return 1;
+    }
+    // ... use fd ...
+    fclose(fd);
+    return 0;
+}
+```
 
 ### Unknown Syscalls
 
@@ -214,3 +248,27 @@ func main(): int {
     return 0;
 }
 ```
+
+---
+
+## Performance Notes
+
+### Memory Access
+
+- **Word-addressable**: Every memory access is a 128-bit load/store. There is no byte-level addressing.
+- **Dynamic expansion**: RAM grows via `realloc` on demand. Initial capacity is 4096 words. Accessing an address beyond current capacity triggers expansion.
+- **No cache simulation**: The VM does not model CPU caches. Performance is limited by host memory bandwidth.
+
+### Instruction Execution
+
+- **No JIT**: The VM is a pure interpreter. Each instruction is decoded from the 16-byte format at runtime.
+- **Branch prediction**: None. Every conditional jump performs a full compare-and-branch.
+- **Syscall overhead**: Syscalls involve a mailbox write/read cycle plus host OS calls. File I/O is particularly expensive relative to arithmetic.
+
+### Benchmarking
+
+See `benchmark/run.py` for a Python-based benchmark suite that measures:
+- Fibonacci recursion depth
+- Integer arithmetic throughput
+- Memory copy bandwidth
+- Syscall latency

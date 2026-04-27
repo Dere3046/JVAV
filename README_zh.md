@@ -70,7 +70,7 @@ JVAV/
 ├── jvm/             # 虚拟机执行引擎, C99
 ├── std/             # 标准库 (io, math, mem, string)
 ├── benchmark/       # 性能基准测试套件 (Python)
-├── tests/           # 自动化测试 (后端: 100, 前端: 120)
+├── tests/           # 自动化测试 (后端: 117, 前端: 142)
 └── docs/            # 详细文档
 ```
 
@@ -95,8 +95,11 @@ JVAV/
 
 ## 文档
 
+所有文档均位于 GitHub 仓库的 `docs/` 目录中（无独立网站）。
+
 | 文档 | 说明 |
 |------|------|
+| [docs/quickstart.md](docs/quickstart.md) | 5 分钟快速入门指南 |
 | [docs/frontend_syntax.md](docs/frontend_syntax.md) | JVL 语言语法、类型系统、推导、所有权 |
 | [docs/backend_syntax.md](docs/backend_syntax.md) | JVAV 汇编语法与指令集 |
 | [docs/jvm_features.md](docs/jvm_features.md) | 虚拟机架构、内存模型、系统调用 |
@@ -112,8 +115,8 @@ JVAV/
 ctest --output-on-failure
 
 # 或直接运行测试二进制文件
-./test_back    # 100 项后端单元 + 集成测试
-./test_front   # 120 项前端单元 + 集成测试
+./test_back    # 117 项后端单元 + 集成测试
+./test_front   # 142 项前端单元 + 集成测试
 ```
 
 测试覆盖范围：

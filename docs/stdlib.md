@@ -188,6 +188,47 @@ func main(): int {
 }
 ```
 
+## `std/file.jvl` — File I/O
+
+Provides wrappers around the VM's file system syscalls. All functions return `int`: positive values indicate success (fd, handle, bytes read/written), while `0` or `-1` indicate failure.
+
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `fopen(path, mode)` | `func fopen(path: ptr<int>, mode: ptr<int>): int` | Open a file. Returns fd (>0) or 0 on failure |
+| `fclose(fd)` | `func fclose(fd: int): int` | Close a file descriptor |
+| `fread(fd, buf, count)` | `func fread(fd: int, buf: ptr<int>, count: int): int` | Read `count` words into `buf` |
+| `fwrite(fd, buf, count)` | `func fwrite(fd: int, buf: ptr<int>, count: int): int` | Write `count` words from `buf` |
+| `fseek(fd, offset, whence)` | `func fseek(fd: int, offset: int, whence: int): int` | Seek to position (`whence`: 0=SET, 1=CUR, 2=END) |
+| `ftell(fd)` | `func ftell(fd: int): int` | Get current file position |
+| `mmap_file(path, addr, size)` | `func mmap_file(path: ptr<int>, addr: int, size: int): int` | Memory-map a file starting at VM address `addr` |
+| `munmap(slot)` | `func munmap(slot: int): int` | Unmap a memory-mapped file |
+| `msync(slot)` | `func msync(slot: int): int` | Flush memory-mapped changes to disk |
+
+```jvl
+import "std/file.jvl";
+import "std/io.jvl";
+
+func main(): int {
+    var path = "test.txt";
+    var mode = "wb";
+    var fd = fopen(path, mode);
+    if (fd == 0) {
+        println(999);   // failed to open
+        return 1;
+    }
+    var data = alloc(3);
+    data[0] = 65; data[1] = 66; data[2] = 67;   // ABC
+    fwrite(fd, data, 3);
+    fclose(fd);
+    free(data);
+    return 0;
+}
+```
+
+**Path strings:** Use forward slashes (`/`) in paths. The VM passes the path verbatim to the host C library, which handles platform-specific path resolution.
+
+**Important:** File I/O operates on **words** (128-bit units), not bytes. `fread`/`fwrite` `count` is in words, not bytes.
+
 ## Writing Custom Library Modules
 
 Any `.jvl` file can be imported. Follow these conventions for consistency:
