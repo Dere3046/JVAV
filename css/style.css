@@ -23,6 +23,33 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
+/* Deprecation banner */
+.deprecation-banner {
+    background: linear-gradient(90deg, #c0392b, #e74c3c);
+    color: #fff;
+    text-align: center;
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.6;
+    position: relative;
+    z-index: 101;
+}
+.deprecation-banner a {
+    color: #ffeb3b;
+    text-decoration: underline;
+    font-weight: 600;
+}
+.deprecation-banner a:hover {
+    color: #fff;
+}
+@media (max-width: 768px) {
+    .deprecation-banner {
+        font-size: 12px;
+        padding: 10px 16px;
+    }
+}
+
 /* Oracle-style top accent bar */
 .oracle-bar {
     background: linear-gradient(90deg, var(--java-orange), var(--java-gold));
