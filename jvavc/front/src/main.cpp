@@ -183,6 +183,9 @@ static vector<string> find_std_import_paths(const fs::path &exeDir) {
 }
 
 int main(int argc, char *argv[]) {
+#ifdef _WIN32
+    system("chcp 65001 >nul");
+#endif
     bool runMode = false;
     string src;
     string out;

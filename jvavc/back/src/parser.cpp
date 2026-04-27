@@ -290,7 +290,19 @@ bool Parser::parseLine(const string &line, int lineNum) {
         addInstr("RET", {});
         return true;
     }
-    size_t colon = l.find(':');
+    size_t colon = string::npos;
+    {
+        bool inStr = false;
+        for (size_t i = 0; i < l.size(); ++i) {
+            if (l[i] == '"') {
+                int bs = 0;
+                size_t j = i;
+                while (j > 0 && l[j-1] == '\\') { bs++; j--; }
+                if (bs % 2 == 0) inStr = !inStr;
+            }
+            if (l[i] == ':' && !inStr) { colon = i; break; }
+        }
+    }
     string lbl, rest = l;
     if (colon != string::npos) {
         lbl = trim(l.substr(0, colon));

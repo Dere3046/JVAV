@@ -71,6 +71,7 @@ JVL uses weak numeric coercion for builtins but is otherwise strictly typed:
 | `int` ← `bool` | ✓ (weak coercion) |
 | `ptr<T>` ← `ptr<T>` | ✓ |
 | `ptr<T>` ← `ptr<U>` (T≠U) | ✗ |
+| `ptr<T>` ← `int` (literal address) | ✓ (implicit coercion for literal addresses) |
 | `void` as variable type | ✗ |
 
 ---
@@ -212,18 +213,15 @@ These functions are recognized by the compiler and do not need to be declared or
 | `putchar(c)` | `func putchar(c: int): void` | Print low byte as ASCII character |
 | `getint()` | `func getint(): int` | Read integer from stdin |
 | `getchar()` | `func getchar(): int` | Read character from stdin |
+
+**Note:** `getint()` and `getchar()` are registered as builtins and available without declaration.
 | `alloc(n)` | `func alloc(n: int): ptr<int>` | Allocate `n` 128-bit words on heap |
 | `free(p)` | `func free(p: ptr<int>): void` | Release heap allocation |
 | `exit(code)` | `func exit(code: int): void` | Terminate with exit code |
 | `putstr(s, n)` | `func putstr(s: ptr<int>, n: int): void` | Print `n` chars from memory address |
 | `sleep(ms)` | `func sleep(ms: int): void` | Pause execution for `ms` milliseconds |
 
-**Note:** `getint()` and `getchar()` are available at the assembly level but are not currently exposed as JVL builtins (they exist in the `.syscall` wrappers but are not registered in the semantic analyzer). To use them from JVL, declare them manually:
 
-```jvl
-extern func getint(): int;
-extern func getchar(): int;
-```
 
 ### Standard Library Functions
 
@@ -234,6 +232,7 @@ import "std/io.jvl";      // println, print_newline, print_space, putstr, exit
 import "std/math.jvl";    // abs, max, min, clamp, pow
 import "std/mem.jvl";     // memcpy, memset
 import "std/string.jvl";  // str_putn
+import "std/file.jvl";    // fopen, fclose, fread, fwrite, fseek, ftell, mmap_file
 ```
 
 Standard library functions are regular JVL functions that compose built-in operations.
@@ -285,10 +284,13 @@ syscall name, cmd_id, arg_count;
 **Constraints:**
 - `arg_count` must be in range `0..3`
 - The declared name becomes a builtin function available in the module
+- All `syscall` declarations have return type `int` (the VM always returns a value via R0)
 - The compiler emits `.syscall name, cmd_id, arg_count` at the end of generated assembly
 - The VM must already support the `cmd_id` in its `syscall_dispatch` handler
 
 This is useful for using VM syscalls that are not included in the standard builtins (e.g., file I/O, mmap, or custom syscalls you added to the VM).
+
+**Return value:** Syscalls return the value from `0xFFE4` (SYSCALL_RET mailbox). For file operations, this is typically a handle or fd (>0) on success, or 0/-1 on failure.
 
 ## Import System
 
@@ -304,6 +306,8 @@ Import resolution:
 4. If still not found, produce error E0300 (cannot find standard library)
 
 Imported files are parsed and their top-level declarations become available in the importing module. There is no namespacing — all declarations share a global namespace.
+
+**Duplicate imports are automatically deduplicated.** If module A and module B both import module C, C's code is emitted only once. Cross-directory imports that resolve to the same physical file are also deduplicated.
 
 ---
 
