@@ -1,0 +1,66 @@
+    .global _start
+_start:
+    CALL main
+    HALT
+    .global main
+main:
+    PUSH R6
+    PUSH R1
+    PUSH R2
+    PUSH R3
+    MOV R6, SP
+    LDI R4, 6
+    SUB SP, SP, R4
+    LDI R0, 1
+    LDI R1, 2
+    AND R0, R0, R1
+    LDI R4, -1
+    ADD R4, R6, R4
+    STR [R4], R0
+    LDI R0, 3
+    LDI R1, 4
+    OR R0, R0, R1
+    LDI R4, -2
+    ADD R4, R6, R4
+    STR [R4], R0
+    LDI R0, 5
+    LDI R1, 6
+    XOR R0, R0, R1
+    LDI R4, -3
+    ADD R4, R6, R4
+    STR [R4], R0
+    LDI R0, 7
+    NOT R0, R0
+    LDI R4, -4
+    ADD R4, R6, R4
+    STR [R4], R0
+    LDI R0, 1
+    LDI R1, 2
+    SHL R0, R0, R1
+    LDI R4, -5
+    ADD R4, R6, R4
+    STR [R4], R0
+    LDI R0, 8
+    LDI R1, 1
+    SHR R0, R0, R1
+    LDI R4, -6
+    ADD R4, R6, R4
+    STR [R4], R0
+    LDI R0, 0
+    JMP .main_ret
+.main_ret:
+    MOV SP, R6
+    POP R3
+    POP R2
+    POP R1
+    POP R6
+    RET
+    .syscall putchar, 14, 1
+    .syscall putint, 15, 1
+    .syscall getchar, 16, 0
+    .syscall getint, 17, 0
+    .syscall alloc, 12, 1
+    .syscall free, 13, 1
+    .syscall exit, 18, 1
+    .syscall putstr, 19, 2
+    .syscall sleep, 20, 1

@@ -1,0 +1,5 @@
+error[E0200]: expected `{`, but found `var`
+ --> f.jvl:1:13
+  |
+ 1 | func main() var x = 5; }
+  |             ^

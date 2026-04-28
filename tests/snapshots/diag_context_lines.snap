@@ -1,0 +1,7 @@
+error[E0200]: expected `;`, but found `return`
+ --> f.jvl:3:1
+  |
+ 2 | var x = 5
+ 3 | return 0;
+  | ^
+ 4 | }

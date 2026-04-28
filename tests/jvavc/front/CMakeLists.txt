@@ -18,6 +18,7 @@ target_compile_definitions(test_front PRIVATE
     JVAVC_BACK_EXE="$<TARGET_FILE:jvavc>"
     JVM_EXE="$<TARGET_FILE:jvm>"
     DISASM_EXE="$<TARGET_FILE:disasm>"
+    TEST_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
 )
 
 add_test(NAME test_front COMMAND test_front)
