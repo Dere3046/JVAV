@@ -1458,7 +1458,7 @@ func main(): int {
     {
         int ret = run_cmd(JVM_EXE " nonexistent_file_xyz.bin > jvm_err.out 2>&1");
         // jvm returns 1 on failure
-        TEST_ASSERT(system_exit_code(ret) == 1, "jvm should fail");
+        TEST_ASSERT(ret == 1, "jvm should fail");
         string out;
         TEST_ASSERT(read_output("jvm_err.out", out), "read");
         TEST_ASSERT(out.find("nonexistent_file_xyz.bin") != string::npos, "error should contain filename");
