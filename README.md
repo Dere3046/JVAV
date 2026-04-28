@@ -70,7 +70,8 @@ JVAV/
 ├── jvm/             # Virtual machine executor, C99
 ├── std/             # Standard library (io, math, mem, string, file)
 ├── benchmark/       # Performance benchmark suite (Python)
-├── tests/           # Automated tests (back: 117, front: 142)
+├── tests/           # Automated tests (back: 130, front: 179, 21 snapshots)
+│   └── snapshots/   # Expected codegen / diagnostic outputs for snapshot testing
 └── docs/            # Detailed documentation (compiler/, JVM/)
 ```
 
@@ -136,17 +137,22 @@ All documentation lives in the `docs/` directory on GitHub (no separate website)
 ctest --output-on-failure
 
 # Or run individual test binaries directly
-./test_back    # 117 backend unit + integration tests
-./test_front   # 142 frontend unit + integration tests
+./test_back    # 130 backend unit + integration tests
+./test_front   # 179 frontend unit + integration tests
+
+# Update snapshots after intentional codegen changes
+./test_front --update-snapshots
 ```
 
 Tests cover:
 - **Lexer**: keywords, numbers, strings, chars, comments, symbols, CRLF compatibility, errors
 - **Parser**: all types, control flow, operators, precedence, borrows, imports, error recovery
 - **Semantic analysis**: type inference, ownership, borrow conflicts, uninitialized variables, scope
-- **Code generation**: prologue/epilogue, locals, calls, control flow, pointers, strings
+- **Code generation**: prologue/epilogue, locals, calls, control flow, pointers, strings *(snapshot-tested: full assembly diff)*
 - **Backend**: all instructions, EQU, .global/.extern, DB/DW/DT, #include, encoding, linking
-- **Integration**: end-to-end compile & run for arithmetic, bitwise ops, control flow, heap, recursion, imports, global variables, standard library, version flags, missing-stdlib diagnostics, Rust-style error messages, all diagnostic formats
+- **Integration**: end-to-end compile & run for arithmetic, bitwise ops, control flow, heap, recursion, imports, global variables, standard library, file I/O, version flags, missing-stdlib diagnostics
+- **Diagnostics**: Rust-style error messages with exact body + help text matching; context lines, caret position, first/last line edge cases *(snapshot-tested)*
+- **Data-driven**: new codegen or diagnostic tests require only adding one row to a case table
 
 ---
 
