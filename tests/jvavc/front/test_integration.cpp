@@ -678,131 +678,94 @@ func main(): int {
     }
     test_passed("integration_bitwise");
 
-    test_header("integration_diag_format");
-    {
-        const char* src = R"(
-func main(): int {
-    var z = undefined_var;
-    return 0;
-}
-)";
-        std::ofstream("f.jvl") << src;
+    // --- Data-driven diagnostic tests ---
+    struct DiagCase {
+        const char* name;
+        const char* src;
+        const char* expectedBody;  // exact message body (without dynamic error code)
+        const char* expectedHelp;  // optional exact help text
+        bool useSnapshot;          // if true, match entire diagnostic output via snapshot
+    };
+
+    auto runDiagCase = [](const DiagCase& c) -> bool {
+        test_header(c.name);
+        std::ofstream("f.jvl") << c.src;
         int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav > f.err 2>&1");
-        TEST_ASSERT(ret != 0, "should fail on undefined variable");
+        if (ret == 0) {
+            printf("  FAIL %s: should have failed\n", c.name);
+            std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.err");
+            test_failed(c.name, "expected compilation failure");
+            return false;
+        }
         string err;
-        TEST_ASSERT(read_output("f.err", err), "read error output");
-        // Rust-style diagnostics: error[...], location arrow, source line, underline caret
-        TEST_ASSERT(err.find("error[") != string::npos, "error code tag");
-        TEST_ASSERT(err.find("-->") != string::npos, "location arrow");
-        TEST_ASSERT(err.find("|") != string::npos, "source gutter");
-        TEST_ASSERT(err.find("^") != string::npos, "underline caret");
+        if (!read_output("f.err", err)) {
+            printf("  FAIL %s: cannot read f.err\n", c.name);
+            std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.err");
+            test_failed(c.name, "cannot read error output");
+            return false;
+        }
+
+        if (c.useSnapshot) {
+            bool ok = check_snapshot(err, c.name);
+            std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.err");
+            if (!ok) { test_failed(c.name, "snapshot mismatch"); return false; }
+            test_passed(c.name);
+            return true;
+        }
+
+        bool ok = true;
+        // Verify Rust-style format markers
+        if (err.find("error[") == string::npos) { printf("  FAIL %s: missing error[\n", c.name); ok = false; }
+        if (err.find("-->") == string::npos) { printf("  FAIL %s: missing -->\n", c.name); ok = false; }
+        if (err.find("|") == string::npos) { printf("  FAIL %s: missing |\n", c.name); ok = false; }
+        if (err.find("^") == string::npos) { printf("  FAIL %s: missing ^\n", c.name); ok = false; }
+
+        // Exact body match (without dynamic error code)
+        if (c.expectedBody && err.find(c.expectedBody) == string::npos) {
+            printf("  FAIL %s: missing body '%s'\n", c.name, c.expectedBody);
+            ok = false;
+        }
+        // Exact help match
+        if (c.expectedHelp && err.find(c.expectedHelp) == string::npos) {
+            printf("  FAIL %s: missing help '%s'\n", c.name, c.expectedHelp);
+            ok = false;
+        }
+
+        if (!ok) printf("  actual output:\n%s\n", err.c_str());
         std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.err");
+        if (!ok) { test_failed(c.name, "diagnostic mismatch"); return false; }
+        test_passed(c.name);
+        return true;
+    };
+
+    static DiagCase diagCases[] = {
+        // Lexer errors
+        {"diag_lexer_unterminated_string", "func main(){ var a = \"hello }", "unterminated string literal", nullptr, false},
+        {"diag_lexer_unknown_char", "func main(){ var a = 1 @ 2; }", "unknown character", nullptr, false},
+
+        // Parser errors
+        {"diag_parser_missing_semi", "func main(): int { var x = 5 return 0; }", "expected `;`", nullptr, false},
+        {"diag_parser_missing_paren", "func main(): int { var x = (1 + 2; }", "expected `)`", nullptr, false},
+        {"diag_parser_type_error", "func main(): int { var x: unknown = 5; }", "expected a type", nullptr, false},
+        {"diag_parser_expr_error", "func main(): int { var x = ; }", "unexpected token", nullptr, false},
+        {"diag_parser_decl_error", "1 + 2;", "expected a declaration", nullptr, false},
+
+        // Semantic errors
+        {"diag_sema_undef_var", "func main(): int { var z = undefined_var; return 0; }", "cannot find value `undefined_var` in this scope", "declare 'undefined_var' before use", false},
+        {"diag_sema_use_after_move", "func main(): int { var p: ptr<int> = alloc(1); var q = p; p[0]=1; return 0; }", "use of moved value `p`", "reassign 'p' or use a borrow (&p) instead", false},
+        {"diag_sema_borrow_after_move", "func main(): int { var p: ptr<int> = alloc(1); var q = p; var r = &p; return 0; }", "cannot borrow moved value `p`", "reassign 'p' before borrowing", false},
+
+        // Format regression tests (snapshots)
+        {"diag_format_undef_var", "func main(): int {\n    var z = undefined_var;\n    return 0;\n}", nullptr, nullptr, true},
+        {"diag_context_lines", "func main(): int {\nvar x = 5\nreturn 0;\n}", nullptr, nullptr, true},
+        {"diag_first_line", "1 + 2;", nullptr, nullptr, true},
+        {"diag_last_line", "func main(): int {\n  var x = 5\n}", nullptr, nullptr, true},
+        {"diag_caret_position", "func main() var x = 5; }", nullptr, nullptr, true},
+    };
+
+    for (const auto& c : diagCases) {
+        runDiagCase(c);
     }
-    test_passed("integration_diag_format");
-
-    test_header("integration_all_diagnostics");
-    {
-        // Helper: compile a snippet and verify it produces a Rust-style diagnostic
-        auto checkDiag = [](const char* label, const char* src, const char* expectedCode) -> bool {
-            std::ofstream("f.jvl") << src;
-            int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav > f.err 2>&1");
-            if (ret == 0) { printf("  FAIL %s: should have failed\n", label); return false; }
-            string err;
-            if (!read_output("f.err", err)) { printf("  FAIL %s: cannot read f.err\n", label); return false; }
-            bool ok = true;
-            if (err.find(expectedCode) == string::npos) { printf("  FAIL %s: missing %s\n", label, expectedCode); ok = false; }
-            if (err.find("error[") == string::npos) { printf("  FAIL %s: missing error[\n", label); ok = false; }
-            if (err.find("-->") == string::npos) { printf("  FAIL %s: missing -->\n", label); ok = false; }
-            if (err.find("|") == string::npos) { printf("  FAIL %s: missing |\n", label); ok = false; }
-            if (err.find("^") == string::npos) { printf("  FAIL %s: missing ^\n", label); ok = false; }
-            if (!ok) printf("  actual output:\n%s\n", err.c_str());
-            return ok;
-        };
-
-        // Lexer errors (E0100)
-        TEST_ASSERT(checkDiag("lexer_unterminated_string", "func main(){ var a = \"hello }", "E0100"), "lexer unterminated string");
-        TEST_ASSERT(checkDiag("lexer_unknown_char", "func main(){ var a = 1 @ 2; }", "E0100"), "lexer unknown char");
-
-        // Parser errors (E0200) - exercise all parser error paths
-        TEST_ASSERT(checkDiag("parser_missing_semi", "func main(): int { var x = 5 return 0; }", "E0200"), "parser missing semi");
-        TEST_ASSERT(checkDiag("parser_missing_paren", "func main(): int { var x = (1 + 2; }", "E0200"), "parser missing paren");
-        TEST_ASSERT(checkDiag("parser_type_error", "func main(): int { var x: unknown = 5; }", "E0200"), "parser type error");
-        TEST_ASSERT(checkDiag("parser_expr_error", "func main(): int { var x = ; }", "E0200"), "parser expr error");
-        TEST_ASSERT(checkDiag("parser_decl_error", "1 + 2;", "E0200"), "parser decl error");
-
-        // Semantic errors (E1xxx)
-        TEST_ASSERT(checkDiag("sema_undef_var", "func main(): int { var z = undefined_var; return 0; }", "E1"), "sema undefined var");
-
-        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.err");
-    }
-    test_passed("integration_all_diagnostics");
-
-    // --- Drawing / format regression tests ---
-    test_header("integration_diag_context_lines");
-    {
-        const char* src = "func main(): int {\nvar x = 5\nreturn 0;\n}";
-        std::ofstream("f.jvl") << src;
-        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav > f.err 2>&1");
-        TEST_ASSERT(ret != 0, "should fail");
-        string err;
-        TEST_ASSERT(read_output("f.err", err), "read error");
-        // Should show context: line 2 (var x = 5) and line 4 (})
-        TEST_ASSERT(err.find("2 |") != string::npos, "context line 2");
-        TEST_ASSERT(err.find("3 |") != string::npos, "error line 3");
-        TEST_ASSERT(err.find("4 |") != string::npos, "context line 4");
-        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.err");
-    }
-    test_passed("integration_diag_context_lines");
-
-    test_header("integration_diag_first_line");
-    {
-        // Error on line 1: no context before
-        const char* src = "1 + 2;";
-        std::ofstream("f.jvl") << src;
-        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav > f.err 2>&1");
-        TEST_ASSERT(ret != 0, "should fail");
-        string err;
-        TEST_ASSERT(read_output("f.err", err), "read error");
-        TEST_ASSERT(err.find("1 |") != string::npos, "error line 1");
-        // Make sure there is no line 0
-        TEST_ASSERT(err.find("0 |") == string::npos, "no line 0");
-        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.err");
-    }
-    test_passed("integration_diag_first_line");
-
-    test_header("integration_diag_last_line");
-    {
-        // Error on last line: no context after
-        const char* src = "func main(): int {\n  var x = 5\n}";
-        std::ofstream("f.jvl") << src;
-        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav > f.err 2>&1");
-        TEST_ASSERT(ret != 0, "should fail");
-        string err;
-        TEST_ASSERT(read_output("f.err", err), "read error");
-        TEST_ASSERT(err.find("3 |") != string::npos, "error line 3");
-        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.err");
-    }
-    test_passed("integration_diag_last_line");
-
-    test_header("integration_diag_caret_position");
-    {
-        // Error at column 13 (missing { after main())
-        const char* src = "func main() var x = 5; }";
-        std::ofstream("f.jvl") << src;
-        int ret = run_cmd(JVAVC_FRONT_EXE " f.jvl f.jvav > f.err 2>&1");
-        TEST_ASSERT(ret != 0, "should fail");
-        string err;
-        TEST_ASSERT(read_output("f.err", err), "read error");
-        // Caret should be aligned under 'v' of 'var'
-        size_t linePos = err.find("1 |");
-        TEST_ASSERT(linePos != string::npos, "source line");
-        size_t caretPos = err.find("^", linePos);
-        TEST_ASSERT(caretPos != string::npos, "caret exists");
-        // In the source line "func main() var x = 5; }", 'v' is at col 13
-        // The caret line looks like " |             ^", so ^ should be after spaces
-        std::remove("f.jvl"); std::remove("f.jvav"); std::remove("f.err");
-    }
-    test_passed("integration_diag_caret_position");
 
     // --- Edge case tests ---
     test_header("integration_edge_empty_file");

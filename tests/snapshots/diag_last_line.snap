@@ -1,0 +1,6 @@
+error[E0200]: expected `;`, but found `}`
+ --> f.jvl:3:2
+  |
+ 2 |   var x = 5
+ 3 | }
+  |  ^
