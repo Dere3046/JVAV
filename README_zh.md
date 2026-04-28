@@ -68,10 +68,10 @@ JVAV/
 │   ├── back/        # 后端汇编器与链接器 (.jvav -> .bin), C++17
 │   └── tools/       # 反汇编器 (静态 + trace), C99
 ├── jvm/             # 虚拟机执行引擎, C99
-├── std/             # 标准库 (io, math, mem, string)
+├── std/             # 标准库 (io, math, mem, string, file)
 ├── benchmark/       # 性能基准测试套件 (Python)
 ├── tests/           # 自动化测试 (后端: 117, 前端: 142)
-└── docs/            # 详细文档
+└── docs/            # 详细文档 (compiler/, JVM/)
 ```
 
 ---
@@ -84,7 +84,7 @@ JVAV/
 - **米米世界所有权** — 受 Rust 启发的所有权、移动与借用检查 (`&x`, `&mut x`)
 - **标准库** — `std/io`、`std/math`、`std/mem`、`std/string`，自动 import 路径解析
 - **多文件链接器** — 结构化链接，支持 EQU 全局收集与基地址重定位
-- **导入系统** — 递归模块导入，带循环导入防护
+- **导入系统** — 递归模块导入，带重复导入去重
 - **反汇编器** — 支持静态反汇编与动态 trace 模式
 - **Rust 风格诊断信息** — 错误代码、带上下文行的源代码片段、帮助提示
 - **跨平台** — Linux、Windows 与 Android（x86、x64、ARM、ARM64）；静态链接二进制文件；GitHub Actions 多架构矩阵 CI
@@ -97,14 +97,35 @@ JVAV/
 
 所有文档均位于 GitHub 仓库的 `docs/` 目录中（无独立网站）。
 
-| 文档 | 说明 |
-|------|------|
-| [docs/quickstart.md](docs/quickstart.md) | 5 分钟快速入门指南 |
-| [docs/frontend_syntax.md](docs/frontend_syntax.md) | JVL 语言语法、类型系统、推导、所有权 |
-| [docs/backend_syntax.md](docs/backend_syntax.md) | JVAV 汇编语法与指令集 |
-| [docs/jvm_features.md](docs/jvm_features.md) | 虚拟机架构、内存模型、系统调用 |
-| [docs/mimiworld_ownership.md](docs/mimiworld_ownership.md) | 米米世界所有权与借用检查器 |
-| [docs/stdlib.md](docs/stdlib.md) | 标准库 API 与使用说明 |
+### 从这里开始
+
+- [docs/README.md](docs/README.md) — 文档索引与快速参考
+
+### 编译器文档
+
+- [docs/compiler/index.md](docs/compiler/index.md) — 编译器架构与工具链流程
+- **前端 (JVL)**
+  - [JVL 语言参考](docs/compiler/front/jvl_language.md) — 语法、类型、运算符、控制流
+  - [类型系统](docs/compiler/front/type_system.md) — Copy/Move 类型、推导、兼容性
+  - [米米世界所有权](docs/compiler/front/ownership.md) — 所有权、借用检查、错误信息
+  - [内置函数](docs/compiler/front/builtin_functions.md) — I/O、堆内存、进程控制
+  - [导入系统](docs/compiler/front/import_system.md) — 模块解析与标准库
+  - [错误处理](docs/compiler/front/error_handling.md) — 诊断格式与常见错误
+- **后端（汇编器与链接器）**
+  - [JVAV 汇编](docs/compiler/back/jvav_assembly.md) — 指令、伪指令、标签、语法
+  - [指令编码](docs/compiler/back/instruction_encoding.md) — 二进制格式与编码示例
+  - [伪指令与指令](docs/compiler/back/directives.md) — 段、符号、数据、`.syscall`
+  - [调用约定](docs/compiler/back/calling_convention.md) — 参数传递、函数头尾、寄存器
+  - [链接器](docs/compiler/back/linker.md) — 多文件链接与符号解析
+  - [伪指令](docs/compiler/back/pseudo_instructions.md) — 展开规则
+
+### JVM 文档
+
+- [架构](docs/JVM/architecture.md) — 虚拟机架构、寄存器、指令格式
+- [指令集](docs/JVM/instruction_set.md) — 30 条指令完整参考
+- [内存模型](docs/JVM/memory_model.md) — 内存布局、栈、堆、动态扩容
+- [系统调用](docs/JVM/syscalls.md) — 系统调用参考与邮箱协议
+- [执行模型](docs/JVM/execution_model.md) — 执行循环与运行时行为
 
 ---
 
