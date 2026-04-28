@@ -13,6 +13,7 @@ target_include_directories(test_back PRIVATE ${CMAKE_SOURCE_DIR}/jvavc/back/incl
 target_compile_definitions(test_back PRIVATE
     JVAVC_BACK_EXE="$<TARGET_FILE:jvavc>"
     JVM_EXE="$<TARGET_FILE:jvm>"
+    TEST_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
 )
 
 add_test(NAME test_back COMMAND test_back)
