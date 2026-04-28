@@ -1,0 +1,9 @@
+func main(): int {
+    var p: ptr<int> = alloc(3);
+    p[0] = 7;
+    p[1] = 8;
+    p[2] = 9;
+    putint(p[0] + p[1] + p[2]);
+    free(p);
+    return 0;
+}

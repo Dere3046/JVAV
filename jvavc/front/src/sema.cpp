@@ -598,7 +598,10 @@ bool Sema::checkExpr(shared_ptr<Expr> e) {
                     auto id = dynamic_pointer_cast<IdentExpr>(a);
                     Symbol *s = lookup(id->name);
                     if (s && !s->isCopy && s->kind == Symbol::SYM_VAR) {
-                        markMoved(id->name, c->line);
+                        // Certain functions borrow pointer args rather than consuming them
+                        if (fname != "fread" && fname != "fwrite" && fname != "putstr" && fname != "mmap_file") {
+                            markMoved(id->name, c->line);
+                        }
                     }
                 }
             }

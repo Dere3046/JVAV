@@ -1,0 +1,6 @@
+import "lib.jvl";
+
+func main(): int {
+    putint(add(3, 5));
+    return 0;
+}

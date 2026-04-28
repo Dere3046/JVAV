@@ -1,0 +1,9 @@
+func main(): int {
+    var x = 5;
+    if (x > 3) {
+        putint(1);
+    } else {
+        putint(0);
+    }
+    return 0;
+}

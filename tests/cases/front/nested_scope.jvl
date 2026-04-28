@@ -1,0 +1,14 @@
+func main(): int {
+    var x = 1;
+    {
+        var y = 2;
+        putint(y);
+        {
+            var z = 3;
+            putint(z);
+        }
+        putint(y);
+    }
+    putint(x);
+    return 0;
+}

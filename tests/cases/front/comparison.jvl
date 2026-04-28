@@ -1,0 +1,9 @@
+func main(): int {
+    if (1 == 1) { putint(1); }
+    if (1 != 2) { putint(2); }
+    if (1 < 2)  { putint(3); }
+    if (2 > 1)  { putint(4); }
+    if (1 <= 1) { putint(5); }
+    if (1 >= 1) { putint(6); }
+    return 0;
+}
