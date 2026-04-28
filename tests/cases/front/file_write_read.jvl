@@ -1,0 +1,19 @@
+import "std/file.jvl";
+
+func main(): int {
+    var fd = fopen("test_tmp.txt", "wb");
+    putint(fd);
+    var buf: ptr<int> = alloc(2);
+    buf[0] = 65;  // 'A'
+    buf[1] = 66;  // 'B'
+    fwrite(fd, buf, 2);
+    fclose(fd);
+
+    fd = fopen("test_tmp.txt", "rb");
+    var rbuf: ptr<int> = alloc(2);
+    fread(fd, rbuf, 2);
+    putchar(rbuf[0]);
+    putchar(rbuf[1]);
+    fclose(fd);
+    return 0;
+}

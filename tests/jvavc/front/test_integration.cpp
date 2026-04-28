@@ -2,11 +2,13 @@
 #include <cstdlib>
 #include <fstream>
 #include <cstdio>
+#include <filesystem>
 
+namespace fs = std::filesystem;
 using namespace std;
 
 static int run_cmd(const char *cmd) {
-    return system(cmd);
+    return system_exit_code(system(cmd));
 }
 
 static bool read_output(const string &filename, string &out) {
@@ -16,7 +18,102 @@ static bool read_output(const string &filename, string &out) {
     return true;
 }
 
+static bool run_file_cases(const string& caseDir) {
+    if (!fs::exists(caseDir)) return true;
+    for (const auto& entry : fs::directory_iterator(caseDir)) {
+        if (entry.is_directory()) {
+            // Handle subdirectories (e.g., import/)
+            string subDir = entry.path().string();
+            string subName = entry.path().filename().string();
+            for (const auto& subEntry : fs::directory_iterator(subDir)) {
+                if (!subEntry.is_regular_file()) continue;
+                string path = subEntry.path().string();
+                if (path.size() < 4 || path.substr(path.size() - 4) != ".jvl") continue;
+                string name = subEntry.path().stem().string();
+                if (name != "main") continue; // only run main.jvl in subdirs
+
+                string expectedPath = subDir + "\\expected";
+                string outFile = subName + ".out";
+                string errFile = subName + ".err";
+                string binFile = subName + ".bin";
+                string jvavFile = subName + ".jvav";
+
+                test_header(("integration_case_" + subName).c_str());
+                int ret = run_cmd((string(JVAVC_FRONT_EXE) + " " + path + " " + jvavFile).c_str());
+                TEST_ASSERT(ret == 0, "front compile failed");
+                ret = run_cmd((string(JVAVC_BACK_EXE) + " " + jvavFile + " " + binFile).c_str());
+                TEST_ASSERT(ret == 0, "back compile failed");
+                ret = run_cmd((string(JVM_EXE) + " " + binFile + " > " + outFile + " 2> " + errFile).c_str());
+                TEST_ASSERT(ret == 0, "execution failed");
+
+                string out, err;
+                TEST_ASSERT(read_file(outFile, out), "read stdout");
+                TEST_ASSERT(read_file(errFile, err), "read stderr");
+                TEST_ASSERT(err.empty(), "stderr should be empty");
+
+                if (fs::exists(expectedPath)) {
+                    string expected;
+                    TEST_ASSERT(read_file(expectedPath, expected), "read expected");
+                    TEST_ASSERT(out == expected, "output mismatch");
+                }
+
+                remove(jvavFile.c_str());
+                remove(binFile.c_str());
+                remove(outFile.c_str());
+                remove(errFile.c_str());
+                test_passed(("integration_case_" + subName).c_str());
+            }
+            continue;
+        }
+        if (!entry.is_regular_file()) continue;
+        string path = entry.path().string();
+        if (path.size() < 4 || path.substr(path.size() - 4) != ".jvl") continue;
+
+        string name = entry.path().stem().string();
+        string base = entry.path().parent_path().string();
+        string expectedPath = base + "\\" + name + ".expected";
+        string outFile = name + ".out";
+        string errFile = name + ".err";
+        string binFile = name + ".bin";
+        string jvavFile = name + ".jvav";
+
+        test_header(("integration_case_" + name).c_str());
+        int ret = run_cmd((string(JVAVC_FRONT_EXE) + " " + path + " " + jvavFile).c_str());
+        TEST_ASSERT(ret == 0, "front compile failed");
+        ret = run_cmd((string(JVAVC_BACK_EXE) + " " + jvavFile + " " + binFile).c_str());
+        TEST_ASSERT(ret == 0, "back compile failed");
+        ret = run_cmd((string(JVM_EXE) + " " + binFile + " > " + outFile + " 2> " + errFile).c_str());
+        TEST_ASSERT(ret == 0, "execution failed");
+
+        string out, err;
+        TEST_ASSERT(read_file(outFile, out), "read stdout");
+        TEST_ASSERT(read_file(errFile, err), "read stderr");
+        TEST_ASSERT(err.empty(), "stderr should be empty");
+
+        // Normalize CRLF to LF for cross-platform comparison
+        size_t pos = 0;
+        while ((pos = out.find("\r\n", pos)) != string::npos) {
+            out.replace(pos, 2, "\n");
+            pos++;
+        }
+
+        if (fs::exists(expectedPath)) {
+            string expected;
+            TEST_ASSERT(read_file(expectedPath, expected), "read expected");
+            TEST_ASSERT(out == expected, "output mismatch");
+        }
+
+        remove(jvavFile.c_str());
+        remove(binFile.c_str());
+        remove(outFile.c_str());
+        remove(errFile.c_str());
+        test_passed(("integration_case_" + name).c_str());
+    }
+    return true;
+}
+
 int test_integration_main() {
+    run_file_cases("tests/cases/front");
     // --- Original tests ---
     test_header("integration_putint");
     {
