@@ -2,8 +2,70 @@
 #include <cstdlib>
 #include <fstream>
 #include <cstdio>
+#include <filesystem>
+
+namespace fs = std::filesystem;
+using namespace std;
+
+static int run_cmd(const char *cmd) {
+    return system_exit_code(system(cmd));
+}
+
+static bool read_output(const string &filename, string &out) {
+    ifstream f(filename);
+    if (!f) return false;
+    out = string((istreambuf_iterator<char>(f)), istreambuf_iterator<char>());
+    return true;
+}
+
+static bool run_file_cases(const string& caseDir) {
+    if (!fs::exists(caseDir)) return true;
+    for (const auto& entry : fs::directory_iterator(caseDir)) {
+        if (!entry.is_regular_file()) continue;
+        string path = entry.path().string();
+        if (path.size() < 5 || path.substr(path.size() - 5) != ".jvav") continue;
+
+        string name = entry.path().stem().string();
+        string base = entry.path().parent_path().string();
+        string expectedPath = base + "\\" + name + ".expected";
+        string outFile = name + ".out";
+        string errFile = name + ".err";
+        string binFile = name + ".bin";
+
+        test_header(("integration_case_" + name).c_str());
+        int ret = run_cmd((string(JVAVC_BACK_EXE) + " " + path + " " + binFile).c_str());
+        TEST_ASSERT(ret == 0, "back compile failed");
+        ret = run_cmd((string(JVM_EXE) + " " + binFile + " > " + outFile + " 2> " + errFile).c_str());
+        TEST_ASSERT(ret == 0, "execution failed");
+
+        string out, err;
+        TEST_ASSERT(read_file(outFile, out), "read stdout");
+        TEST_ASSERT(read_file(errFile, err), "read stderr");
+        TEST_ASSERT(err.empty(), "stderr should be empty");
+
+        // Normalize CRLF to LF for cross-platform comparison
+        size_t pos = 0;
+        while ((pos = out.find("\r\n", pos)) != string::npos) {
+            out.replace(pos, 2, "\n");
+            pos++;
+        }
+
+        if (fs::exists(expectedPath)) {
+            string expected;
+            TEST_ASSERT(read_file(expectedPath, expected), "read expected");
+            TEST_ASSERT(out == expected, "output mismatch");
+        }
+
+        remove(binFile.c_str());
+        remove(outFile.c_str());
+        remove(errFile.c_str());
+        test_passed(("integration_case_" + name).c_str());
+    }
+    return true;
+}
 
 int test_integration_main() {
+    run_file_cases("tests/cases/back");
     test_header("integration_fibonacci");
     const char* src = R"(
 ; Fibonacci test

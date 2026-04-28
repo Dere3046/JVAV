@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <string>
+#include <fstream>
 
 #ifndef _WIN32
 #include <sys/wait.h>
@@ -15,6 +16,13 @@ inline int system_exit_code(int status) {
     if (WIFEXITED(status)) return WEXITSTATUS(status);
     return -1;
 #endif
+}
+
+inline bool read_file(const std::string &path, std::string &out) {
+    std::ifstream f(path);
+    if (!f) return false;
+    out = std::string((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+    return true;
 }
 
 inline int g_tests_passed = 0;

@@ -1,0 +1,6 @@
+func main(): int {
+    putint(-5);
+    putint(-(-3));
+    putint(0 - 7);
+    return 0;
+}

@@ -1,0 +1,10 @@
+import "std/math.jvl";
+
+func main(): int {
+    putint(abs(-5));
+    putint(max(3, 7));
+    putint(min(3, 7));
+    putint(clamp(10, 0, 5));
+    putint(pow(2, 3));
+    return 0;
+}
