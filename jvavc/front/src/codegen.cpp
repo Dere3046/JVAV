@@ -96,9 +96,9 @@ void CodeGenerator::genFuncDecl(shared_ptr<FuncDecl> d) {
     localSize = 0;
     curFuncRetLabel = "." + d->name + "_ret";
 
-    // parameter offsets: FP+2, FP+3, ...
+    // parameter offsets: FP+5, FP+6, ... (R1-R3 + R6 + retaddr saved below params)
     for (size_t i = 0; i < d->params.size(); i++) {
-        localOffsets[d->params[i].name] = (int)(i + 2);
+        localOffsets[d->params[i].name] = (int)(i + 5);
     }
 
     // collect local variable offsets
@@ -107,6 +107,9 @@ void CodeGenerator::genFuncDecl(shared_ptr<FuncDecl> d) {
     emit("    .global " + d->name);
     emit(d->name + ":");
     emit("    PUSH R6");
+    emit("    PUSH R1");
+    emit("    PUSH R2");
+    emit("    PUSH R3");
     emit("    MOV R6, SP");
 
     // save register args to stack slots
@@ -127,6 +130,9 @@ void CodeGenerator::genFuncDecl(shared_ptr<FuncDecl> d) {
 
     emit(curFuncRetLabel + ":");
     emit("    MOV SP, R6");
+    emit("    POP R3");
+    emit("    POP R2");
+    emit("    POP R1");
     emit("    POP R6");
     emit("    RET");
 }
