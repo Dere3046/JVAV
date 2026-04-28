@@ -250,8 +250,10 @@ void Sema::checkUnusedInScope(int level) {
         const string &name = p.first;
         Symbol &sym = p.second;
         if (sym.kind == Symbol::SYM_VAR && !sym.used && !sym.isGlobal) {
-            report(SEM_WARNING, "Unused variable '" + name + "'", 0, 1,
-                   "remove the declaration or prefix with _ to suppress");
+            if (!name.empty() && name[0] != '_') {
+                report(SEM_WARNING, "Unused variable '" + name + "'", 0, 1,
+                       "remove the declaration or prefix with _ to suppress");
+            }
         }
         if (sym.kind == Symbol::SYM_VAR && sym.isCopy && !sym.initialized && !sym.isGlobal) {
             // uninitialized warning already handled at use site

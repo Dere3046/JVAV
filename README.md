@@ -68,10 +68,10 @@ JVAV/
 │   ├── back/        # Backend assembler & linker (.jvav -> .bin), C++17
 │   └── tools/       # Disassembler (static + trace), C99
 ├── jvm/             # Virtual machine executor, C99
-├── std/             # Standard library (io, math, mem, string)
+├── std/             # Standard library (io, math, mem, string, file)
 ├── benchmark/       # Performance benchmark suite (Python)
 ├── tests/           # Automated tests (back: 117, front: 142)
-└── docs/            # Detailed documentation
+└── docs/            # Detailed documentation (compiler/, JVM/)
 ```
 
 ---
@@ -84,7 +84,7 @@ JVAV/
 - **MimiWorld ownership** — Rust-inspired ownership, move, and borrow checking (`&x`, `&mut x`)
 - **Standard library** — `std/io`, `std/math`, `std/mem`, `std/string` with auto-import path resolution
 - **Multi-file linker** — Structured linking with EQU global collection and base address relocation
-- **Import system** — Recursive module imports with cyclic import guard
+- **Import system** — Recursive module imports with duplicate detection
 - **Disassembler** — Static disassembly and dynamic trace mode
 - **Rust-style diagnostics** — Error codes, source snippets with context lines, and help messages
 - **Cross-platform** — Linux, Windows & Android (x86, x64, ARM, ARM64); statically linked binaries; GitHub Actions CI with multi-arch matrix
@@ -97,14 +97,35 @@ JVAV/
 
 All documentation lives in the `docs/` directory on GitHub (no separate website).
 
-| Document | Description |
-|----------|-------------|
-| [docs/quickstart.md](docs/quickstart.md) | 5-minute getting started guide |
-| [docs/frontend_syntax.md](docs/frontend_syntax.md) | JVL language syntax, type system, inference, ownership |
-| [docs/backend_syntax.md](docs/backend_syntax.md) | JVAV assembly syntax and instruction set |
-| [docs/jvm_features.md](docs/jvm_features.md) | VM architecture, memory model, syscalls |
-| [docs/mimiworld_ownership.md](docs/mimiworld_ownership.md) | MimiWorld ownership & borrow checker |
-| [docs/stdlib.md](docs/stdlib.md) | Standard library API and usage |
+### Start here
+
+- [docs/README.md](docs/README.md) — Documentation index and quick reference
+
+### Compiler documentation
+
+- [docs/compiler/index.md](docs/compiler/index.md) — Compiler architecture and toolchain pipeline
+- **Frontend (JVL)**
+  - [JVL Language Reference](docs/compiler/front/jvl_language.md) — Syntax, types, operators, control flow
+  - [Type System](docs/compiler/front/type_system.md) — Copy/Move types, inference, compatibility
+  - [MimiWorld Ownership](docs/compiler/front/ownership.md) — Ownership, borrow checking, error messages
+  - [Built-in Functions](docs/compiler/front/builtin_functions.md) — I/O, heap, process control
+  - [Import System](docs/compiler/front/import_system.md) — Module resolution and standard library
+  - [Error Handling](docs/compiler/front/error_handling.md) — Diagnostic format and common errors
+- **Backend (Assembler & Linker)**
+  - [JVAV Assembly](docs/compiler/back/jvav_assembly.md) — Instructions, directives, labels, syntax
+  - [Instruction Encoding](docs/compiler/back/instruction_encoding.md) — Binary format and encoding examples
+  - [Directives](docs/compiler/back/directives.md) — Sections, symbols, data, `.syscall`
+  - [Calling Convention](docs/compiler/back/calling_convention.md) — Argument passing, prologue/epilogue, registers
+  - [Linker](docs/compiler/back/linker.md) — Multi-file linking and symbol resolution
+  - [Pseudo-Instructions](docs/compiler/back/pseudo_instructions.md) — Expansion rules
+
+### JVM documentation
+
+- [Architecture](docs/JVM/architecture.md) — VM architecture, registers, instruction format
+- [Instruction Set](docs/JVM/instruction_set.md) — Complete reference for all 30 instructions
+- [Memory Model](docs/JVM/memory_model.md) — Memory layout, stack, heap, dynamic expansion
+- [Syscalls](docs/JVM/syscalls.md) — System call reference and mailbox protocol
+- [Execution Model](docs/JVM/execution_model.md) — Execution loop and runtime behavior
 
 ---
 
