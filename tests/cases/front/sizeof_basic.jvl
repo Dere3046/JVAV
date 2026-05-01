@@ -1,0 +1,7 @@
+func main(): int {
+    var sz = sizeof(int);
+    putint(sz);
+    var arr_sz = sizeof(int[8]);
+    putint(arr_sz);
+    return 0;
+}

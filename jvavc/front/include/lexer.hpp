@@ -2,6 +2,8 @@
 #define LEXER_HPP
 #include <string>
 #include <vector>
+#include <map>
+#include <set>
 #include <cstdint>
 #include "int128.hpp"
 
@@ -20,6 +22,10 @@ enum TokenType {
     TOK_KW_IMPORT,
     TOK_KW_SYSCALL,
     TOK_KW_MUT,
+    TOK_KW_STRUCT, TOK_KW_UNION,
+    TOK_KW_BYTE, TOK_KW_UINT,
+    TOK_KW_SIZEOF, TOK_KW_OFFSETOF,
+    TOK_KW_VOLATILE, TOK_KW_ASM,
     // Symbols
     TOK_PLUS, TOK_MINUS, TOK_STAR, TOK_SLASH, TOK_PERCENT,
     TOK_ASSIGN,
@@ -31,6 +37,7 @@ enum TokenType {
     TOK_LBRACKET, TOK_RBRACKET,
     TOK_LBRACE, TOK_RBRACE,
     TOK_COMMA, TOK_SEMI, TOK_COLON,
+    TOK_DOT, TOK_ARROW,
 };
 
 struct Token {
@@ -72,6 +79,51 @@ private:
     void setError(const std::string &msg);
     bool isIdentStart(char c);
     bool isIdentChar(char c);
+};
+
+/* ---------- Preprocessor / Macro System ---------- */
+
+struct Macro {
+    std::vector<std::string> params;   // empty = object macro
+    std::string body;
+};
+
+class Preprocessor {
+public:
+    bool preprocess(const std::string &input, std::string &output,
+                    std::string &error, int &errorLine);
+private:
+    std::map<std::string, Macro> macros;
+
+    struct CondState {
+        bool enabled;   // is this block currently emitting?
+        bool matched;   // has any branch in this #if been taken?
+    };
+    std::vector<CondState> condStack;
+
+    bool processLine(const std::string &line, std::string &out,
+                     std::string &error, int lineNum);
+    bool processDirective(const std::string &directive, std::string &out,
+                          std::string &error, int lineNum);
+    bool procDefine(const std::string &rest, std::string &error);
+    bool procUndef (const std::string &rest, std::string &error);
+    bool procIfdef (const std::string &rest, std::string &error);
+    bool procIfndef(const std::string &rest, std::string &error);
+    bool procIf    (const std::string &rest, std::string &error, int line);
+    bool procElif  (const std::string &rest, std::string &error, int line);
+    bool procElse  (std::string &error);
+    bool procEndif (std::string &error);
+
+    bool condEnabled() const;
+    bool evalExpr(const std::string &expr, bool &result, std::string &error);
+
+    std::string expandMacros(const std::string &text);
+    std::string expandRecursive(const std::string &text,
+                                std::set<std::string> &expanding);
+    std::string expandFuncMacro(const Macro &m, const std::string &argsRaw);
+
+    static std::string trim(const std::string &s);
+    static std::vector<std::string> splitArgs(const std::string &args);
 };
 
 #endif

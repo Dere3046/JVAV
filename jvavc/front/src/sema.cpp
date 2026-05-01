@@ -127,16 +127,121 @@ Symbol* Sema::lookup(const string &name) {
 }
 
 // ------------------------------------------------------------------
+// Struct / Union registry
+// ------------------------------------------------------------------
+map<string, shared_ptr<StructDecl>> structDefs;
+map<string, shared_ptr<UnionDecl>> unionDefs;
+
+static void registerStruct(shared_ptr<StructDecl> sd) {
+    structDefs[sd->name] = sd;
+}
+
+static void registerUnion(shared_ptr<UnionDecl> ud) {
+    unionDefs[ud->name] = ud;
+}
+
+static shared_ptr<StructDecl> findStruct(const string &name) {
+    auto it = structDefs.find(name);
+    if (it != structDefs.end()) return it->second;
+    return nullptr;
+}
+
+static shared_ptr<UnionDecl> findUnion(const string &name) {
+    auto it = unionDefs.find(name);
+    if (it != unionDefs.end()) return it->second;
+    return nullptr;
+}
+
+// ------------------------------------------------------------------
 // Type helpers
 // ------------------------------------------------------------------
+static int typeSize(shared_ptr<Type> t) {
+    if (!t) return 1;
+    switch (t->kind) {
+        case TYPE_INT: case TYPE_CHAR: case TYPE_BOOL: case TYPE_BYTE: case TYPE_UINT: case TYPE_VOID:
+            return 1;
+        case TYPE_PTR:
+            return 1;
+        case TYPE_ARRAY: {
+            int subSize = typeSize(t->sub);
+            if (t->arraySize > 0) return t->arraySize * subSize;
+            return 1; // dynamic array
+        }
+        case TYPE_STRUCT: {
+            auto sd = findStruct(t->structName);
+            if (!sd) return 1;
+            int sz = 0;
+            for (auto &f : sd->fields) sz += typeSize(f.type);
+            return sz;
+        }
+        case TYPE_UNION: {
+            auto ud = findUnion(t->structName);
+            if (!ud) return 1;
+            int sz = 0;
+            for (auto &f : ud->fields) sz = max(sz, typeSize(f.type));
+            return sz;
+        }
+    }
+    return 1;
+}
+
+static int getFieldOffset(shared_ptr<Type> t, const string &field) {
+    if (!t) return 0;
+    if (t->kind == TYPE_PTR) t = t->sub;
+    if (!t) return 0;
+    if (t->kind == TYPE_STRUCT) {
+        auto sd = findStruct(t->structName);
+        if (!sd) return 0;
+        int off = 0;
+        for (auto &f : sd->fields) {
+            if (f.name == field) return off;
+            off += typeSize(f.type);
+        }
+    } else if (t->kind == TYPE_UNION) {
+        auto ud = findUnion(t->structName);
+        if (!ud) return 0;
+        for (auto &f : ud->fields) {
+            if (f.name == field) return 0;
+        }
+    }
+    return 0;
+}
+
+static shared_ptr<Type> getFieldType(shared_ptr<Type> t, const string &field) {
+    if (!t) return nullptr;
+    if (t->kind == TYPE_PTR) t = t->sub;
+    if (!t) return nullptr;
+    if (t->kind == TYPE_STRUCT) {
+        auto sd = findStruct(t->structName);
+        if (!sd) return nullptr;
+        for (auto &f : sd->fields) {
+            if (f.name == field) return f.type;
+        }
+    } else if (t->kind == TYPE_UNION) {
+        auto ud = findUnion(t->structName);
+        if (!ud) return nullptr;
+        for (auto &f : ud->fields) {
+            if (f.name == field) return f.type;
+        }
+    }
+    return nullptr;
+}
+
 bool Sema::isCopyType(shared_ptr<Type> t) {
     if (!t) return true;
-    return t->kind == TYPE_INT || t->kind == TYPE_CHAR || t->kind == TYPE_BOOL;
+    return t->kind == TYPE_INT || t->kind == TYPE_CHAR || t->kind == TYPE_BOOL
+        || t->kind == TYPE_BYTE || t->kind == TYPE_UINT;
 }
 
 bool Sema::typeEqual(shared_ptr<Type> a, shared_ptr<Type> b) {
     if (!a || !b) return true;
     if (a->kind != b->kind) return false;
+    if (a->kind == TYPE_STRUCT || a->kind == TYPE_UNION)
+        return a->structName == b->structName;
+    if (a->kind == TYPE_ARRAY) {
+        if (a->arraySize != b->arraySize) return false;
+        return typeEqual(a->sub, b->sub);
+    }
     if (a->kind == TYPE_PTR || a->kind == TYPE_ARRAY)
         return typeEqual(a->sub, b->sub);
     return true;
@@ -145,11 +250,19 @@ bool Sema::typeEqual(shared_ptr<Type> a, shared_ptr<Type> b) {
 bool Sema::typeCompatible(shared_ptr<Type> dst, shared_ptr<Type> src) {
     if (!dst || !src) return true;
     // JVAV is weakly typed; allow numeric coercion
-    if (dst->kind == TYPE_INT && (src->kind == TYPE_INT || src->kind == TYPE_CHAR || src->kind == TYPE_BOOL))
+    if (dst->kind == TYPE_INT && (src->kind == TYPE_INT || src->kind == TYPE_CHAR || src->kind == TYPE_BOOL || src->kind == TYPE_BYTE || src->kind == TYPE_UINT))
         return true;
-    if (dst->kind == TYPE_BOOL && (src->kind == TYPE_INT || src->kind == TYPE_BOOL || src->kind == TYPE_CHAR))
+    if (dst->kind == TYPE_UINT && (src->kind == TYPE_INT || src->kind == TYPE_CHAR || src->kind == TYPE_BOOL || src->kind == TYPE_BYTE || src->kind == TYPE_UINT))
+        return true;
+    if (dst->kind == TYPE_BOOL && (src->kind == TYPE_INT || src->kind == TYPE_BOOL || src->kind == TYPE_CHAR || src->kind == TYPE_BYTE || src->kind == TYPE_UINT))
         return true;
     if (dst->kind == TYPE_VOID && src->kind != TYPE_VOID) return false;
+    // Pointer compatibility: allow any ptr to ptr cast
+    if (dst->kind == TYPE_PTR && src->kind == TYPE_PTR) return true;
+    if (dst->kind == TYPE_PTR && src->kind == TYPE_ARRAY) return true;
+    if (dst->kind == TYPE_ARRAY && src->kind == TYPE_PTR) return true;
+    if (dst->kind == TYPE_ARRAY && src->kind == TYPE_ARRAY)
+        return typeEqual(dst->sub, src->sub);
     return typeEqual(dst, src);
 }
 
@@ -169,7 +282,7 @@ void Sema::markInitialized(const string &name) {
 void Sema::markMoved(const string &name, int line) {
     Symbol *sym = lookup(name);
     if (!sym) return;
-    if (sym->isCopy) return;  // Copy types are never moved
+    if (sym->isCopy) return;
     if (sym->mutBorrowed) {
         report(SEM_ERROR, "cannot move out of `" + name + "` because it is mutably borrowed", line, 1,
                "drop the mutable borrow before moving '" + name + "'");
@@ -255,9 +368,6 @@ void Sema::checkUnusedInScope(int level) {
                        "remove the declaration or prefix with _ to suppress");
             }
         }
-        if (sym.kind == Symbol::SYM_VAR && sym.isCopy && !sym.initialized && !sym.isGlobal) {
-            // uninitialized warning already handled at use site
-        }
     }
 }
 
@@ -276,6 +386,17 @@ bool Sema::analyze(shared_ptr<Program> prog, const string &bp) {
     errors.clear();
     firstError.clear();
     inLoop = false;
+    structDefs.clear();
+    unionDefs.clear();
+
+    // Pre-register all struct/union declarations
+    for (auto &d : prog->decls) {
+        if (d->kind == Decl::DECL_STRUCT) {
+            registerStruct(dynamic_pointer_cast<StructDecl>(d));
+        } else if (d->kind == Decl::DECL_UNION) {
+            registerUnion(dynamic_pointer_cast<UnionDecl>(d));
+        }
+    }
 
     enterScope();
     auto intType = make_shared<Type>(Type{TYPE_INT});
@@ -337,7 +458,7 @@ bool Sema::checkDecl(shared_ptr<Decl> d) {
                 return false;
             }
             if (!declare(p.name, Symbol::SYM_VAR, pt, scopeLevel, false)) return false;
-            markInitialized(p.name);  // parameters are initialized
+            markInitialized(p.name);
         }
         checkStmt(fd->body);
         if (retType->kind != TYPE_VOID && !hasReturn(fd->body)) {
@@ -365,6 +486,23 @@ bool Sema::checkDecl(shared_ptr<Decl> d) {
         auto sd = dynamic_pointer_cast<SyscallDecl>(d);
         auto intType = make_shared<Type>(Type{TYPE_INT});
         declare(sd->name, Symbol::SYM_FUNC, intType, 0, true);
+    } else if (d->kind == Decl::DECL_STRUCT) {
+        auto sd = dynamic_pointer_cast<StructDecl>(d);
+        // Validate fields
+        for (auto &f : sd->fields) {
+            if (f.type->kind == TYPE_VOID) {
+                report(SEM_ERROR, "field `" + f.name + "` cannot have `void` type", sd->line, 1);
+                return false;
+            }
+        }
+    } else if (d->kind == Decl::DECL_UNION) {
+        auto ud = dynamic_pointer_cast<UnionDecl>(d);
+        for (auto &f : ud->fields) {
+            if (f.type->kind == TYPE_VOID) {
+                report(SEM_ERROR, "field `" + f.name + "` cannot have `void` type", ud->line, 1);
+                return false;
+            }
+        }
     }
     return true;
 }
@@ -417,6 +555,17 @@ bool Sema::processImport(shared_ptr<ImportDecl> id) {
         return false;
     }
 
+    // Import struct/union definitions
+    for (auto &subd : par.getProgram()->decls) {
+        if (subd->kind == Decl::DECL_STRUCT) {
+            auto sd = dynamic_pointer_cast<StructDecl>(subd);
+            registerStruct(sd);
+        } else if (subd->kind == Decl::DECL_UNION) {
+            auto ud = dynamic_pointer_cast<UnionDecl>(subd);
+            registerUnion(ud);
+        }
+    }
+
     for (auto &subd : par.getProgram()->decls) {
         if (subd->kind == Decl::DECL_FUNC) {
             auto fd = dynamic_pointer_cast<FuncDecl>(subd);
@@ -458,7 +607,6 @@ bool Sema::checkStmt(shared_ptr<Stmt> s) {
             if (!declare(v->name, Symbol::SYM_VAR, t, scopeLevel, false)) return false;
             if (v->init) {
                 checkExpr(v->init);
-                // Check if init is a move of another variable
                 if (v->init->kind == Expr::EXPR_IDENT) {
                     auto id = dynamic_pointer_cast<IdentExpr>(v->init);
                     markMoved(id->name, v->line);
@@ -521,6 +669,10 @@ bool Sema::checkStmt(shared_ptr<Stmt> s) {
                            "add a return value of type " + typeStr(curRetType));
                 }
             }
+            break;
+        }
+        case Stmt::STMT_ASM: {
+            // Inline assembly is opaque to semantic analysis
             break;
         }
     }
@@ -590,15 +742,12 @@ bool Sema::checkExpr(shared_ptr<Expr> e) {
                        "use a function name for the call");
                 return false;
             }
-            // Note: we don't enforce exact param counts because JVAV is weakly typed
             for (auto &a : c->args) {
                 checkExpr(a);
-                // Move non-Copy args for user-defined functions
                 if (a->kind == Expr::EXPR_IDENT) {
                     auto id = dynamic_pointer_cast<IdentExpr>(a);
                     Symbol *s = lookup(id->name);
                     if (s && !s->isCopy && s->kind == Symbol::SYM_VAR) {
-                        // Certain functions borrow pointer args rather than consuming them
                         if (fname != "fread" && fname != "fwrite" && fname != "putstr" && fname != "mmap_file") {
                             markMoved(id->name, c->line);
                         }
@@ -612,14 +761,24 @@ bool Sema::checkExpr(shared_ptr<Expr> e) {
             auto i = dynamic_pointer_cast<IndexExpr>(e);
             checkExpr(i->base);
             checkExpr(i->index);
-            i->type = make_shared<Type>(Type{TYPE_INT});
+            auto baseType = i->base->type;
+            if (baseType && (baseType->kind == TYPE_PTR || baseType->kind == TYPE_ARRAY)) {
+                auto elemType = baseType->sub;
+                if (elemType && (elemType->kind == TYPE_STRUCT || elemType->kind == TYPE_UNION)) {
+                    // For struct/union elements, return pointer to element
+                    i->type = make_shared<Type>(*baseType);
+                } else {
+                    i->type = elemType ? elemType : make_shared<Type>(Type{TYPE_INT});
+                }
+            } else {
+                i->type = make_shared<Type>(Type{TYPE_INT});
+            }
             break;
         }
         case Expr::EXPR_ASSIGN: {
             auto a = dynamic_pointer_cast<AssignExpr>(e);
             if (!checkAssignTarget(a->left)) return false;
             checkExpr(a->right);
-            // Move non-Copy value on assignment
             if (a->right->kind == Expr::EXPR_IDENT) {
                 auto id = dynamic_pointer_cast<IdentExpr>(a->right);
                 markMoved(id->name, a->line);
@@ -645,6 +804,90 @@ bool Sema::checkExpr(shared_ptr<Expr> e) {
             e->type->sub = id->type ? id->type : make_shared<Type>(Type{TYPE_INT});
             break;
         }
+        case Expr::EXPR_SIZEOF: {
+            auto s = dynamic_pointer_cast<SizeofExpr>(e);
+            if (s->targetType) {
+                // Validate type exists
+                if (s->targetType->kind == TYPE_STRUCT && !findStruct(s->targetType->structName)) {
+                    report(SEM_ERROR, "unknown struct type `" + s->targetType->structName + "`", s->line, 1);
+                    return false;
+                }
+                if (s->targetType->kind == TYPE_UNION && !findUnion(s->targetType->structName)) {
+                    report(SEM_ERROR, "unknown union type `" + s->targetType->structName + "`", s->line, 1);
+                    return false;
+                }
+            } else if (s->targetExpr) {
+                checkExpr(s->targetExpr);
+            }
+            e->type = make_shared<Type>(Type{TYPE_INT});
+            break;
+        }
+        case Expr::EXPR_OFFSETOF: {
+            auto o = dynamic_pointer_cast<OffsetofExpr>(e);
+            if (o->targetType->kind == TYPE_STRUCT) {
+                auto sd = findStruct(o->targetType->structName);
+                if (!sd) {
+                    report(SEM_ERROR, "unknown struct type `" + o->targetType->structName + "`", o->line, 1);
+                    return false;
+                }
+                bool found = false;
+                for (auto &f : sd->fields) {
+                    if (f.name == o->field) { found = true; break; }
+                }
+                if (!found) {
+                    report(SEM_ERROR, "struct `" + o->targetType->structName + "` has no field `" + o->field + "`", o->line, 1);
+                    return false;
+                }
+            } else if (o->targetType->kind == TYPE_UNION) {
+                auto ud = findUnion(o->targetType->structName);
+                if (!ud) {
+                    report(SEM_ERROR, "unknown union type `" + o->targetType->structName + "`", o->line, 1);
+                    return false;
+                }
+                bool found = false;
+                for (auto &f : ud->fields) {
+                    if (f.name == o->field) { found = true; break; }
+                }
+                if (!found) {
+                    report(SEM_ERROR, "union `" + o->targetType->structName + "` has no field `" + o->field + "`", o->line, 1);
+                    return false;
+                }
+            } else {
+                report(SEM_ERROR, "offsetof requires a struct or union type", o->line, 1);
+                return false;
+            }
+            e->type = make_shared<Type>(Type{TYPE_INT});
+            break;
+        }
+        case Expr::EXPR_CAST: {
+            auto c = dynamic_pointer_cast<CastExpr>(e);
+            checkExpr(c->operand);
+            e->type = c->castType;
+            break;
+        }
+        case Expr::EXPR_FIELD: {
+            auto f = dynamic_pointer_cast<FieldExpr>(e);
+            checkExpr(f->base);
+            auto baseType = f->base->type;
+            if (!baseType) {
+                report(SEM_ERROR, "cannot access field on unknown type", f->line, 1);
+                return false;
+            }
+            // Resolve through pointer if needed
+            shared_ptr<Type> structType = baseType;
+            if (structType->kind == TYPE_PTR) structType = structType->sub;
+            if (!structType || (structType->kind != TYPE_STRUCT && structType->kind != TYPE_UNION)) {
+                report(SEM_ERROR, "field access requires a struct or union type", f->line, 1);
+                return false;
+            }
+            auto ft = getFieldType(structType, f->field);
+            if (!ft) {
+                report(SEM_ERROR, "type `" + typeStr(structType) + "` has no field `" + f->field + "`", f->line, 1);
+                return false;
+            }
+            f->type = ft;
+            break;
+        }
     }
     return true;
 }
@@ -657,6 +900,7 @@ bool Sema::checkAssignTarget(shared_ptr<Expr> e) {
     }
     if (e->kind == Expr::EXPR_INDEX) {
         auto idx = dynamic_pointer_cast<IndexExpr>(e);
+        checkExpr(e);
         if (idx->base->kind == Expr::EXPR_IDENT) {
             auto id = dynamic_pointer_cast<IdentExpr>(idx->base);
             bool ok = checkUsable(id->name, e->line);
@@ -665,7 +909,12 @@ bool Sema::checkAssignTarget(shared_ptr<Expr> e) {
         }
         return true;
     }
+    if (e->kind == Expr::EXPR_FIELD) {
+        auto f = dynamic_pointer_cast<FieldExpr>(e);
+        checkExpr(e);
+        return true;
+    }
     report(SEM_ERROR, "invalid assignment target", e->line, 1,
-           "only variables and index expressions can be assigned to");
+           "only variables, index expressions, and field accesses can be assigned to");
     return false;
 }

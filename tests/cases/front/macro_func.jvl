@@ -1,0 +1,6 @@
+#define ADD(a, b) (a + b)
+
+func main(): int {
+    putint(ADD(3, 4));
+    return 0;
+}

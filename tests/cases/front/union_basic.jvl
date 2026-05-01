@@ -1,0 +1,11 @@
+union Value {
+    i: int;
+    c: char;
+};
+
+func main(): int {
+    var v: ptr<union Value> = alloc(sizeof(union Value));
+    v->i = 65;
+    putchar(v->c);
+    return 0;
+}

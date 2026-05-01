@@ -1,0 +1,17 @@
+#define OUTER
+
+#ifdef OUTER
+    #define INNER_A
+    #ifdef INNER_A
+        #define DEEP 1
+    #else
+        #define DEEP 2
+    #endif
+#else
+    #define DEEP 3
+#endif
+
+func main(): int {
+    putint(DEEP);
+    return 0;
+}

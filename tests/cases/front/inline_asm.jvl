@@ -1,0 +1,7 @@
+func main(): int {
+    asm {
+        "LDI R0, 42"
+    };
+    putint(42);
+    return 0;
+}

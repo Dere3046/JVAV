@@ -1,0 +1,8 @@
+func main(): int {
+    var p: ptr<byte> = alloc(3);
+    p[0] = 65;
+    p[1] = 66;
+    putchar(p[0]);
+    putchar(p[1]);
+    return 0;
+}

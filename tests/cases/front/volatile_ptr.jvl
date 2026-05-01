@@ -1,0 +1,6 @@
+func main(): int {
+    var p: volatile ptr<int> = alloc(1);
+    p[0] = 42;
+    putint(p[0]);
+    return 0;
+}

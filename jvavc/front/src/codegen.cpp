@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <cctype>
 #include <cstdio>
+#include <iostream>
 namespace fs = std::filesystem;
 using namespace std;
 
@@ -70,6 +71,11 @@ void CodeGenerator::collectLocals(shared_ptr<Stmt> s) {
 }
 
 void CodeGenerator::loadVar(const string &name, int reg) {
+    auto cit = constValues.find(name);
+    if (cit != constValues.end()) {
+        emit("    LDI R" + to_string(reg) + ", " + to_string(cit->second));
+        return;
+    }
     auto it = localOffsets.find(name);
     if (it != localOffsets.end()) {
         emit("    LDI R4, " + to_string(it->second));
@@ -96,12 +102,10 @@ void CodeGenerator::genFuncDecl(shared_ptr<FuncDecl> d) {
     localSize = 0;
     curFuncRetLabel = "." + d->name + "_ret";
 
-    // parameter offsets: FP+5, FP+6, ... (R1-R3 + R6 + retaddr saved below params)
     for (size_t i = 0; i < d->params.size(); i++) {
         localOffsets[d->params[i].name] = (int)(i + 5);
     }
 
-    // collect local variable offsets
     collectLocals(d->body);
 
     emit("    .global " + d->name);
@@ -112,7 +116,6 @@ void CodeGenerator::genFuncDecl(shared_ptr<FuncDecl> d) {
     emit("    PUSH R3");
     emit("    MOV R6, SP");
 
-    // save register args to stack slots
     for (size_t i = 0; i < d->params.size() && i < 4; i++) {
         int off = localOffsets[d->params[i].name];
         emit("    LDI R4, " + to_string(off));
@@ -120,7 +123,6 @@ void CodeGenerator::genFuncDecl(shared_ptr<FuncDecl> d) {
         emit("    STR [R4], R" + to_string((int)i));
     }
 
-    // allocate locals
     if (localSize > 0) {
         emit("    LDI R4, " + to_string(localSize));
         emit("    SUB SP, SP, R4");
@@ -208,11 +210,17 @@ void CodeGenerator::genStmt(shared_ptr<Stmt> s) {
             emit("    JMP " + curFuncRetLabel);
             break;
         }
+        case Stmt::STMT_ASM: {
+            auto a = dynamic_pointer_cast<InlineAsmStmt>(s);
+            for (auto &ins : a->instructions) {
+                emit("    " + ins);
+            }
+            break;
+        }
     }
 }
 
 void CodeGenerator::genCondJump(shared_ptr<Expr> e, const string &falseLabel) {
-    // Evaluate condition, jump to falseLabel if false (== 0)
     genExpr(e, 0);
     emit("    LDI R4, 0");
     emit("    CMP R0, R4");
@@ -243,7 +251,115 @@ static bool exprHasCall(shared_ptr<Expr> e) {
             auto b = dynamic_pointer_cast<BorrowExpr>(e);
             return exprHasCall(b->operand);
         }
+        case Expr::EXPR_CAST: {
+            auto c = dynamic_pointer_cast<CastExpr>(e);
+            return exprHasCall(c->operand);
+        }
+        case Expr::EXPR_FIELD: {
+            auto f = dynamic_pointer_cast<FieldExpr>(e);
+            return exprHasCall(f->base);
+        }
         default: return false;
+    }
+}
+
+// Forward declarations for helpers used in codegen
+extern map<string, shared_ptr<StructDecl>> structDefs;
+extern map<string, shared_ptr<UnionDecl>> unionDefs;
+static int typeSize(shared_ptr<Type> t);
+static int getFieldOffset(shared_ptr<Type> t, const string &field);
+
+static int typeSize(shared_ptr<Type> t) {
+    if (!t) return 1;
+    switch (t->kind) {
+        case TYPE_INT: case TYPE_CHAR: case TYPE_BOOL: case TYPE_BYTE: case TYPE_UINT: case TYPE_VOID:
+            return 1;
+        case TYPE_PTR:
+            return 1;
+        case TYPE_ARRAY: {
+            int subSize = typeSize(t->sub);
+            if (t->arraySize > 0) return t->arraySize * subSize;
+            return 1;
+        }
+        case TYPE_STRUCT: {
+            auto it = structDefs.find(t->structName);
+            if (it == structDefs.end()) return 1;
+            int sz = 0;
+            for (auto &f : it->second->fields) sz += typeSize(f.type);
+            return sz;
+        }
+        case TYPE_UNION: {
+            auto it = unionDefs.find(t->structName);
+            if (it == unionDefs.end()) return 1;
+            int sz = 0;
+            for (auto &f : it->second->fields) sz = max(sz, typeSize(f.type));
+            return sz;
+        }
+    }
+    return 1;
+}
+
+static int getFieldOffset(shared_ptr<Type> t, const string &field) {
+    if (!t) return 0;
+    if (t->kind == TYPE_PTR) t = t->sub;
+    if (!t) return 0;
+    if (t->kind == TYPE_STRUCT) {
+        auto it = structDefs.find(t->structName);
+        if (it == structDefs.end()) return 0;
+        int off = 0;
+        for (auto &f : it->second->fields) {
+            if (f.name == field) return off;
+            off += typeSize(f.type);
+        }
+    } else if (t->kind == TYPE_UNION) {
+        auto it = unionDefs.find(t->structName);
+        if (it == unionDefs.end()) return 0;
+        for (auto &f : it->second->fields) {
+            if (f.name == field) return 0;
+        }
+    }
+    return 0;
+}
+
+static Int128 evaluateConstExpr(shared_ptr<Expr> e) {
+    if (!e) return 0;
+    switch (e->kind) {
+        case Expr::EXPR_NUMBER:
+            return dynamic_pointer_cast<NumberExpr>(e)->value;
+        case Expr::EXPR_SIZEOF: {
+            auto s = dynamic_pointer_cast<SizeofExpr>(e);
+            if (s->targetType) return typeSize(s->targetType);
+            if (s->targetExpr && s->targetExpr->type) return typeSize(s->targetExpr->type);
+            return 1;
+        }
+        case Expr::EXPR_OFFSETOF: {
+            auto o = dynamic_pointer_cast<OffsetofExpr>(e);
+            return getFieldOffset(o->targetType, o->field);
+        }
+        case Expr::EXPR_BINARY: {
+            auto b = dynamic_pointer_cast<BinaryExpr>(e);
+            Int128 l = evaluateConstExpr(b->left);
+            Int128 r = evaluateConstExpr(b->right);
+            if (b->op == "+") return l + r;
+            if (b->op == "-") return l - r;
+            if (b->op == "*") return l * r;
+            if (b->op == "/") return r != 0 ? l / r : 0;
+            if (b->op == "%") return r != 0 ? l % r : 0;
+            if (b->op == "&") return l & r;
+            if (b->op == "|") return l | r;
+            if (b->op == "^") return l ^ r;
+            if (b->op == "<<") return l << (int)(long long)r;
+            if (b->op == ">>") return l >> (int)(long long)r;
+            return 0;
+        }
+        case Expr::EXPR_UNARY: {
+            auto u = dynamic_pointer_cast<UnaryExpr>(e);
+            Int128 v = evaluateConstExpr(u->operand);
+            if (u->op == "-") return -v;
+            if (u->op == "~") return ~v;
+            return v;
+        }
+        default: return 0;
     }
 }
 
@@ -280,7 +396,6 @@ void CodeGenerator::genExpr(shared_ptr<Expr> e, int destReg) {
         case Expr::EXPR_BINARY: {
             auto b = dynamic_pointer_cast<BinaryExpr>(e);
             string op = b->op;
-            // special handling for logical operators
             if (op == "&&") {
                 string falseLabel = nextLabel("and_false");
                 string endLabel = nextLabel("and_end");
@@ -307,7 +422,7 @@ void CodeGenerator::genExpr(shared_ptr<Expr> e, int destReg) {
                 emit(endLabel + ":");
             } else {
                 int r2 = destReg + 1;
-                if (r2 > 3) r2 = 0; // wrap around to keep registers distinct
+                if (r2 > 3) r2 = 0;
                 bool saveLeft = exprHasCall(b->right);
                 genExpr(b->left, destReg);
                 if (saveLeft) {
@@ -328,7 +443,6 @@ void CodeGenerator::genExpr(shared_ptr<Expr> e, int destReg) {
                 else if (op == "<<") emit("    SHL R" + to_string(destReg) + ", R" + to_string(destReg) + ", R" + to_string(r2));
                 else if (op == ">>") emit("    SHR R" + to_string(destReg) + ", R" + to_string(destReg) + ", R" + to_string(r2));
                 else {
-                    // comparison operators: generate 0 or 1
                     emit("    CMP R" + to_string(destReg) + ", R" + to_string(r2));
                     string trueLabel = nextLabel("cmp_true");
                     string endLabel = nextLabel("cmp_end");
@@ -382,13 +496,11 @@ void CodeGenerator::genExpr(shared_ptr<Expr> e, int destReg) {
                 name = dynamic_pointer_cast<IdentExpr>(c->callee)->name;
             }
 
-            // Save args to stack
             int n = (int)c->args.size();
             for (auto &arg : c->args) {
                 genExpr(arg, 0);
                 emit("    PUSH R0");
             }
-            // Load from stack to R0-R3
             for (int i = 0; i < min(n, 4); i++) {
                 int off = n - 1 - i;
                 emit("    LDI R4, " + to_string(off));
@@ -426,8 +538,25 @@ void CodeGenerator::genExpr(shared_ptr<Expr> e, int destReg) {
             genExpr(i->base, destReg);
             int r2 = (destReg + 1) <= 3 ? destReg + 1 : 3;
             genExpr(i->index, r2);
+            // Scale index by element size if needed
+            auto baseType = i->base->type;
+            if (baseType && (baseType->kind == TYPE_PTR || baseType->kind == TYPE_ARRAY) && baseType->sub) {
+                int elemSize = typeSize(baseType->sub);
+                if (elemSize > 1) {
+                    emit("    LDI R4, " + to_string(elemSize));
+                    emit("    MUL R" + to_string(r2) + ", R" + to_string(r2) + ", R4");
+                }
+            }
             emit("    ADD R" + to_string(destReg) + ", R" + to_string(destReg) + ", R" + to_string(r2));
-            emit("    LDR R" + to_string(destReg) + ", [R" + to_string(destReg) + "]");
+            // Only load if result is not a pointer/struct/union
+            bool shouldLoad = true;
+            if (i->type) {
+                auto tk = i->type->kind;
+                if (tk == TYPE_PTR || tk == TYPE_STRUCT || tk == TYPE_UNION) shouldLoad = false;
+            }
+            if (shouldLoad) {
+                emit("    LDR R" + to_string(destReg) + ", [R" + to_string(destReg) + "]");
+            }
             break;
         }
         case Expr::EXPR_ASSIGN: {
@@ -442,7 +571,25 @@ void CodeGenerator::genExpr(shared_ptr<Expr> e, int destReg) {
                 genExpr(idx->base, raddr);
                 int ridx = (raddr + 1) <= 3 ? raddr + 1 : 3;
                 genExpr(idx->index, ridx);
+                auto baseType = idx->base->type;
+                if (baseType && (baseType->kind == TYPE_PTR || baseType->kind == TYPE_ARRAY) && baseType->sub) {
+                    int elemSize = typeSize(baseType->sub);
+                    if (elemSize > 1) {
+                        emit("    LDI R4, " + to_string(elemSize));
+                        emit("    MUL R" + to_string(ridx) + ", R" + to_string(ridx) + ", R4");
+                    }
+                }
                 emit("    ADD R" + to_string(raddr) + ", R" + to_string(raddr) + ", R" + to_string(ridx));
+                emit("    STR [R" + to_string(raddr) + "], R0");
+            } else if (a->left->kind == Expr::EXPR_FIELD) {
+                auto f = dynamic_pointer_cast<FieldExpr>(a->left);
+                int raddr = (destReg + 1) <= 3 ? destReg + 1 : 3;
+                genExpr(f->base, raddr);
+                int offset = getFieldOffset(f->base->type, f->field);
+                if (offset > 0) {
+                    emit("    LDI R4, " + to_string(offset));
+                    emit("    ADD R" + to_string(raddr) + ", R" + to_string(raddr) + ", R4");
+                }
                 emit("    STR [R" + to_string(raddr) + "], R0");
             }
             if (destReg != 0) {
@@ -450,13 +597,59 @@ void CodeGenerator::genExpr(shared_ptr<Expr> e, int destReg) {
             }
             break;
         }
+        case Expr::EXPR_SIZEOF: {
+            auto s = dynamic_pointer_cast<SizeofExpr>(e);
+            int sz = 1;
+            if (s->targetType) sz = typeSize(s->targetType);
+            else if (s->targetExpr && s->targetExpr->type) sz = typeSize(s->targetExpr->type);
+            emit("    LDI R" + to_string(destReg) + ", " + to_string(sz));
+            break;
+        }
+        case Expr::EXPR_OFFSETOF: {
+            auto o = dynamic_pointer_cast<OffsetofExpr>(e);
+            int off = getFieldOffset(o->targetType, o->field);
+            emit("    LDI R" + to_string(destReg) + ", " + to_string(off));
+            break;
+        }
+        case Expr::EXPR_CAST: {
+            auto c = dynamic_pointer_cast<CastExpr>(e);
+            genExpr(c->operand, destReg);
+            // Casts are no-ops at the machine level; type system already validated
+            break;
+        }
+        case Expr::EXPR_FIELD: {
+            auto f = dynamic_pointer_cast<FieldExpr>(e);
+            genExpr(f->base, destReg);
+            int offset = getFieldOffset(f->base->type, f->field);
+            if (offset > 0) {
+                emit("    LDI R4, " + to_string(offset));
+                emit("    ADD R" + to_string(destReg) + ", R" + to_string(destReg) + ", R4");
+            }
+            // Load field value unless it's a struct/union/array type (which we want the address of)
+            bool shouldLoad = true;
+            if (f->type) {
+                auto tk = f->type->kind;
+                if (tk == TYPE_STRUCT || tk == TYPE_UNION || tk == TYPE_ARRAY) shouldLoad = false;
+            }
+            if (shouldLoad) {
+                emit("    LDR R" + to_string(destReg) + ", [R" + to_string(destReg) + "]");
+            }
+            break;
+        }
     }
 }
 
 void CodeGenerator::genProgram(shared_ptr<Program> prog) {
-    // Collect global vars/strings (simplified)
+    // First pass: emit .equ for consts and collect data
+    vector<shared_ptr<GlobalConstDecl>> consts;
     for (auto &d : prog->decls) {
-        if (d->kind == Decl::DECL_VAR) {
+        if (d->kind == Decl::DECL_CONST) {
+            auto cd = dynamic_pointer_cast<GlobalConstDecl>(d);
+            Int128 val = evaluateConstExpr(cd->value);
+            emit("    " + cd->name + ": EQU " + to_string((long long)val));
+            constValues[cd->name] = (long long)val;
+            consts.push_back(cd);
+        } else if (d->kind == Decl::DECL_VAR) {
             auto vd = dynamic_pointer_cast<GlobalVarDecl>(d);
             emit("    .data");
             emit(vd->name + ":");
@@ -467,9 +660,6 @@ void CodeGenerator::genProgram(shared_ptr<Program> prog) {
                 emit("    DT 0");
             }
             emit("    .text");
-        } else if (d->kind == Decl::DECL_CONST) {
-            auto cd = dynamic_pointer_cast<GlobalConstDecl>(d);
-            // global consts are inlined, skip
         } else if (d->kind == Decl::DECL_IMPORT) {
             auto id = dynamic_pointer_cast<ImportDecl>(d);
             if (!id->module) continue;
@@ -523,9 +713,9 @@ string CodeGenerator::generate(shared_ptr<Program> prog, const string &bp) {
     generatedFiles.clear();
     generatedModules.clear();
     userSyscalls.clear();
+    constValues.clear();
     basePath = bp;
 
-    // Generate entry point
     emit("    .global _start");
     emit("_start:");
     emit("    CALL main");
@@ -533,7 +723,6 @@ string CodeGenerator::generate(shared_ptr<Program> prog, const string &bp) {
 
     genProgram(prog);
 
-    // Built-in syscall wrappers (standard library foundation)
     emit("    .syscall putchar, 14, 1");
     emit("    .syscall putint, 15, 1");
     emit("    .syscall getchar, 16, 0");
@@ -543,10 +732,8 @@ string CodeGenerator::generate(shared_ptr<Program> prog, const string &bp) {
     emit("    .syscall exit, 18, 1");
     emit("    .syscall putstr, 19, 2");
     emit("    .syscall sleep, 20, 1");
-    // User-defined syscalls
     for (auto &s : userSyscalls) emit(s);
 
-    // Append string literals
     if (!stringLabels.empty()) {
         emit("    .data");
         for (auto &sl : stringLabels) emit(sl);

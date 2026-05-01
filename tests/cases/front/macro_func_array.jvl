@@ -1,0 +1,7 @@
+#define ARR(a, b) int[a][b]
+
+func main(): int {
+    var sz = sizeof(ARR(2, 3));
+    putint(sz);
+    return 0;
+}

@@ -24,9 +24,11 @@ func main(): int {
 
 - `func` — Function declaration
 - `var` — Global variable declaration
-- `const` — Compile-time constant
+- `const` — Compile-time constant (exported to assembly as `.equ`)
 - `import` — Module import
 - `syscall` — Custom syscall declaration
+- `struct` — Structure type definition
+- `union` — Union type definition
 
 ## Lexical Elements
 
@@ -53,9 +55,11 @@ name123
 
 The following are reserved keywords:
 
-`func`, `var`, `const`, `if`, `else`, `while`, `for`, `return`, `import`, `syscall`, `mut`
+`func`, `var`, `const`, `if`, `else`, `while`, `for`, `return`, `import`, `syscall`, `mut`, `asm`
 
-Type keywords: `int`, `char`, `bool`, `void`, `ptr`, `array`
+Type keywords: `int`, `char`, `bool`, `void`, `ptr`, `array`, `byte`, `uint`, `struct`, `union`
+
+Operators: `sizeof`, `offsetof`, `volatile`
 
 Boolean literals: `true`, `false`
 
@@ -101,7 +105,9 @@ String literals are stored as contiguous arrays of 128-bit words, one character 
 | Type | Size | Copy semantics | Description |
 |------|------|----------------|-------------|
 | `int` | 128-bit | Copy | Signed integer (full 128-bit range) |
+| `uint` | 128-bit | Copy | Unsigned integer (same size, semantic difference) |
 | `char` | 128-bit | Copy | ASCII character / small integer |
+| `byte` | 128-bit | Copy | Byte value (same layout as char) |
 | `bool` | 128-bit | Copy | Boolean (`true` / `false`) |
 | `void` | — | — | Function return type only |
 
@@ -110,6 +116,8 @@ String literals are stored as contiguous arrays of 128-bit words, one character 
 ```jvl
 ptr<int>    // Pointer to int
 ptr<char>   // Pointer to char
+ptr<byte>   // Pointer to byte
+ptr<Struct> // Pointer to struct
 ```
 
 Pointer types use **Move semantics**. Assigning a pointer transfers ownership. They are 128-bit values containing a memory address.
@@ -117,10 +125,63 @@ Pointer types use **Move semantics**. Assigning a pointer transfers ownership. T
 ### Array types
 
 ```jvl
-array<int>   // Array of ints (alias for ptr<int>)
+array<int>         // Dynamic array (alias for ptr<int>)
+int[8]             // Fixed-size array of 8 ints
+int[256][512]      // Multidimensional array: 256 arrays of 512 ints
 ```
 
 `array<T>` is semantically equivalent to `ptr<T>`. Both use Move semantics.
+
+Fixed-size array syntax `T[N]` creates an array type with `N` elements. Multidimensional arrays follow C semantics: `T[a][b]` is an array of `a` elements, each being an array of `b` elements.
+
+**Note**: Since the JVAV VM uses 128-bit words, `byte` and `char` each occupy one full word. `ptr<byte>` provides logical byte addressing where each byte is stored in its own word.
+
+### Struct types
+
+```jvl
+struct Point {
+    x: int;
+    y: int;
+}
+
+struct Rect {
+    top_left: Point;
+    bottom_right: Point;
+}
+```
+
+Struct fields are laid out sequentially in memory. Each field's offset is the sum of the sizes of all preceding fields. Structs are accessed through pointers:
+
+```jvl
+var p: ptr<Point> = alloc(sizeof(Point));
+p->x = 3;
+p->y = 4;
+```
+
+### Union types
+
+```jvl
+union Value {
+    i: int;
+    c: char;
+    data: int[4];
+}
+```
+
+All union fields start at offset 0. The size of a union is the maximum size of any field.
+
+### Type modifiers
+
+#### volatile
+
+The `volatile` modifier indicates that a variable may be modified by external factors (e.g., memory-mapped I/O):
+
+```jvl
+var mailbox: volatile ptr<int> = 0xFFE0;
+var val = mailbox[0];
+```
+
+`volatile` is currently a semantic hint; it does not change code generation.
 
 ### Type inference
 
@@ -153,9 +214,10 @@ Variables must be initialized at declaration. There are no uninitialized variabl
 
 ```jvl
 const NAME = value;
+const SIZE = sizeof(int[8]);
 ```
 
-Constants are compile-time values. They do not require type annotations and are inlined at compile time.
+Constants are compile-time values. They do not require type annotations. Global constants are exported to assembly as `.equ` directives, making them available to other assembly files and the linker.
 
 ### Scope
 
@@ -178,7 +240,7 @@ func main(): int {
 
 | Precedence | Operators | Associativity |
 |------------|-----------|---------------|
-| 1 (highest) | `-x`, `!x`, `~x`, `&x`, `&mut x` | Right |
+| 1 (highest) | `-x`, `!x`, `~x`, `&x`, `&mut x`, `sizeof(x)`, `offsetof(T, f)`, `(T)x` | Right |
 | 2 | `*`, `/`, `%` | Left |
 | 3 | `+`, `-` | Left |
 | 4 | `<<`, `>>` | Left |
@@ -232,7 +294,7 @@ func main(): int {
 | `\|\|` | Logical OR | `a \|\| b` |
 | `!` | Logical NOT | `!a` |
 
-**Note**: JVL implements short-circuit evaluation for `&&` and `||`. The right operand is only evaluated if the left operand does not determine the result.
+**Note**: JVL implements short-circuit evaluation for `&&` and `\|\|`. The right operand is only evaluated if the left operand does not determine the result.
 
 ### Assignment
 
@@ -241,6 +303,44 @@ x = expression;
 ```
 
 Assignment is an expression (returns the assigned value) but is only permitted as a statement-level expression or within `for` loop steps.
+
+### sizeof operator
+
+```jvl
+sizeof(int)           // 1 (word)
+sizeof(int[8])        // 8 (words)
+sizeof(MyStruct)      // struct size in words
+sizeof(expression)    // size of expression's type
+```
+
+`sizeof` returns the size of a type or expression in 128-bit words.
+
+### offsetof operator
+
+```jvl
+offsetof(Point, x)    // offset of field x in Point (words)
+offsetof(MyStruct, field)
+```
+
+`offsetof` returns the offset of a field within a struct or union, measured in 128-bit words.
+
+### Type casting
+
+```jvl
+var p: ptr<int> = (ptr<int>)0x1000;
+var c = (char)65;
+```
+
+C-style casts `(Type)expr` are supported. Since JVAV is weakly typed at the machine level, most casts are no-ops in the generated code but provide type safety in the frontend.
+
+### Field access
+
+```jvl
+p->field      // Access field via pointer
+expr.field    // Access field directly (if expr is struct-typed)
+```
+
+The `->` operator accesses a field through a pointer. The `.` operator accesses a field on a struct value. In practice, structs are usually accessed through pointers.
 
 ### Borrow operators
 
@@ -339,7 +439,7 @@ func add(a: int, b: int): int {
 }
 ```
 
-Arguments are passed by value. For Copy types (`int`, `char`, `bool`), this copies the value. For Move types (`ptr<T>`), this transfers ownership.
+Arguments are passed by value. For Copy types (`int`, `char`, `bool`, `byte`, `uint`), this copies the value. For Move types (`ptr<T>`), this transfers ownership.
 
 ### Recursion
 
@@ -354,12 +454,45 @@ func factorial(n: int): int {
 }
 ```
 
+## Inline Assembly
+
+Inline assembly allows embedding raw JVAV assembly instructions directly in JVL code:
+
+```jvl
+asm {
+    "LDI R0, 0xFFE0"
+    "LDR R1, [R0]"
+};
+```
+
+Each string literal in the asm block contains one assembly instruction. Instructions are emitted verbatim into the generated assembly file.
+
+**Use cases**:
+- Memory-mapped I/O access
+- Direct register manipulation
+- Performance-critical code sequences
+- Syscall mailbox operations
+
+**Example**: Reading from a mailbox port
+```jvl
+func read_mailbox(): int {
+    asm {
+        "LDI R0, 0xFFE4"
+        "LDR R0, [R0]"
+    };
+    return 0;  // R0 already contains the value
+}
+```
+
+**Warning**: Inline assembly bypasses the compiler's register allocation and type checking. Incorrect usage can corrupt the stack, overwrite callee-saved registers, or cause undefined behavior.
+
 ## Pointers and Arrays
 
 ### Pointer declaration
 
 ```jvl
 var p: ptr<int> = alloc(3);
+var b: ptr<byte> = alloc(64);
 ```
 
 ### Array indexing
@@ -372,6 +505,13 @@ putint(p[0] + p[1] + p[2]);   // 60
 ```
 
 Pointer arithmetic is **not** supported. Use array indexing `p[i]` to access elements.
+
+For arrays of structs, indexing scales by the struct size automatically:
+
+```jvl
+var items: ptr<Item> = alloc(10 * sizeof(Item));
+items[i]->field = value;
+```
 
 ### Heap allocation
 
@@ -420,11 +560,21 @@ JVL allows implicit conversion between numeric types:
 | From | To | Allowed? |
 |------|-----|----------|
 | `int` | `int` | Yes |
+| `uint` | `uint` | Yes |
 | `char` | `int` | Yes (weak coercion) |
+| `byte` | `int` | Yes (weak coercion) |
 | `bool` | `int` | Yes (weak coercion) |
 | `int` (literal) | `ptr<T>` | Yes (for literal addresses only) |
-| `ptr<T>` | `ptr<U>` (T≠U) | No |
+| `ptr<T>` | `ptr<U>` (T≠U) | No (use explicit cast) |
 | `int` (variable) | `ptr<T>` | No |
+
+### Explicit casting
+
+```jvl
+var p: ptr<int> = (ptr<int>)0x1000;
+var u: uint = (uint)-1;
+var b: byte = (byte)255;
+```
 
 ### Literal address conversion
 
@@ -445,6 +595,11 @@ This only works for literal integer values, not variables.
 import "std/io.jvl";
 import "std/math.jvl";
 
+struct Point {
+    x: int;
+    y: int;
+}
+
 func factorial(n: int): int {
     if (n <= 1) {
         return 1;
@@ -459,7 +614,135 @@ func main(): int {
     putstr(msg, 4);               // JVAV
     print_newline();
     
+    var p: ptr<Point> = alloc(sizeof(Point));
+    p->x = 3;
+    p->y = 4;
+    putint(p->x + p->y);          // 7
+    
     exit(0);
     return 0;
 }
 ```
+
+## New Features Summary
+
+### Struct and Union Types
+- Define composite types with `struct Name { field: Type; }`
+- Define overlapping types with `union Name { field: Type; }`
+- Access fields through pointers with `ptr->field`
+
+### sizeof and offsetof
+- `sizeof(Type)` returns size in words
+- `offsetof(Type, field)` returns field offset in words
+
+### byte and uint Types
+- `byte`: 128-bit byte value (logical byte access)
+- `uint`: 128-bit unsigned integer
+
+### Multidimensional Arrays
+- `int[8]`: fixed-size array
+- `int[256][512]`: multidimensional array with C semantics
+
+### Type Casting
+- C-style syntax: `(Type)expression`
+
+### volatile Modifier
+- `volatile ptr<Type>` for memory-mapped I/O
+
+### Inline Assembly
+- `asm { "instruction1"; "instruction2"; }`
+
+### Const Export
+- Global `const` values are emitted as `.equ` directives in assembly
+
+## Preprocessor
+
+JVL includes a C-style preprocessor that runs before lexical analysis. All directives begin with `#`.
+
+### Object Macros
+
+```jvl
+#define BUFFER_SIZE 1024
+#define NAME "buffer"
+```
+
+Object macros replace every occurrence of the name with the replacement text.
+
+### Function Macros
+
+```jvl
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define SQUARE(x) ((x) * (x))
+```
+
+Function macros accept comma-separated parameters and expand at each use site.
+
+### Conditional Compilation
+
+```jvl
+#define DEBUG
+
+#ifdef DEBUG
+    #define LOG_LEVEL 3
+#else
+    #define LOG_LEVEL 1
+#endif
+
+#if defined(FEATURE_A) && defined(FEATURE_B)
+    #define MODE 1
+#elif defined(FEATURE_A)
+    #define MODE 2
+#else
+    #define MODE 0
+#endif
+```
+
+Supported directives:
+
+| Directive | Description |
+|-----------|-------------|
+| `#define NAME value` | Define object macro |
+| `#define NAME(a,b) body` | Define function macro |
+| `#undef NAME` | Remove macro definition |
+| `#ifdef NAME` | True if macro is defined |
+| `#ifndef NAME` | True if macro is not defined |
+| `#if expr` | Evaluate constant expression |
+| `#elif expr` | Else-if branch |
+| `#else` | Else branch |
+| `#endif` | End conditional block |
+| `#error message` | Emit compilation error |
+
+### Expression Evaluation
+
+`#if` expressions support:
+- `defined(NAME)` — 1 if macro exists, 0 otherwise
+- Integer literals and macro names
+- Arithmetic: `+`, `-`, `*`, `/`, `%`
+- Bitwise: `&`, `|`, `^`, `~`, `<<`, `>>`
+- Comparison: `==`, `!=`, `<`, `>`, `<=`, `>=`
+- Logical: `&&`, `||`, `!`
+
+```jvl
+#if (VERSION_MAJOR > 1) || (VERSION_MAJOR == 1 && VERSION_MINOR >= 5)
+    #define API_LEVEL 2
+#endif
+```
+
+### Macro Expansion Rules
+
+- Expansion is recursive; macros in the replacement text are expanded
+- Self-referential macros are protected from infinite recursion
+- String literals are never expanded
+- Only tokens matching complete macro names are replaced
+
+```jvl
+#define REC 1 + REC
+putint(REC);   // expands to: putint(1 + REC)
+```
+
+### Preprocessor Scope
+
+- Macros are global within a single compilation unit
+- `#undef` removes a definition for subsequent lines
+- Conditional compilation can nest arbitrarily deep
+- In disabled blocks, only `#if`/`#ifdef`/`#ifndef`/`#elif`/`#else`/`#endif` are processed; `#define` and `#undef` are ignored
