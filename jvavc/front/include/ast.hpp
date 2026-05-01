@@ -15,22 +15,32 @@ struct Program;
 
 enum TypeKind {
     TYPE_INT, TYPE_CHAR, TYPE_BOOL, TYPE_VOID,
-    TYPE_PTR, TYPE_ARRAY
+    TYPE_PTR, TYPE_ARRAY,
+    TYPE_BYTE, TYPE_UINT,
+    TYPE_STRUCT, TYPE_UNION
 };
 
 struct Type {
     TypeKind kind;
-    std::shared_ptr<Type> sub = nullptr;  // for ptr< T > or array< T >
-    int arraySize = 0;                    // for array< T >[size]
+    std::shared_ptr<Type> sub = nullptr;
+    int arraySize = 0;
+    std::string structName;
+    bool isVolatile = false;
     std::string toString() const;
 };
+
+// Forward declarations for struct definitions
+struct StructField;
+struct StructDecl;
+struct UnionDecl;
 
 // Base expression
 struct Expr {
     enum Kind {
         EXPR_NUMBER, EXPR_STRING, EXPR_CHAR, EXPR_BOOL,
         EXPR_IDENT, EXPR_BINARY, EXPR_UNARY,
-        EXPR_CALL, EXPR_INDEX, EXPR_ASSIGN, EXPR_BORROW
+        EXPR_CALL, EXPR_INDEX, EXPR_ASSIGN, EXPR_BORROW,
+        EXPR_SIZEOF, EXPR_CAST, EXPR_FIELD, EXPR_OFFSETOF
     };
     Kind kind;
     std::shared_ptr<Type> type;
@@ -104,11 +114,41 @@ struct BorrowExpr : Expr {
         : Expr(EXPR_BORROW, l), operand(e), mutableBorrow(mut_) {}
 };
 
+struct SizeofExpr : Expr {
+    std::shared_ptr<Type> targetType;
+    std::shared_ptr<Expr> targetExpr;
+    SizeofExpr(std::shared_ptr<Type> t, std::shared_ptr<Expr> e, int l)
+        : Expr(EXPR_SIZEOF, l), targetType(t), targetExpr(e) {}
+};
+
+struct CastExpr : Expr {
+    std::shared_ptr<Type> castType;
+    std::shared_ptr<Expr> operand;
+    CastExpr(std::shared_ptr<Type> t, std::shared_ptr<Expr> e, int l)
+        : Expr(EXPR_CAST, l), castType(t), operand(e) {}
+};
+
+struct FieldExpr : Expr {
+    std::shared_ptr<Expr> base;
+    std::string field;
+    bool isArrow;
+    FieldExpr(std::shared_ptr<Expr> b, const std::string &f, bool arrow, int l)
+        : Expr(EXPR_FIELD, l), base(b), field(f), isArrow(arrow) {}
+};
+
+struct OffsetofExpr : Expr {
+    std::shared_ptr<Type> targetType;
+    std::string field;
+    OffsetofExpr(std::shared_ptr<Type> t, const std::string &f, int l)
+        : Expr(EXPR_OFFSETOF, l), targetType(t), field(f) {}
+};
+
 // Statement
 struct Stmt {
     enum Kind {
         STMT_BLOCK, STMT_VAR, STMT_CONST, STMT_EXPR,
-        STMT_IF, STMT_WHILE, STMT_FOR, STMT_RETURN
+        STMT_IF, STMT_WHILE, STMT_FOR, STMT_RETURN,
+        STMT_ASM
     };
     Kind kind;
     int line;
@@ -168,9 +208,15 @@ struct ReturnStmt : Stmt {
     ReturnStmt(std::shared_ptr<Expr> v, int l) : Stmt(STMT_RETURN, l), value(v) {}
 };
 
+struct InlineAsmStmt : Stmt {
+    std::vector<std::string> instructions;
+    InlineAsmStmt(const std::vector<std::string> &ins, int l)
+        : Stmt(STMT_ASM, l), instructions(ins) {}
+};
+
 // Declaration
 struct Decl {
-    enum Kind { DECL_FUNC, DECL_VAR, DECL_CONST, DECL_IMPORT, DECL_SYSCALL };
+    enum Kind { DECL_FUNC, DECL_VAR, DECL_CONST, DECL_IMPORT, DECL_SYSCALL, DECL_STRUCT, DECL_UNION };
     Kind kind;
     int line;
     Decl(Kind k, int l) : kind(k), line(l) {}
@@ -182,6 +228,11 @@ struct Param {
     std::shared_ptr<Type> ptype;
 };
 
+struct StructField {
+    std::string name;
+    std::shared_ptr<Type> type;
+};
+
 struct FuncDecl : Decl {
     std::string name;
     std::shared_ptr<Type> retType;
@@ -189,6 +240,20 @@ struct FuncDecl : Decl {
     std::shared_ptr<BlockStmt> body;
     FuncDecl(const std::string &n, std::shared_ptr<Type> r, const std::vector<Param> &p, std::shared_ptr<BlockStmt> b, int l)
         : Decl(DECL_FUNC, l), name(n), retType(r), params(p), body(b) {}
+};
+
+struct StructDecl : Decl {
+    std::string name;
+    std::vector<StructField> fields;
+    StructDecl(const std::string &n, const std::vector<StructField> &f, int l)
+        : Decl(DECL_STRUCT, l), name(n), fields(f) {}
+};
+
+struct UnionDecl : Decl {
+    std::string name;
+    std::vector<StructField> fields;
+    UnionDecl(const std::string &n, const std::vector<StructField> &f, int l)
+        : Decl(DECL_UNION, l), name(n), fields(f) {}
 };
 
 struct GlobalVarDecl : Decl {
@@ -208,7 +273,7 @@ struct GlobalConstDecl : Decl {
 
 struct ImportDecl : Decl {
     std::string path;
-    std::shared_ptr<Program> module;  // parsed AST of imported module
+    std::shared_ptr<Program> module;
     ImportDecl(const std::string &p, int l) : Decl(DECL_IMPORT, l), path(p) {}
 };
 

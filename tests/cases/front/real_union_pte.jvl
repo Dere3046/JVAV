@@ -1,0 +1,11 @@
+union pte {
+    raw: uint;
+    flags: uint;
+    addr: ptr<byte>;
+};
+
+func main(): int {
+    var sz = sizeof(union pte);
+    putint(sz);
+    return 0;
+}

@@ -1,0 +1,10 @@
+union Value {
+    i: int;
+    big: int[4];
+};
+
+func main(): int {
+    var sz = sizeof(union Value);
+    putint(sz);
+    return 0;
+}

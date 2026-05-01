@@ -56,6 +56,17 @@ private:
     std::shared_ptr<Decl> parseDecl();
     std::shared_ptr<SyscallDecl> parseSyscallDecl();
     std::shared_ptr<FuncDecl> parseFuncDecl();
+    std::shared_ptr<StructDecl> parseStructDecl();
+    std::shared_ptr<UnionDecl> parseUnionDecl();
+    std::shared_ptr<Stmt> parseAsmStmt();
+
+    struct ParserState {
+        size_t pos;
+        std::string error;
+        int errorLine, errorCol;
+    };
+    ParserState saveState();
+    void restoreState(const ParserState &s);
 };
 
 #endif

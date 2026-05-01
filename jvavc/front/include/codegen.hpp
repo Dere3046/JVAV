@@ -25,6 +25,7 @@ private:
     std::set<std::string> generatedFiles;
     std::set<Program*> generatedModules;
     std::vector<std::string> userSyscalls;
+    std::map<std::string, long long> constValues;
 
     std::string nextLabel(const std::string &prefix);
     void emit(const std::string &s);

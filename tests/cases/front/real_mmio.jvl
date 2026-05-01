@@ -1,0 +1,17 @@
+#define MAILBOX_CMD  0xFFE0
+#define MAILBOX_ARG0 0xFFE1
+#define MAILBOX_ARG1 0xFFE2
+#define MAILBOX_RET  0xFFE4
+
+func mmio_write(addr: int, val: int): void {
+    asm {
+        "LDI R1, 0"
+        "STR [0xFFE1], R1"
+    };
+}
+
+func main(): int {
+    mmio_write(MAILBOX_CMD, 1);
+    putint(1);
+    return 0;
+}

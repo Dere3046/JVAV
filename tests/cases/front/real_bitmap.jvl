@@ -1,0 +1,27 @@
+#define BITMAP_SIZE 16
+
+func main(): int {
+    var bm: ptr<uint> = alloc(2);
+    var idx = 0 >> 3;
+    var off = 0 & 7;
+    bm[idx] = bm[idx] | (1 << off);
+    idx = 7 >> 3;
+    off = 7 & 7;
+    bm[idx] = bm[idx] | (1 << off);
+    idx = 8 >> 3;
+    off = 8 & 7;
+    bm[idx] = bm[idx] | (1 << off);
+    idx = 0 >> 3;
+    off = 0 & 7;
+    putint((bm[idx] >> off) & 1);
+    idx = 1 >> 3;
+    off = 1 & 7;
+    putint((bm[idx] >> off) & 1);
+    idx = 7 >> 3;
+    off = 7 & 7;
+    putint((bm[idx] >> off) & 1);
+    idx = 8 >> 3;
+    off = 8 & 7;
+    putint((bm[idx] >> off) & 1);
+    return 0;
+}

@@ -1,0 +1,10 @@
+#define X 10
+#define Y X
+#undef X
+#define X 20
+
+func main(): int {
+    putint(Y);
+    putint(X);
+    return 0;
+}
