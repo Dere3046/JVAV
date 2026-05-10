@@ -117,11 +117,18 @@ static void printLexError(const Lexer &lexer) {
 }
 
 static void printParseError(const FrontParser &parser, const Lexer &lexer) {
-    cerr << "error[E0200]: " << parser.getError() << "\n";
-    if (parser.getErrorLine() > 0) {
-        cerr << " --> " << lexer.getFilename() << ":" << parser.getErrorLine()
-             << ":" << parser.getErrorCol() << "\n";
-        printSourceLine(cerr, lexer.getSource(), parser.getErrorLine(), parser.getErrorCol());
+    if (!parser.getError().empty()) {
+        cerr << "error[E0200]: " << parser.getError() << "\n";
+        if (parser.getErrorLine() > 0) {
+            cerr << " --> " << lexer.getFilename() << ":" << parser.getErrorLine()
+                 << ":" << parser.getErrorCol() << "\n";
+            printSourceLine(cerr, lexer.getSource(), parser.getErrorLine(), parser.getErrorCol());
+        }
+    }
+    for (const auto &err : parser.getErrors()) {
+        if (err != parser.getError()) {
+            cerr << "error[E0200]: " << err << "\n";
+        }
     }
 }
 
@@ -133,8 +140,11 @@ static int compile_jvl(const string &src, const string &out, const vector<string
     }
 
     FrontParser parser;
-    if (!parser.parse(lexer.getTokens())) {
+    bool parseOk = parser.parse(lexer.getTokens());
+    if (!parseOk || !parser.getErrors().empty()) {
         printParseError(parser, lexer);
+    }
+    if (!parseOk) {
         return 1;
     }
 

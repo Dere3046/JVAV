@@ -128,6 +128,15 @@ void CodeGenerator::genFuncDecl(shared_ptr<FuncDecl> d) {
         emit("    SUB SP, SP, R4");
     }
 
+    // Initialize global variables with non-literal expressions in main
+    if (d->name == "main") {
+        for (auto &gi : globalInits) {
+            genExpr(gi.second, 0);
+            emit("    LDI R4, " + gi.first);
+            emit("    STR [R4], R0");
+        }
+    }
+
     genStmt(d->body);
 
     emit(curFuncRetLabel + ":");
@@ -182,24 +191,34 @@ void CodeGenerator::genStmt(shared_ptr<Stmt> s) {
             auto w = dynamic_pointer_cast<WhileStmt>(s);
             string loopLabel = nextLabel("loop");
             string endLabel = nextLabel("endwhile");
+            loopEndLabels.push_back(endLabel);
+            loopContinueLabels.push_back(loopLabel);
             emit(loopLabel + ":");
             genCondJump(w->cond, endLabel);
             genStmt(w->body);
             emit("    JMP " + loopLabel);
             emit(endLabel + ":");
+            loopEndLabels.pop_back();
+            loopContinueLabels.pop_back();
             break;
         }
         case Stmt::STMT_FOR: {
             auto f = dynamic_pointer_cast<ForStmt>(s);
             string loopLabel = nextLabel("loop");
+            string continueLabel = nextLabel("forcont");
             string endLabel = nextLabel("endfor");
+            loopEndLabels.push_back(endLabel);
+            loopContinueLabels.push_back(continueLabel);
             if (f->init) genStmt(f->init);
             emit(loopLabel + ":");
             if (f->cond) genCondJump(f->cond, endLabel);
             genStmt(f->body);
+            emit(continueLabel + ":");
             if (f->step) genExpr(f->step, 0);
             emit("    JMP " + loopLabel);
             emit(endLabel + ":");
+            loopEndLabels.pop_back();
+            loopContinueLabels.pop_back();
             break;
         }
         case Stmt::STMT_RETURN: {
@@ -215,6 +234,91 @@ void CodeGenerator::genStmt(shared_ptr<Stmt> s) {
             for (auto &ins : a->instructions) {
                 emit("    " + ins);
             }
+            break;
+        }
+        case Stmt::STMT_BREAK: {
+            if (!loopEndLabels.empty()) {
+                emit("    JMP " + loopEndLabels.back());
+            } else if (!switchEndLabels.empty()) {
+                emit("    JMP " + switchEndLabels.back());
+            }
+            break;
+        }
+        case Stmt::STMT_CONTINUE: {
+            if (!loopContinueLabels.empty()) {
+                emit("    JMP " + loopContinueLabels.back());
+            }
+            break;
+        }
+        case Stmt::STMT_SWITCH: {
+            auto sw = dynamic_pointer_cast<SwitchStmt>(s);
+            string endLabel = nextLabel("endsw");
+            switchEndLabels.push_back(endLabel);
+            vector<pair<string, string>> caseLabels;
+            string defaultLabel = "";
+            
+            // Generate case labels
+            for (auto &c : sw->cases) {
+                string caseLabel = nextLabel("case");
+                if (c.value) {
+                    caseLabels.push_back({caseLabel, ""});
+                } else {
+                    defaultLabel = caseLabel;
+                }
+            }
+            
+            // Evaluate switch expression
+            genExpr(sw->expr, 0);
+            
+            // Generate comparisons
+            size_t caseIdx = 0;
+            for (auto &c : sw->cases) {
+                if (c.value) {
+                    genExpr(c.value, 1);
+                    emit("    CMP R0, R1");
+                    emit("    JE " + caseLabels[caseIdx].first);
+                    caseIdx++;
+                }
+            }
+            
+            // Jump to default or end
+            if (!defaultLabel.empty()) {
+                emit("    JMP " + defaultLabel);
+            } else {
+                emit("    JMP " + endLabel);
+            }
+            
+            // Generate case bodies
+            caseIdx = 0;
+            for (auto &c : sw->cases) {
+                if (c.value) {
+                    emit(caseLabels[caseIdx].first + ":");
+                    caseIdx++;
+                } else {
+                    emit(defaultLabel + ":");
+                }
+                genStmt(c.body);
+            }
+            
+            emit(endLabel + ":");
+            switchEndLabels.pop_back();
+            break;
+        }
+        case Stmt::STMT_DO_WHILE: {
+            auto dw = dynamic_pointer_cast<DoWhileStmt>(s);
+            string loopLabel = nextLabel("loop");
+            string condLabel = nextLabel("docond");
+            string endLabel = nextLabel("enddowhile");
+            loopEndLabels.push_back(endLabel);
+            loopContinueLabels.push_back(condLabel);
+            emit(loopLabel + ":");
+            genStmt(dw->body);
+            emit(condLabel + ":");
+            genCondJump(dw->cond, endLabel);
+            emit("    JMP " + loopLabel);
+            emit(endLabel + ":");
+            loopEndLabels.pop_back();
+            loopContinueLabels.pop_back();
             break;
         }
     }
@@ -268,6 +372,12 @@ extern map<string, shared_ptr<StructDecl>> structDefs;
 extern map<string, shared_ptr<UnionDecl>> unionDefs;
 static int typeSize(shared_ptr<Type> t);
 static int getFieldOffset(shared_ptr<Type> t, const string &field);
+
+static shared_ptr<StructDecl> findStruct(const string &name) {
+    auto it = structDefs.find(name);
+    if (it != structDefs.end()) return it->second;
+    return nullptr;
+}
 
 static int typeSize(shared_ptr<Type> t) {
     if (!t) return 1;
@@ -350,6 +460,14 @@ static Int128 evaluateConstExpr(shared_ptr<Expr> e) {
             if (b->op == "^") return l ^ r;
             if (b->op == "<<") return l << (int)(long long)r;
             if (b->op == ">>") return l >> (int)(long long)r;
+            if (b->op == "==") return l == r ? 1 : 0;
+            if (b->op == "!=") return l != r ? 1 : 0;
+            if (b->op == "<") return l < r ? 1 : 0;
+            if (b->op == ">") return l > r ? 1 : 0;
+            if (b->op == "<=") return l <= r ? 1 : 0;
+            if (b->op == ">=") return l >= r ? 1 : 0;
+            if (b->op == "&&") return (l != 0 && r != 0) ? 1 : 0;
+            if (b->op == "||") return (l != 0 || r != 0) ? 1 : 0;
             return 0;
         }
         case Expr::EXPR_UNARY: {
@@ -357,6 +475,7 @@ static Int128 evaluateConstExpr(shared_ptr<Expr> e) {
             Int128 v = evaluateConstExpr(u->operand);
             if (u->op == "-") return -v;
             if (u->op == "~") return ~v;
+            if (u->op == "!") return v == 0 ? 1 : 0;
             return v;
         }
         default: return 0;
@@ -617,6 +736,37 @@ void CodeGenerator::genExpr(shared_ptr<Expr> e, int destReg) {
             // Casts are no-ops at the machine level; type system already validated
             break;
         }
+        case Expr::EXPR_TERNARY: {
+            auto t = dynamic_pointer_cast<TernaryExpr>(e);
+            string elseLabel = nextLabel("tern_else");
+            string endLabel = nextLabel("tern_end");
+            genCondJump(t->cond, elseLabel);
+            genExpr(t->thenExpr, destReg);
+            emit("    JMP " + endLabel);
+            emit(elseLabel + ":");
+            genExpr(t->elseExpr, destReg);
+            emit(endLabel + ":");
+            break;
+        }
+        case Expr::EXPR_ARRAY_LITERAL: {
+            auto a = dynamic_pointer_cast<ArrayLiteralExpr>(e);
+            int sz = (int)a->elements.size();
+            if (sz == 0) {
+                emit("    LDI R" + to_string(destReg) + ", 0");
+            } else {
+                // Allocate space on stack
+                emit("    LDI R4, " + to_string(sz));
+                emit("    SUB SP, SP, R4");
+                for (int i = 0; i < sz; i++) {
+                    genExpr(a->elements[i], 0);
+                    emit("    LDI R4, " + to_string(i));
+                    emit("    ADD R4, SP, R4");
+                    emit("    STR [R4], R0");
+                }
+                emit("    MOV R" + to_string(destReg) + ", SP");
+            }
+            break;
+        }
         case Expr::EXPR_FIELD: {
             auto f = dynamic_pointer_cast<FieldExpr>(e);
             genExpr(f->base, destReg);
@@ -626,14 +776,45 @@ void CodeGenerator::genExpr(shared_ptr<Expr> e, int destReg) {
                 emit("    ADD R" + to_string(destReg) + ", R" + to_string(destReg) + ", R4");
             }
             // Load field value unless it's a struct/union/array type (which we want the address of)
-            bool shouldLoad = true;
-            if (f->type) {
-                auto tk = f->type->kind;
-                if (tk == TYPE_STRUCT || tk == TYPE_UNION || tk == TYPE_ARRAY) shouldLoad = false;
-            }
+            auto shouldLoad = f->type && f->type->kind != TYPE_STRUCT && f->type->kind != TYPE_UNION && f->type->kind != TYPE_ARRAY;
             if (shouldLoad) {
                 emit("    LDR R" + to_string(destReg) + ", [R" + to_string(destReg) + "]");
             }
+            break;
+        }
+        case Expr::EXPR_STRUCT_LITERAL: {
+            auto s = dynamic_pointer_cast<StructLiteralExpr>(e);
+            // We need the struct type from context; for now, if type is set, use it
+            int sz = 1;
+            if (e->type && e->type->kind == TYPE_STRUCT) {
+                auto sd = findStruct(e->type->structName);
+                if (sd) {
+                    sz = 0;
+                    for (auto &f : sd->fields) sz += typeSize(f.type);
+                }
+            }
+            if (sz > 0) {
+                emit("    LDI R4, " + to_string(sz));
+                emit("    SUB SP, SP, R4");
+            }
+            // Initialize fields by offset
+            if (e->type && e->type->kind == TYPE_STRUCT) {
+                auto sd = findStruct(e->type->structName);
+                if (sd) {
+                    for (auto &fp : s->fields) {
+                        int off = 0;
+                        for (auto &f : sd->fields) {
+                            if (f.name == fp.first) break;
+                            off += typeSize(f.type);
+                        }
+                        genExpr(fp.second, 0);
+                        emit("    LDI R4, " + to_string(off));
+                        emit("    ADD R4, SP, R4");
+                        emit("    STR [R4], R0");
+                    }
+                }
+            }
+            emit("    MOV R" + to_string(destReg) + ", SP");
             break;
         }
     }
@@ -649,6 +830,20 @@ void CodeGenerator::genProgram(shared_ptr<Program> prog) {
             emit("    " + cd->name + ": EQU " + to_string((long long)val));
             constValues[cd->name] = (long long)val;
             consts.push_back(cd);
+        } else if (d->kind == Decl::DECL_ENUM) {
+            auto ed = dynamic_pointer_cast<EnumDecl>(d);
+            int nextVal = 0;
+            for (auto &m : ed->members) {
+                int val = nextVal;
+                if (m.second) {
+                    if (m.second->kind == Expr::EXPR_NUMBER) {
+                        val = (int)(long long)dynamic_pointer_cast<NumberExpr>(m.second)->value;
+                    }
+                }
+                emit("    " + m.first + ": EQU " + to_string(val));
+                constValues[m.first] = val;
+                nextVal = val + 1;
+            }
         } else if (d->kind == Decl::DECL_VAR) {
             auto vd = dynamic_pointer_cast<GlobalVarDecl>(d);
             emit("    .data");
@@ -660,6 +855,9 @@ void CodeGenerator::genProgram(shared_ptr<Program> prog) {
                 emit("    DT 0");
             }
             emit("    .text");
+            if (vd->init && vd->init->kind != Expr::EXPR_NUMBER) {
+                globalInits.push_back({vd->name, vd->init});
+            }
         } else if (d->kind == Decl::DECL_IMPORT) {
             auto id = dynamic_pointer_cast<ImportDecl>(d);
             if (!id->module) continue;
@@ -710,10 +908,13 @@ string CodeGenerator::generate(shared_ptr<Program> prog, const string &bp) {
     labelCounter = 0;
     stringCounter = 0;
     stringLabels.clear();
+    loopEndLabels.clear();
+    loopContinueLabels.clear();
     generatedFiles.clear();
     generatedModules.clear();
     userSyscalls.clear();
     constValues.clear();
+    globalInits.clear();
     basePath = bp;
 
     emit("    .global _start");

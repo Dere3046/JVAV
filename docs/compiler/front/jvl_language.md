@@ -29,6 +29,8 @@ func main(): int {
 - `syscall` — Custom syscall declaration
 - `struct` — Structure type definition
 - `union` — Union type definition
+- `enum` — Enumeration type definition
+- `typedef` — Type alias definition
 
 ## Lexical Elements
 
@@ -57,7 +59,9 @@ The following are reserved keywords:
 
 `func`, `var`, `const`, `if`, `else`, `while`, `for`, `return`, `import`, `syscall`, `mut`, `asm`
 
-Type keywords: `int`, `char`, `bool`, `void`, `ptr`, `array`, `byte`, `uint`, `struct`, `union`
+Type keywords: `int`, `char`, `bool`, `void`, `ptr`, `array`, `byte`, `uint`, `struct`, `union`, `enum`
+
+Other keywords: `typedef`, `do`, `while`, `for`, `if`, `else`, `return`, `break`, `continue`, `switch`, `case`, `default`
 
 Operators: `sizeof`, `offsetof`, `volatile`
 
@@ -170,6 +174,35 @@ union Value {
 
 All union fields start at offset 0. The size of a union is the maximum size of any field.
 
+### Enum types
+
+```jvl
+enum Color {
+    RED,
+    GREEN = 5,
+    BLUE
+}
+```
+
+Enum members are compile-time constants. By default, the first member has value `0`, and each subsequent member increments by `1`. Explicit values can be assigned with `=`. Enums are emitted as `.equ` directives in the generated assembly.
+
+Members can be used directly by name without qualification:
+
+```jvl
+var c = RED;     // c = 0
+var g = GREEN;   // g = 5
+```
+
+### Typedef
+
+```jvl
+typedef int MyInt;
+typedef ptr<int> IntPtr;
+typedef Point PointAlias;
+```
+
+`typedef` creates an alias for an existing type. The alias can be used anywhere the original type is expected. Typedefs are resolved at compile time and do not introduce new types.
+
 ### Type modifiers
 
 #### volatile
@@ -251,7 +284,8 @@ func main(): int {
 | 9 | `\|` | Left |
 | 10 | `&&` | Left |
 | 11 | `\|\|` | Left |
-| 12 (lowest) | `=` | Right |
+| 12 | `?:` (ternary) | Right |
+| 13 (lowest) | `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `&=`, `|=`, `^=`, `<<=`, `>>=` | Right |
 
 ### Arithmetic operators
 
@@ -303,6 +337,40 @@ x = expression;
 ```
 
 Assignment is an expression (returns the assigned value) but is only permitted as a statement-level expression or within `for` loop steps.
+
+### Compound assignment
+
+```jvl
+x += y;   // x = x + y
+x -= y;   // x = x - y
+x *= y;   // x = x * y
+x /= y;   // x = x / y
+x %= y;   // x = x % y
+x &= y;   // x = x & y
+x |= y;   // x = x | y
+x ^= y;   // x = x ^ y
+x <<= y;  // x = x << y
+x >>= y;  // x = x >> y
+```
+
+Compound assignment operators combine an arithmetic/bitwise operation with assignment. They are desugared to `x = x op y` during compilation.
+
+### Increment and decrement
+
+```jvl
+++x;   // prefix increment: x = x + 1
+--x;   // prefix decrement: x = x - 1
+```
+
+Only prefix forms (`++x`, `--x`) are supported. Postfix forms (`x++`, `x--`) are not implemented.
+
+### Ternary operator
+
+```jvl
+var result = condition ? value_if_true : value_if_false;
+```
+
+The ternary operator evaluates `condition` and returns `value_if_true` if non-zero, otherwise `value_if_false`. Both branches must be expressions (not statements).
 
 ### sizeof operator
 
@@ -377,6 +445,16 @@ while (condition) {
 
 Executes the body repeatedly while the condition is true. The condition is checked before each iteration.
 
+### Do-while loop
+
+```jvl
+do {
+    // statements
+} while (condition);
+```
+
+Executes the body at least once, then repeats while the condition is true. The condition is checked after each iteration.
+
 ### For loop
 
 ```jvl
@@ -399,6 +477,41 @@ for (var i = 0; i < 10; i = i + 1) {
     putint(i);
 }
 ```
+
+### Switch statement
+
+```jvl
+switch (expression) {
+    case 1: {
+        // statements
+    }
+    case 2: {
+        // statements
+    }
+    default: {
+        // statements
+    }
+}
+```
+
+The `switch` statement evaluates the expression and jumps to the matching `case`. Cases **fall through** to the next case (no automatic break). The `default` case is optional and matches any value not handled by other cases.
+
+**Note**: For return-path analysis, a `switch` without a `default` case is considered to **not** cover all control paths. If a function with a non-void return type contains a `switch` without `default`, the compiler will report a missing return statement unless every case body returns a value and a `default` case is present.
+
+### Break and Continue
+
+```jvl
+while (true) {
+    if (condition) {
+        break;      // exit the loop
+    }
+    if (other) {
+        continue;   // skip to next iteration
+    }
+}
+```
+
+`break` exits the innermost enclosing `while`, `for`, `do-while` loop, or `switch` statement. `continue` skips the rest of the current iteration and jumps to the loop condition.
 
 ### Return statement
 
@@ -465,7 +578,7 @@ asm {
 };
 ```
 
-Each string literal in the asm block contains one assembly instruction. Instructions are emitted verbatim into the generated assembly file.
+Each string literal in the asm block contains one assembly instruction. Instructions are emitted verbatim into the generated assembly file. A semicolon after each instruction is optional.
 
 **Use cases**:
 - Memory-mapped I/O access
@@ -513,6 +626,36 @@ var items: ptr<Item> = alloc(10 * sizeof(Item));
 items[i]->field = value;
 ```
 
+### Array literals
+
+Array literals create a contiguous array on the stack:
+
+```jvl
+var arr = {1, 2, 3};
+putint(arr[0]);  // 1
+putint(arr[1]);  // 2
+putint(arr[2]);  // 3
+```
+
+Array literals can be assigned to `ptr<T>` or `array<T>` variables. The element count is inferred from the literal.
+
+### Struct literals
+
+Struct literals initialize a struct with named fields:
+
+```jvl
+struct Point {
+    x: int;
+    y: int;
+}
+
+var p: Point = { x: 10, y: 20 };
+putint(p.x);  // 10
+putint(p.y);  // 20
+```
+
+Field names are required. The struct type must be explicitly annotated on the variable.
+
 ### Heap allocation
 
 ```jvl
@@ -522,6 +665,22 @@ free(p);                        // release ownership
 ```
 
 The `alloc()` builtin allocates `n` 128-bit words on the heap. The `free()` builtin releases ownership (writes a tombstone in the VM).
+
+### Built-in Functions
+
+The following functions are pre-declared in every module:
+
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `putint` | `func putint(x: int): int` | Print integer to stdout |
+| `putchar` | `func putchar(c: int): void` | Print ASCII character to stdout |
+| `getchar` | `func getchar(): int` | Read one character from stdin |
+| `getint` | `func getint(): int` | Read one integer from stdin |
+| `alloc` | `func alloc(n: int): ptr<int>` | Allocate `n` words on heap |
+| `free` | `func free(p: ptr<int>): void` | Release heap allocation |
+| `exit` | `func exit(code: int): void` | Terminate program |
+| `putstr` | `func putstr(s: ptr<int>, len: int): void` | Print string (length required) |
+| `sleep` | `func sleep(ms: int): void` | Sleep for milliseconds |
 
 ### Dereferencing
 
@@ -559,13 +718,17 @@ JVL allows implicit conversion between numeric types:
 
 | From | To | Allowed? |
 |------|-----|----------|
-| `int` | `int` | Yes |
-| `uint` | `uint` | Yes |
-| `char` | `int` | Yes (weak coercion) |
-| `byte` | `int` | Yes (weak coercion) |
-| `bool` | `int` | Yes (weak coercion) |
+| `int` | `int`, `uint`, `char`, `byte`, `bool` | Yes (weak coercion) |
+| `uint` | `int`, `uint`, `char`, `byte`, `bool` | Yes (weak coercion) |
+| `char` | `int`, `uint`, `char`, `byte`, `bool` | Yes (weak coercion) |
+| `byte` | `int`, `uint`, `char`, `byte`, `bool` | Yes (weak coercion) |
+| `bool` | `int`, `uint`, `char`, `byte`, `bool` | Yes (weak coercion) |
 | `int` (literal) | `ptr<T>` | Yes (for literal addresses only) |
+| `ptr<T>` | `ptr<T>` | Yes |
 | `ptr<T>` | `ptr<U>` (T≠U) | No (use explicit cast) |
+| `ptr<T>` | `array<T>` | Yes |
+| `array<T>` | `ptr<T>` | Yes |
+| `array<T>` | `array<U>` (T≠U) | No |
 | `int` (variable) | `ptr<T>` | No |
 
 ### Explicit casting
@@ -581,8 +744,8 @@ var b: byte = (byte)255;
 Integer literals can be implicitly converted to pointer types for accessing memory-mapped I/O:
 
 ```jvl
-func write_mailbox(addr: int, val: int): void {
-    var p: ptr<int> = addr;   // implicit conversion
+func write_mailbox(val: int): void {
+    var p: ptr<int> = 0xFFE0;   // implicit conversion from literal
     p[0] = val;
 }
 ```
@@ -649,21 +812,36 @@ func main(): int {
 ### volatile Modifier
 - `volatile ptr<Type>` for memory-mapped I/O
 
-### Inline Assembly
-- `asm { "instruction1"; "instruction2"; }`
+### Optional trailing semicolons
 
-### Const Export
-- Global `const` values are emitted as `.equ` directives in assembly
-
-## Preprocessor
-
-JVL includes a C-style preprocessor that runs before lexical analysis. All directives begin with `#`.
-
-### Object Macros
+Struct, union, enum, and asm blocks may optionally have a trailing semicolon:
 
 ```jvl
-#define BUFFER_SIZE 1024
-#define NAME "buffer"
+struct Point {
+    x: int;
+    y: int;
+};   // semicolon is optional
+
+enum Color {
+    RED, GREEN, BLUE
+};   // semicolon is optional
+
+asm {
+    "LDI R0, 0"
+};   // semicolon is optional
+```
+
+This is a convenience feature for C/C++ compatibility. Both forms are accepted.
+
+### Inline Assembly
+
+Inline assembly allows embedding raw JVAV assembly instructions directly in JVL code:
+
+```jvl
+asm {
+    "LDI R0, 0xFFE0"
+    "LDR R1, [R0]"
+};
 ```
 
 Object macros replace every occurrence of the name with the replacement text.

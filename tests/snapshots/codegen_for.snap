@@ -25,15 +25,15 @@ main:
     LDR R0, [R4]
     LDI R1, 3
     CMP R0, R1
-    JL .cmp_true_2
+    JL .cmp_true_3
     LDI R0, 0
-    JMP .cmp_end_3
-.cmp_true_2:
+    JMP .cmp_end_4
+.cmp_true_3:
     LDI R0, 1
-.cmp_end_3:
+.cmp_end_4:
     LDI R4, 0
     CMP R0, R4
-    JE .endfor_1
+    JE .endfor_2
     LDI R4, -1
     ADD R4, R6, R4
     LDR R0, [R4]
@@ -44,6 +44,7 @@ main:
     LDI R4, -1
     ADD R4, R6, R4
     STR [R4], R0
+.forcont_1:
     LDI R4, -2
     ADD R4, R6, R4
     LDR R0, [R4]
@@ -53,7 +54,7 @@ main:
     ADD R4, R6, R4
     STR [R4], R0
     JMP .loop_0
-.endfor_1:
+.endfor_2:
     LDI R4, -1
     ADD R4, R6, R4
     LDR R0, [R4]

@@ -11,7 +11,7 @@ using namespace std;
 static const map<string, TokenType> keywords = {
     {"func", TOK_KW_FUNC}, {"var", TOK_KW_VAR}, {"const", TOK_KW_CONST},
     {"if", TOK_KW_IF}, {"else", TOK_KW_ELSE}, {"while", TOK_KW_WHILE},
-    {"for", TOK_KW_FOR}, {"return", TOK_KW_RETURN},
+    {"for", TOK_KW_FOR}, {"return", TOK_KW_RETURN}, {"do", TOK_KW_DO},
     {"int", TOK_KW_INT}, {"char", TOK_KW_CHAR}, {"bool", TOK_KW_BOOL},
     {"void", TOK_KW_VOID}, {"ptr", TOK_KW_PTR}, {"array", TOK_KW_ARRAY},
     {"true", TOK_KW_TRUE}, {"false", TOK_KW_FALSE},
@@ -22,6 +22,10 @@ static const map<string, TokenType> keywords = {
     {"byte", TOK_KW_BYTE}, {"uint", TOK_KW_UINT},
     {"sizeof", TOK_KW_SIZEOF}, {"offsetof", TOK_KW_OFFSETOF},
     {"volatile", TOK_KW_VOLATILE}, {"asm", TOK_KW_ASM},
+    {"break", TOK_KW_BREAK}, {"continue", TOK_KW_CONTINUE},
+    {"switch", TOK_KW_SWITCH}, {"case", TOK_KW_CASE}, {"default", TOK_KW_DEFAULT},
+    {"enum", TOK_KW_ENUM},
+    {"typedef", TOK_KW_TYPEDEF},
 };
 
 bool Lexer::tokenize(const string &filename) {
@@ -104,6 +108,16 @@ bool Lexer::readString() {
             else if (c == 'r') s += '\r';
             else if (c == '\\') s += '\\';
             else if (c == '"') s += '"';
+            else if (c == 'x' && pos + 2 < src.size() && isxdigit((unsigned char)src[pos+1]) && isxdigit((unsigned char)src[pos+2])) {
+                int val = 0;
+                for (int i = 1; i <= 2; i++) {
+                    char ch = src[pos + i];
+                    int digit = isdigit((unsigned char)ch) ? (ch - '0') : (tolower((unsigned char)ch) - 'a' + 10);
+                    val = val * 16 + digit;
+                }
+                s += (char)val;
+                pos += 2; col += 2;
+            }
             else s += c;
         } else {
             s += src[pos];
@@ -129,6 +143,16 @@ bool Lexer::readChar() {
         else if (esc == 'r') c = '\r';
         else if (esc == '\\') c = '\\';
         else if (esc == '\'') c = '\'';
+        else if (esc == 'x' && pos + 2 < src.size() && isxdigit((unsigned char)src[pos+1]) && isxdigit((unsigned char)src[pos+2])) {
+            int val = 0;
+            for (int i = 1; i <= 2; i++) {
+                char ch = src[pos + i];
+                int digit = isdigit((unsigned char)ch) ? (ch - '0') : (tolower((unsigned char)ch) - 'a' + 10);
+                val = val * 16 + digit;
+            }
+            c = (char)val;
+            pos += 2; col += 2;
+        }
         else c = esc;
     }
     pos++; col++;
@@ -147,10 +171,18 @@ bool Lexer::readNumber() {
     if (pos + 1 < src.size() && src[pos] == '0' && (src[pos+1] == 'x' || src[pos+1] == 'X')) {
         pos += 2; col += 2;
         base = 16;
+    } else if (pos + 1 < src.size() && src[pos] == '0' && (src[pos+1] == 'b' || src[pos+1] == 'B')) {
+        pos += 2; col += 2;
+        base = 2;
     }
     Int128 val = 0;
-    while (pos < src.size() && ((base==10 && isdigit(src[pos])) || (base==16 && isxdigit(src[pos])))) {
-        int digit = (src[pos] <= '9') ? (src[pos]-'0') : (tolower(src[pos])-'a'+10);
+    while (pos < src.size() && ((base==10 && isdigit(src[pos])) || (base==16 && isxdigit(src[pos])) || (base==2 && (src[pos]=='0' || src[pos]=='1')))) {
+        int digit;
+        if (base == 2) {
+            digit = src[pos] - '0';
+        } else {
+            digit = (src[pos] <= '9') ? (src[pos]-'0') : (tolower(src[pos])-'a'+10);
+        }
         val = val * base + digit;
         pos++; col++;
     }
@@ -179,15 +211,25 @@ bool Lexer::readSymbol() {
     char c2 = (pos+1 < src.size()) ? src[pos+1] : 0;
     
     switch (c) {
-        case '+': pos++; col++; emit(TOK_PLUS, "+", 0); return true;
+        case '+': 
+            if (c2 == '=') { pos+=2; col+=2; emit(TOK_PLUS_ASSIGN, "+=", 0); return true; }
+            if (c2 == '+') { pos+=2; col+=2; emit(TOK_INC, "++", 0); return true; }
+            pos++; col++; emit(TOK_PLUS, "+", 0); return true;
         case '-': 
             if (c2 == '>') { pos+=2; col+=2; emit(TOK_ARROW, "->", 0); return true; }
+            if (c2 == '=') { pos+=2; col+=2; emit(TOK_MINUS_ASSIGN, "-=", 0); return true; }
+            if (c2 == '-') { pos+=2; col+=2; emit(TOK_DEC, "--", 0); return true; }
             pos++; col++; emit(TOK_MINUS, "-", 0); return true;
-        case '*': pos++; col++; emit(TOK_STAR, "*", 0); return true;
+        case '*': 
+            if (c2 == '=') { pos+=2; col+=2; emit(TOK_STAR_ASSIGN, "*=", 0); return true; }
+            pos++; col++; emit(TOK_STAR, "*", 0); return true;
         case '/': 
             if (c2 == '/' || c2 == '*') { skipComment(); return true; }
+            if (c2 == '=') { pos+=2; col+=2; emit(TOK_SLASH_ASSIGN, "/=", 0); return true; }
             pos++; col++; emit(TOK_SLASH, "/", 0); return true;
-        case '%': pos++; col++; emit(TOK_PERCENT, "%", 0); return true;
+        case '%': 
+            if (c2 == '=') { pos+=2; col+=2; emit(TOK_PERCENT_ASSIGN, "%=", 0); return true; }
+            pos++; col++; emit(TOK_PERCENT, "%", 0); return true;
         case '=': 
             if (c2 == '=') { pos+=2; col+=2; emit(TOK_EQ, "==", 0); return true; }
             pos++; col++; emit(TOK_ASSIGN, "=", 0); return true;
@@ -196,19 +238,29 @@ bool Lexer::readSymbol() {
             pos++; col++; emit(TOK_NOT, "!", 0); return true;
         case '<':
             if (c2 == '=') { pos+=2; col+=2; emit(TOK_LE, "<=", 0); return true; }
-            if (c2 == '<') { pos+=2; col+=2; emit(TOK_SHL, "<<", 0); return true; }
+            if (c2 == '<') {
+                if (pos+2 < src.size() && src[pos+2] == '=') { pos+=3; col+=3; emit(TOK_SHL_ASSIGN, "<<=", 0); return true; }
+                pos+=2; col+=2; emit(TOK_SHL, "<<", 0); return true;
+            }
             pos++; col++; emit(TOK_LT, "<", 0); return true;
         case '>':
             if (c2 == '=') { pos+=2; col+=2; emit(TOK_GE, ">=", 0); return true; }
-            if (c2 == '>') { pos+=2; col+=2; emit(TOK_SHR, ">>", 0); return true; }
+            if (c2 == '>') {
+                if (pos+2 < src.size() && src[pos+2] == '=') { pos+=3; col+=3; emit(TOK_SHR_ASSIGN, ">>=", 0); return true; }
+                pos+=2; col+=2; emit(TOK_SHR, ">>", 0); return true;
+            }
             pos++; col++; emit(TOK_GT, ">", 0); return true;
         case '&':
             if (c2 == '&') { pos+=2; col+=2; emit(TOK_AND, "&&", 0); return true; }
+            if (c2 == '=') { pos+=2; col+=2; emit(TOK_AND_ASSIGN, "&=", 0); return true; }
             pos++; col++; emit(TOK_BITAND, "&", 0); return true;
         case '|':
             if (c2 == '|') { pos+=2; col+=2; emit(TOK_OR, "||", 0); return true; }
+            if (c2 == '=') { pos+=2; col+=2; emit(TOK_OR_ASSIGN, "|=", 0); return true; }
             pos++; col++; emit(TOK_BITOR, "|", 0); return true;
-        case '^': pos++; col++; emit(TOK_BITXOR, "^", 0); return true;
+        case '^': 
+            if (c2 == '=') { pos+=2; col+=2; emit(TOK_XOR_ASSIGN, "^=", 0); return true; }
+            pos++; col++; emit(TOK_BITXOR, "^", 0); return true;
         case '~': pos++; col++; emit(TOK_BITNOT, "~", 0); return true;
         case '(': pos++; col++; emit(TOK_LPAREN, "(", 0); return true;
         case ')': pos++; col++; emit(TOK_RPAREN, ")", 0); return true;
@@ -220,6 +272,7 @@ bool Lexer::readSymbol() {
         case ',': pos++; col++; emit(TOK_COMMA, ",", 0); return true;
         case ';': pos++; col++; emit(TOK_SEMI, ";", 0); return true;
         case ':': pos++; col++; emit(TOK_COLON, ":", 0); return true;
+        case '?': pos++; col++; emit(TOK_QUESTION, "?", 0); return true;
         default:
             error = "unknown character `" + string(1, c) + "`"; errorLine = line; errorCol = col;
             return false;
@@ -607,9 +660,11 @@ static vector<ExprTok> tokenizeIfExpr(const string &expr) {
             int base = 10;
             if (i + 1 < expr.size() && expr[i] == '0' && (expr[i+1] == 'x' || expr[i+1] == 'X')) {
                 i += 2; base = 16;
+            } else if (i + 1 < expr.size() && expr[i] == '0' && (expr[i+1] == 'b' || expr[i+1] == 'B')) {
+                i += 2; base = 2;
             }
-            while (i < expr.size() && ((base == 10 && isdigit(expr[i])) || (base == 16 && isxdigit(expr[i])))) {
-                int d = isdigit(expr[i]) ? expr[i]-'0' : tolower(expr[i])-'a'+10;
+            while (i < expr.size() && ((base == 10 && isdigit(expr[i])) || (base == 16 && isxdigit(expr[i])) || (base == 2 && (expr[i]=='0' || expr[i]=='1')))) {
+                int d = (base == 2) ? (expr[i]-'0') : (isdigit(expr[i]) ? expr[i]-'0' : tolower(expr[i])-'a'+10);
                 v = v * base + d; i++;
             }
             toks.push_back({ExprTok::NUM, neg ? -v : v});

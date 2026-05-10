@@ -746,7 +746,7 @@ func main(): int {
         // Parser errors
         {"diag_parser_missing_semi", "func main(): int { var x = 5 return 0; }", "expected `;`", nullptr, false},
         {"diag_parser_missing_paren", "func main(): int { var x = (1 + 2; }", "expected `)`", nullptr, false},
-        {"diag_parser_type_error", "func main(): int { var x: unknown = 5; }", "expected a type", nullptr, false},
+        {"diag_parser_type_error", "func main(): int { var x: unknown = 5; }", "unknown type `unknown`", nullptr, false},
         {"diag_parser_expr_error", "func main(): int { var x = ; }", "unexpected token", nullptr, false},
         {"diag_parser_decl_error", "1 + 2;", "expected a declaration", nullptr, false},
 
@@ -760,7 +760,7 @@ func main(): int {
         {"diag_context_lines", "func main(): int {\nvar x = 5\nreturn 0;\n}", nullptr, nullptr, true},
         {"diag_first_line", "1 + 2;", nullptr, nullptr, true},
         {"diag_last_line", "func main(): int {\n  var x = 5\n}", nullptr, nullptr, true},
-        {"diag_caret_position", "func main() var x = 5; }", nullptr, nullptr, true},
+        {"diag_caret_position", "func main(): int var x = 5; }", nullptr, nullptr, true},
     };
 
     for (const auto& c : diagCases) {

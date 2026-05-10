@@ -1,12 +1,12 @@
-error[E1000]: cannot find value `undefined_var` in this scope
- --> f.jvl:2:1
+error[E0099]: cannot find value `undefined_var` in this scope
+ --> f.jvl:2:13
   |
  1 | func main(): int {
  2 |     var z = undefined_var;
-  | ^
+  |             ^
  3 |     return 0;
    = help: declare 'undefined_var' before use
-warning[W2000]: Unused variable 'z'
+warning[W0099]: Unused variable 'z'
    = help: remove the declaration or prefix with _ to suppress
 
 1 error(s) and 1 warning(s) generated

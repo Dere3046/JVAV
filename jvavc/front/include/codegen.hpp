@@ -18,6 +18,9 @@ private:
     std::map<std::string, int> localOffsets;
     int localSize = 0;
     std::string curFuncRetLabel;
+    std::vector<std::string> loopEndLabels;       // for break in loops
+    std::vector<std::string> loopContinueLabels;  // for continue
+    std::vector<std::string> switchEndLabels;     // for break in switch
     std::vector<std::string> stringLabels;
     int stringCounter = 0;
     std::string basePath;
@@ -26,6 +29,7 @@ private:
     std::set<Program*> generatedModules;
     std::vector<std::string> userSyscalls;
     std::map<std::string, long long> constValues;
+    std::vector<std::pair<std::string, std::shared_ptr<Expr>>> globalInits;
 
     std::string nextLabel(const std::string &prefix);
     void emit(const std::string &s);

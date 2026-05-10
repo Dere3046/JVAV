@@ -11,7 +11,11 @@ static shared_ptr<Program> parse(const string &src, string &err) {
     FrontParser par;
     bool ok = par.parse(lex.getTokens());
     remove("tmp.jvl");
-    err = par.getError();
+    if (!par.getErrors().empty()) {
+        err = par.getErrors().back();
+    } else {
+        err = par.getError();
+    }
     return ok ? par.getProgram() : nullptr;
 }
 
@@ -73,7 +77,7 @@ int test_parser_main() {
     test_header("parser_import");
     {
         string err;
-        auto prog = parse("import \"foo.jvl\"; func main() {}", err);
+        auto prog = parse("import \"foo.jvl\"; func main(): int { return 0; }", err);
         TEST_ASSERT(prog != nullptr, err.c_str());
         TEST_ASSERT_EQ(prog->decls.size(), 2, "two decls");
         auto imp = dynamic_pointer_cast<ImportDecl>(prog->decls[0]);
@@ -139,13 +143,28 @@ int test_parser_main() {
     test_header("parser_while");
     {
         string err;
-        auto prog = parse("func main(): int { while (true) { break; } return 0; }", err);
+        auto prog = parse("func main(): int { while (true) { putint(1); } return 0; }", err);
         TEST_ASSERT(prog != nullptr, err.c_str());
         auto fd = dynamic_pointer_cast<FuncDecl>(prog->decls[0]);
         auto ws = dynamic_pointer_cast<WhileStmt>(fd->body->stmts[0]);
         TEST_ASSERT(ws != nullptr, "while stmt");
     }
     test_passed("parser_while");
+
+    test_header("parser_break");
+    {
+        string err;
+        auto prog = parse("func main(): int { while (true) { break; } return 0; }", err);
+        TEST_ASSERT(prog != nullptr, err.c_str());
+        auto fd = dynamic_pointer_cast<FuncDecl>(prog->decls[0]);
+        auto ws = dynamic_pointer_cast<WhileStmt>(fd->body->stmts[0]);
+        TEST_ASSERT(ws != nullptr, "while stmt");
+        auto bodyBlock = dynamic_pointer_cast<BlockStmt>(ws->body);
+        TEST_ASSERT(bodyBlock != nullptr, "while body is block");
+        auto bs = dynamic_pointer_cast<BreakStmt>(bodyBlock->stmts[0]);
+        TEST_ASSERT(bs != nullptr, "break stmt");
+    }
+    test_passed("parser_break");
 
     test_header("parser_for");
     {
@@ -255,7 +274,19 @@ int test_parser_main() {
         string err;
         TEST_ASSERT(!parse_ok("func main(): int { if true { return 0; } }", err), "should fail");
         TEST_ASSERT(!err.empty(), "has error");
-        TEST_ASSERT(err.find("expected `(`") != string::npos, "error should mention '('");
+        bool foundParen = err.find("expected `(`") != string::npos;
+        // With error recovery, the error might be in the errors list
+        if (!foundParen) {
+            ofstream("tmp.jvl") << "func main(): int { if true { return 0; } }";
+            Lexer lex; lex.tokenize("tmp.jvl");
+            FrontParser par;
+            par.parse(lex.getTokens());
+            remove("tmp.jvl");
+            for (const auto &e : par.getErrors()) {
+                if (e.find("expected `(`") != string::npos) { foundParen = true; break; }
+            }
+        }
+        TEST_ASSERT(foundParen, "error should mention '('");
     }
     test_passed("parser_error_missing_paren");
 
@@ -293,9 +324,18 @@ int test_parser_main() {
         TEST_ASSERT(err.find("expected `;`") != string::npos, "semicolon name");
 
         // Missing '(' after if -> should say "expected `(`"
-        err.clear();
-        TEST_ASSERT(!parse_ok("func main(): int { if true { return 0; } }", err), "fail");
-        TEST_ASSERT(err.find("expected `(`") != string::npos, "lparen name");
+        {
+            ofstream("tmp.jvl") << "func main(): int { if true { return 0; } }";
+            Lexer lex; lex.tokenize("tmp.jvl");
+            FrontParser par;
+            par.parse(lex.getTokens());
+            remove("tmp.jvl");
+            bool found = false;
+            for (const auto &e : par.getErrors()) {
+                if (e.find("expected `(`") != string::npos) { found = true; break; }
+            }
+            TEST_ASSERT(found, "lparen name");
+        }
 
         // Missing ')' -> should say "expected `)`"
         err.clear();

@@ -1,9 +1,10 @@
 #include "parser.hpp"
+#include <iostream>
 using namespace std;
 
 #define CURRENT (peek(0))
 
-const Token& FrontParser::peek(int ahead) {
+const Token& FrontParser::peek(int ahead) const {
     static Token eofTok{TOK_EOF, "", 0, -1, -1};
     if (pos + ahead < tokens.size()) return tokens[pos + ahead];
     return eofTok;
@@ -29,19 +30,24 @@ bool FrontParser::expect(TokenType t) {
     if (peek().type == t) { advance(); return true; }
     const char* names[] = {
         "EOF", "identifier", "number", "string", "char",
-        "func", "var", "const", "if", "else", "while", "for", "return",
+        "func", "var", "const", "if", "else", "while", "for", "return", "do",
         "int", "char", "bool", "void", "ptr", "array",
         "true", "false", "import", "syscall", "mut",
         "struct", "union", "byte", "uint", "sizeof", "offsetof",
-        "volatile", "asm",
+        "volatile", "asm", "break", "continue",
+        "switch", "case", "default", "enum", "typedef",
         "+", "-", "*", "/", "%", "=", "==", "!=", "<", ">", "<=", ">=",
         "&&", "||", "&", "|", "^", "~", "<<", ">>", "!",
-        "(", ")", "[", "]", "{", "}", ",", ";", ":", ".", "->"
+        "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>=",
+        "++", "--",
+        "(", ")", "[", "]", "{", "}", ",", ";", ":", "?", ".", "->"
     };
     const char* got = (t >= 0 && t <= TOK_ARROW) ? names[t] : "?";
     errorLine = CURRENT.line;
     errorCol = CURRENT.col;
-    error = "expected `" + string(got) + "`, but found `" + CURRENT.text + "`";
+    string msg = "expected `" + string(got) + "`, but found `" + CURRENT.text + "`";
+    error = msg;
+    reportError(msg);
     return false;
 }
 
@@ -50,7 +56,7 @@ bool FrontParser::match(TokenType t) {
     return false;
 }
 
-bool FrontParser::check(TokenType t) {
+bool FrontParser::check(TokenType t) const {
     return peek().type == t;
 }
 
@@ -121,6 +127,12 @@ shared_ptr<Type> FrontParser::parseType() {
         t->kind = TYPE_UNION;
         t->structName = peek(-1).text;
     }
+    else if (check(TOK_IDENT)) {
+        // Could be a typedef name; resolve in sema
+        t->kind = TYPE_STRUCT;
+        t->structName = CURRENT.text;
+        advance();
+    }
     else {
         errorLine = CURRENT.line;
         errorCol = CURRENT.col;
@@ -150,19 +162,52 @@ shared_ptr<Type> FrontParser::parseType() {
 
 // ---- Expressions (precedence climbing) ----
 
-shared_ptr<Expr> FrontParser::parseExpr() {
-    return parseAssign();
+shared_ptr<Expr> FrontParser::parseExpr(bool allowAssign) {
+    if (allowAssign) return parseAssign();
+    return parseTernary();
 }
 
 shared_ptr<Expr> FrontParser::parseAssign() {
-    auto left = parseOr();
+    auto left = parseTernary();
     if (!left) return nullptr;
-    if (match(TOK_ASSIGN)) {
+    string op;
+    if (match(TOK_ASSIGN)) op = "=";
+    else if (match(TOK_PLUS_ASSIGN)) op = "+=";
+    else if (match(TOK_MINUS_ASSIGN)) op = "-=";
+    else if (match(TOK_STAR_ASSIGN)) op = "*=";
+    else if (match(TOK_SLASH_ASSIGN)) op = "/=";
+    else if (match(TOK_PERCENT_ASSIGN)) op = "%=";
+    else if (match(TOK_AND_ASSIGN)) op = "&=";
+    else if (match(TOK_OR_ASSIGN)) op = "|=";
+    else if (match(TOK_XOR_ASSIGN)) op = "^=";
+    else if (match(TOK_SHL_ASSIGN)) op = "<<=";
+    else if (match(TOK_SHR_ASSIGN)) op = ">>=";
+    if (!op.empty()) {
         auto right = parseAssign();
         if (!right) return nullptr;
-        return make_shared<AssignExpr>(left, right, CURRENT.line);
+        if (op == "=") {
+            return make_shared<AssignExpr>(left, right, CURRENT.line);
+        }
+        // Compound assignment: desugar to left = left op right
+        string binOp = op.substr(0, op.size() - 1);
+        auto bin = make_shared<BinaryExpr>(binOp, left, right, CURRENT.line);
+        return make_shared<AssignExpr>(left, bin, CURRENT.line);
     }
     return left;
+}
+
+shared_ptr<Expr> FrontParser::parseTernary() {
+    auto cond = parseOr();
+    if (!cond) return nullptr;
+    if (match(TOK_QUESTION)) {
+        auto thenExpr = parseExpr();
+        if (!thenExpr) return nullptr;
+        if (!expect(TOK_COLON)) return nullptr;
+        auto elseExpr = parseTernary();
+        if (!elseExpr) return nullptr;
+        return make_shared<TernaryExpr>(cond, thenExpr, elseExpr, CURRENT.line);
+    }
+    return cond;
 }
 
 shared_ptr<Expr> FrontParser::parseOr() {
@@ -333,6 +378,20 @@ shared_ptr<Expr> FrontParser::parseUnary() {
         if (!e) return nullptr;
         return make_shared<UnaryExpr>("~", e, CURRENT.line);
     }
+    if (match(TOK_INC)) {
+        auto e = parseUnary();
+        if (!e) return nullptr;
+        auto one = make_shared<NumberExpr>(Int128(1), e->line);
+        auto add = make_shared<BinaryExpr>("+", e, one, e->line);
+        return make_shared<AssignExpr>(e, add, e->line);
+    }
+    if (match(TOK_DEC)) {
+        auto e = parseUnary();
+        if (!e) return nullptr;
+        auto one = make_shared<NumberExpr>(Int128(1), e->line);
+        auto sub = make_shared<BinaryExpr>("-", e, one, e->line);
+        return make_shared<AssignExpr>(e, sub, e->line);
+    }
     if (match(TOK_BITAND)) {
         bool mut_ = false;
         if (match(TOK_KW_MUT)) mut_ = true;
@@ -405,22 +464,62 @@ shared_ptr<Expr> FrontParser::parsePostfix() {
 
 shared_ptr<Expr> FrontParser::parsePrimary() {
     if (match(TOK_NUMBER)) {
-        return make_shared<NumberExpr>(peek(-1).value, peek(-1).line);
+        return make_shared<NumberExpr>(peek(-1).value, peek(-1).line, peek(-1).col);
     }
     if (match(TOK_STRING)) {
-        return make_shared<StringExpr>(peek(-1).text, peek(-1).line);
+        return make_shared<StringExpr>(peek(-1).text, peek(-1).line, peek(-1).col);
     }
     if (match(TOK_CHAR)) {
-        return make_shared<CharExpr>((char)(long long)peek(-1).value, peek(-1).line);
+        return make_shared<CharExpr>((char)(long long)peek(-1).value, peek(-1).line, peek(-1).col);
     }
     if (match(TOK_KW_TRUE)) {
-        return make_shared<BoolExpr>(true, peek(-1).line);
+        return make_shared<BoolExpr>(true, peek(-1).line, peek(-1).col);
     }
     if (match(TOK_KW_FALSE)) {
-        return make_shared<BoolExpr>(false, peek(-1).line);
+        return make_shared<BoolExpr>(false, peek(-1).line, peek(-1).col);
     }
     if (match(TOK_IDENT)) {
-        return make_shared<IdentExpr>(peek(-1).text, peek(-1).line);
+        return make_shared<IdentExpr>(peek(-1).text, peek(-1).line, peek(-1).col);
+    }
+    if (check(TOK_LBRACE)) {
+        int line = CURRENT.line;
+        advance(); // consume '{'
+        // Check if it's a struct literal: { field: value, ... }
+        if (!check(TOK_RBRACE) && check(TOK_IDENT)) {
+            auto state = saveState();
+            advance(); // consume ident
+            if (check(TOK_COLON)) {
+                restoreState(state);
+                // Struct literal
+                vector<pair<string, shared_ptr<Expr>>> fields;
+                while (true) {
+                    if (!expect(TOK_IDENT)) return nullptr;
+                    string fname = peek(-1).text;
+                    if (!expect(TOK_COLON)) return nullptr;
+                    auto val = parseExpr();
+                    if (!val) return nullptr;
+                    fields.push_back({fname, val});
+                    if (check(TOK_RBRACE)) break;
+                    if (!expect(TOK_COMMA)) return nullptr;
+                }
+                if (!expect(TOK_RBRACE)) return nullptr;
+                return make_shared<StructLiteralExpr>("", fields, line);
+            }
+            restoreState(state);
+        }
+        // Array literal
+        vector<shared_ptr<Expr>> elements;
+        if (!check(TOK_RBRACE)) {
+            while (true) {
+                auto e = parseExpr();
+                if (!e) return nullptr;
+                elements.push_back(e);
+                if (check(TOK_RBRACE)) break;
+                if (!expect(TOK_COMMA)) return nullptr;
+            }
+        }
+        if (!expect(TOK_RBRACE)) return nullptr;
+        return make_shared<ArrayLiteralExpr>(elements, line);
     }
     if (check(TOK_LPAREN)) {
         // Check for cast: (type) expr
@@ -453,9 +552,13 @@ shared_ptr<Stmt> FrontParser::parseStmt() {
     if (check(TOK_KW_CONST)) return parseConstDecl();
     if (check(TOK_KW_IF)) return parseIfStmt();
     if (check(TOK_KW_WHILE)) return parseWhileStmt();
+    if (check(TOK_KW_DO)) return parseDoWhileStmt();
     if (check(TOK_KW_FOR)) return parseForStmt();
     if (check(TOK_KW_RETURN)) return parseReturnStmt();
     if (check(TOK_KW_ASM)) return parseAsmStmt();
+    if (check(TOK_KW_BREAK)) return parseBreakStmt();
+    if (check(TOK_KW_CONTINUE)) return parseContinueStmt();
+    if (check(TOK_KW_SWITCH)) return parseSwitchStmt();
     auto e = parseExpr();
     if (!e) return nullptr;
     if (!expect(TOK_SEMI)) return nullptr;
@@ -464,12 +567,20 @@ shared_ptr<Stmt> FrontParser::parseStmt() {
 
 shared_ptr<BlockStmt> FrontParser::parseBlock() {
     int line = CURRENT.line;
+    int col = CURRENT.col;
     if (!expect(TOK_LBRACE)) return nullptr;
-    auto block = make_shared<BlockStmt>(line);
+    auto block = make_shared<BlockStmt>(line, col);
     while (!check(TOK_RBRACE) && !check(TOK_EOF)) {
         auto s = parseStmt();
-        if (!s) return nullptr;
-        block->stmts.push_back(s);
+        if (!s) {
+            if (panicMode) {
+                synchronize();
+            } else {
+                return nullptr;
+            }
+        } else {
+            block->stmts.push_back(s);
+        }
     }
     if (!expect(TOK_RBRACE)) return nullptr;
     return block;
@@ -489,6 +600,12 @@ shared_ptr<Stmt> FrontParser::parseVarDecl() {
     if (match(TOK_ASSIGN)) {
         init = parseExpr();
         if (!init) return nullptr;
+    } else {
+        errorLine = CURRENT.line;
+        errorCol = CURRENT.col;
+        error = "variable declaration requires an initializer";
+        reportError(error);
+        return nullptr;
     }
     if (!expect(TOK_SEMI)) return nullptr;
     return make_shared<VarStmt>(name, t, init, line);
@@ -599,8 +716,69 @@ shared_ptr<Stmt> FrontParser::parseAsmStmt() {
         }
     }
     if (!expect(TOK_RBRACE)) return nullptr;
-    if (!expect(TOK_SEMI)) return nullptr;
+    expect(TOK_SEMI); // optional trailing semicolon
     return make_shared<InlineAsmStmt>(instructions, line);
+}
+
+shared_ptr<Stmt> FrontParser::parseBreakStmt() {
+    int line = CURRENT.line;
+    if (!expect(TOK_KW_BREAK)) return nullptr;
+    if (!expect(TOK_SEMI)) return nullptr;
+    return make_shared<BreakStmt>(line);
+}
+
+shared_ptr<Stmt> FrontParser::parseContinueStmt() {
+    int line = CURRENT.line;
+    if (!expect(TOK_KW_CONTINUE)) return nullptr;
+    if (!expect(TOK_SEMI)) return nullptr;
+    return make_shared<ContinueStmt>(line);
+}
+
+shared_ptr<Stmt> FrontParser::parseSwitchStmt() {
+    int line = CURRENT.line;
+    if (!expect(TOK_KW_SWITCH)) return nullptr;
+    if (!expect(TOK_LPAREN)) return nullptr;
+    auto e = parseExpr();
+    if (!e) return nullptr;
+    if (!expect(TOK_RPAREN)) return nullptr;
+    if (!expect(TOK_LBRACE)) return nullptr;
+    vector<CaseClause> cases;
+    while (!check(TOK_RBRACE) && !check(TOK_EOF)) {
+        if (match(TOK_KW_CASE)) {
+            auto val = parseExpr();
+            if (!val) return nullptr;
+            if (!expect(TOK_COLON)) return nullptr;
+            auto body = parseStmt();
+            if (!body) return nullptr;
+            cases.push_back(CaseClause(val, body));
+        } else if (match(TOK_KW_DEFAULT)) {
+            if (!expect(TOK_COLON)) return nullptr;
+            auto body = parseStmt();
+            if (!body) return nullptr;
+            cases.push_back(CaseClause(nullptr, body));
+        } else {
+            errorLine = CURRENT.line;
+            errorCol = CURRENT.col;
+            error = "expected `case` or `default` in switch statement";
+            return nullptr;
+        }
+    }
+    if (!expect(TOK_RBRACE)) return nullptr;
+    return make_shared<SwitchStmt>(e, cases, line);
+}
+
+shared_ptr<Stmt> FrontParser::parseDoWhileStmt() {
+    int line = CURRENT.line;
+    if (!expect(TOK_KW_DO)) return nullptr;
+    auto body = parseStmt();
+    if (!body) return nullptr;
+    if (!expect(TOK_KW_WHILE)) return nullptr;
+    if (!expect(TOK_LPAREN)) return nullptr;
+    auto cond = parseExpr();
+    if (!cond) return nullptr;
+    if (!expect(TOK_RPAREN)) return nullptr;
+    if (!expect(TOK_SEMI)) return nullptr;
+    return make_shared<DoWhileStmt>(cond, body, line);
 }
 
 // ---- Declarations ----
@@ -616,6 +794,8 @@ shared_ptr<Decl> FrontParser::parseDecl() {
     if (check(TOK_KW_SYSCALL)) return parseSyscallDecl();
     if (check(TOK_KW_STRUCT)) return parseStructDecl();
     if (check(TOK_KW_UNION)) return parseUnionDecl();
+    if (check(TOK_KW_ENUM)) return parseEnumDecl();
+    if (check(TOK_KW_TYPEDEF)) return parseTypedefDecl();
     if (check(TOK_KW_FUNC)) return parseFuncDecl();
     if (check(TOK_KW_VAR)) {
         auto s = parseVarDecl();
@@ -668,19 +848,17 @@ shared_ptr<FuncDecl> FrontParser::parseFuncDecl() {
             if (!expect(TOK_IDENT)) return nullptr;
             string pname = peek(-1).text;
             shared_ptr<Type> ptype = nullptr;
-            if (match(TOK_COLON)) {
-                ptype = parseType();
-                if (!ptype) return nullptr;
-            }
+            if (!expect(TOK_COLON)) return nullptr;
+            ptype = parseType();
+            if (!ptype) return nullptr;
             params.push_back({pname, ptype});
         } while (match(TOK_COMMA));
     }
     if (!expect(TOK_RPAREN)) return nullptr;
     shared_ptr<Type> retType = nullptr;
-    if (match(TOK_COLON)) {
-        retType = parseType();
-        if (!retType) return nullptr;
-    }
+    if (!expect(TOK_COLON)) return nullptr;
+    retType = parseType();
+    if (!retType) return nullptr;
     auto body = parseBlock();
     if (!body) return nullptr;
     return make_shared<FuncDecl>(name, retType, params, body, line);
@@ -707,6 +885,31 @@ shared_ptr<StructDecl> FrontParser::parseStructDecl() {
     return make_shared<StructDecl>(name, fields, line);
 }
 
+shared_ptr<EnumDecl> FrontParser::parseEnumDecl() {
+    int line = CURRENT.line;
+    if (!expect(TOK_KW_ENUM)) return nullptr;
+    if (!expect(TOK_IDENT)) return nullptr;
+    string name = peek(-1).text;
+    if (!expect(TOK_LBRACE)) return nullptr;
+    vector<pair<string, shared_ptr<Expr>>> members;
+    int nextValue = 0;
+    while (!check(TOK_RBRACE) && !check(TOK_EOF)) {
+        if (!expect(TOK_IDENT)) return nullptr;
+        string mname = peek(-1).text;
+        shared_ptr<Expr> mval = nullptr;
+        if (check(TOK_ASSIGN)) {
+            advance();
+            mval = parseExpr();
+            if (!mval) return nullptr;
+        }
+        members.push_back({mname, mval});
+        if (check(TOK_COMMA)) advance();
+    }
+    if (!expect(TOK_RBRACE)) return nullptr;
+    expect(TOK_SEMI);
+    return make_shared<EnumDecl>(name, members, line);
+}
+
 shared_ptr<UnionDecl> FrontParser::parseUnionDecl() {
     int line = CURRENT.line;
     if (!expect(TOK_KW_UNION)) return nullptr;
@@ -728,15 +931,73 @@ shared_ptr<UnionDecl> FrontParser::parseUnionDecl() {
     return make_shared<UnionDecl>(name, fields, line);
 }
 
+shared_ptr<TypedefDecl> FrontParser::parseTypedefDecl() {
+    int line = CURRENT.line;
+    if (!expect(TOK_KW_TYPEDEF)) return nullptr;
+    auto t = parseType();
+    if (!t) return nullptr;
+    if (!expect(TOK_IDENT)) return nullptr;
+    string name = peek(-1).text;
+    if (!expect(TOK_SEMI)) return nullptr;
+    return make_shared<TypedefDecl>(name, t, line);
+}
+
+void FrontParser::reportError(const string &msg) {
+    errors.push_back(msg);
+    if (error.empty()) {
+        error = msg;
+        errorLine = CURRENT.line;
+        errorCol = CURRENT.col;
+    }
+    panicMode = true;
+}
+
+bool FrontParser::atDeclStart() const {
+    return check(TOK_KW_FUNC) || check(TOK_KW_VAR) || check(TOK_KW_CONST) ||
+           check(TOK_KW_STRUCT) || check(TOK_KW_UNION) || check(TOK_KW_ENUM) ||
+           check(TOK_KW_TYPEDEF) || check(TOK_KW_IMPORT) || check(TOK_KW_SYSCALL);
+}
+
+bool FrontParser::atStmtStart() const {
+    return check(TOK_LBRACE) || check(TOK_KW_VAR) || check(TOK_KW_CONST) ||
+           check(TOK_KW_IF) || check(TOK_KW_WHILE) || check(TOK_KW_DO) ||
+           check(TOK_KW_FOR) || check(TOK_KW_RETURN) || check(TOK_KW_ASM) ||
+           check(TOK_KW_BREAK) || check(TOK_KW_CONTINUE) || check(TOK_KW_SWITCH) ||
+           check(TOK_IDENT) || check(TOK_NUMBER) || check(TOK_STRING) ||
+           check(TOK_CHAR) || check(TOK_LPAREN) || check(TOK_LBRACE) ||
+           check(TOK_KW_TRUE) || check(TOK_KW_FALSE) || check(TOK_MINUS) ||
+           check(TOK_NOT) || check(TOK_BITNOT) || check(TOK_KW_SIZEOF);
+}
+
+void FrontParser::synchronize() {
+    panicMode = false;
+    while (!check(TOK_EOF)) {
+        if (check(TOK_SEMI)) { advance(); return; }
+        if (check(TOK_RBRACE)) return;
+        if (atDeclStart()) return;
+        if (atStmtStart()) return;
+        advance();
+    }
+}
+
 bool FrontParser::parse(const vector<Token> &toks) {
     tokens = toks;
     pos = 0;
     error.clear();
+    errors.clear();
+    panicMode = false;
     program = make_shared<Program>();
     while (!check(TOK_EOF)) {
         auto d = parseDecl();
-        if (!d) return false;
-        program->decls.push_back(d);
+        if (!d) {
+            if (panicMode) {
+                synchronize();
+            } else {
+                return false;
+            }
+        } else {
+            program->decls.push_back(d);
+        }
     }
-    return true;
+    return errors.empty();
 }

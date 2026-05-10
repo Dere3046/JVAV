@@ -1,0 +1,20 @@
+const A = 5;
+const B = 3;
+const C = A > B ? 1 : 0;
+const D = A == B ? 1 : 0;
+const E = A != B ? 1 : 0;
+const F = A <= B ? 1 : 0;
+const G = A >= B ? 1 : 0;
+const H = (A > B) && (A != B) ? 1 : 0;
+const I = (A < B) || (A != B) ? 1 : 0;
+
+func main(): int {
+    putint(C);
+    putint(D);
+    putint(E);
+    putint(F);
+    putint(G);
+    putint(H);
+    putint(I);
+    return 0;
+}

@@ -1,0 +1,7 @@
+func main(): int {
+    var a = 0b1010;
+    var b = 0B1111;
+    putint(a);
+    putint(b);
+    return 0;
+}

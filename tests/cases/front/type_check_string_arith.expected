@@ -1,0 +1,9 @@
+error[E0000]: cannot apply operator `+` to string operands
+ --> tests/cases/front/type_check_string_arith.jvl:3:13
+  |
+  |     var x = s + 5;
+  |             ^
+  |
+  = help: strings do not support arithmetic operations
+
+1 error(s) and 0 warning(s) generated

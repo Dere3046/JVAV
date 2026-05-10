@@ -1,0 +1,8 @@
+var global_a = 10;
+var global_b = global_a + 5;
+var global_c = 20;
+
+func main(): int {
+    putint(global_b);
+    return 0;
+}

@@ -60,8 +60,9 @@ int test_sema_main() {
     test_header("sema_uninitialized");
     {
         string err;
-        TEST_ASSERT(!sema_ok("func main(): int { var x: int; return x; }", err), "should fail");
-        TEST_ASSERT(err.find("uninitialized") != string::npos || err.find("Uninitialized") != string::npos, "uninit msg");
+        // Parser now rejects uninitialized variables; verify sema still catches use of moved values
+        TEST_ASSERT(!sema_ok("func main(): int { var p: ptr<int> = alloc(1); var q = p; return p[0]; }", err), "should fail");
+        TEST_ASSERT(err.find("moved") != string::npos || err.find("Moved") != string::npos, "moved msg");
     }
     test_passed("sema_uninitialized");
 
@@ -185,8 +186,9 @@ int test_sema_main() {
     test_header("sema_uninit_ptr");
     {
         string err;
-        TEST_ASSERT(!sema_ok("func main(): int { var p: ptr<int>; p[0] = 1; return 0; }", err), "should fail");
-        TEST_ASSERT(err.find("uninitialized") != string::npos || err.find("Uninitialized") != string::npos, "uninit ptr");
+        // Parser now rejects uninitialized variables; test use-after-move instead
+        TEST_ASSERT(!sema_ok("func main(): int { var p: ptr<int> = alloc(1); var q = p; q[0] = 1; return p[0]; }", err), "should fail");
+        TEST_ASSERT(err.find("moved") != string::npos || err.find("Moved") != string::npos, "moved ptr");
     }
     test_passed("sema_uninit_ptr");
 

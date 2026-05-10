@@ -10,8 +10,8 @@ using namespace std;
 // ------------------------------------------------------------------
 // Error reporting
 // ------------------------------------------------------------------
-void Sema::report(SemaLevel level, const string &msg, int line, int col, const string &hint) {
-    errors.push_back({level, msg, currentFile, line, col, hint});
+void Sema::report(SemaLevel level, const string &msg, int line, int col, const string &hint, int code) {
+    errors.push_back({level, code, msg, currentFile, line, col, hint});
     if (level == SEM_ERROR && firstError.empty()) firstError = msg;
 }
 
@@ -63,10 +63,10 @@ void Sema::printErrors(ostream &os) const {
     int errCount = 0, warnCount = 0;
     for (auto &e : errors) {
         if (e.level == SEM_ERROR) {
-            os << "error[E" << setw(4) << setfill('0') << (1000 + errCount) << "]: " << e.msg << "\n";
+            os << "error[E" << setw(4) << setfill('0') << e.code << "]: " << e.msg << "\n";
             errCount++;
         } else {
-            os << "warning[W" << setw(4) << setfill('0') << (2000 + warnCount) << "]: " << e.msg << "\n";
+            os << "warning[W" << setw(4) << setfill('0') << e.code << "]: " << e.msg << "\n";
             warnCount++;
         }
         if (!e.file.empty() && e.line > 0) {
@@ -94,13 +94,18 @@ void Sema::enterScope() {
 
 void Sema::exitScope() {
     checkUnusedInScope(scopeLevel);
+    // Reset borrow state for all symbols in current scope
+    for (auto &p : scopes[scopeLevel]) {
+        p.second.borrowCount = 0;
+        p.second.mutBorrowed = false;
+    }
     scopeLevel--;
 }
 
 bool Sema::declare(const string &name, Symbol::Kind k, shared_ptr<Type> type, int level, bool global) {
     if (scopes[level].find(name) != scopes[level].end()) {
         report(SEM_ERROR, "the name `" + name + "` is defined multiple times", 0, 1,
-               "'" + name + "' was already declared in this scope");
+               "'" + name + "' was already declared in this scope", E_REDECLARATION);
         return false;
     }
     Symbol sym;
@@ -114,6 +119,7 @@ bool Sema::declare(const string &name, Symbol::Kind k, shared_ptr<Type> type, in
     sym.borrowCount = 0;
     sym.mutBorrowed = false;
     sym.used = false;
+    sym.borrowsArgs = false;
     scopes[level][name] = sym;
     return true;
 }
@@ -247,7 +253,7 @@ bool Sema::typeEqual(shared_ptr<Type> a, shared_ptr<Type> b) {
     return true;
 }
 
-bool Sema::typeCompatible(shared_ptr<Type> dst, shared_ptr<Type> src) {
+bool Sema::typeCompatible(shared_ptr<Type> dst, shared_ptr<Type> src, bool isLiteral) {
     if (!dst || !src) return true;
     // JVAV is weakly typed; allow numeric coercion
     if (dst->kind == TYPE_INT && (src->kind == TYPE_INT || src->kind == TYPE_CHAR || src->kind == TYPE_BOOL || src->kind == TYPE_BYTE || src->kind == TYPE_UINT))
@@ -256,11 +262,25 @@ bool Sema::typeCompatible(shared_ptr<Type> dst, shared_ptr<Type> src) {
         return true;
     if (dst->kind == TYPE_BOOL && (src->kind == TYPE_INT || src->kind == TYPE_BOOL || src->kind == TYPE_CHAR || src->kind == TYPE_BYTE || src->kind == TYPE_UINT))
         return true;
+    if (dst->kind == TYPE_CHAR && (src->kind == TYPE_INT || src->kind == TYPE_CHAR || src->kind == TYPE_BOOL || src->kind == TYPE_BYTE || src->kind == TYPE_UINT))
+        return true;
+    if (dst->kind == TYPE_BYTE && (src->kind == TYPE_INT || src->kind == TYPE_CHAR || src->kind == TYPE_BOOL || src->kind == TYPE_BYTE || src->kind == TYPE_UINT))
+        return true;
     if (dst->kind == TYPE_VOID && src->kind != TYPE_VOID) return false;
-    // Pointer compatibility: allow any ptr to ptr cast
-    if (dst->kind == TYPE_PTR && src->kind == TYPE_PTR) return true;
-    if (dst->kind == TYPE_PTR && src->kind == TYPE_ARRAY) return true;
-    if (dst->kind == TYPE_ARRAY && src->kind == TYPE_PTR) return true;
+    // Pointer compatibility: same pointee type only
+    if (dst->kind == TYPE_PTR && src->kind == TYPE_PTR) {
+        return typeEqual(dst->sub, src->sub);
+    }
+    // Int literal to pointer (for memory-mapped I/O)
+    if (dst->kind == TYPE_PTR && src->kind == TYPE_INT && isLiteral) {
+        return true;
+    }
+    if (dst->kind == TYPE_PTR && src->kind == TYPE_ARRAY) {
+        return typeEqual(dst->sub, src->sub);
+    }
+    if (dst->kind == TYPE_ARRAY && src->kind == TYPE_PTR) {
+        return typeEqual(dst->sub, src->sub);
+    }
     if (dst->kind == TYPE_ARRAY && src->kind == TYPE_ARRAY)
         return typeEqual(dst->sub, src->sub);
     return typeEqual(dst, src);
@@ -269,6 +289,41 @@ bool Sema::typeCompatible(shared_ptr<Type> dst, shared_ptr<Type> src) {
 string Sema::typeStr(shared_ptr<Type> t) {
     if (!t) return "?";
     return t->toString();
+}
+
+shared_ptr<Type> Sema::resolveTypedef(shared_ptr<Type> t) {
+    if (!t) return nullptr;
+    if (t->kind == TYPE_STRUCT || t->kind == TYPE_UNION) {
+        // First check if it's a real struct/union
+        if (findStruct(t->structName) || findUnion(t->structName)) {
+            return t;
+        }
+        // Check typedefs
+        auto it = typedefs.find(t->structName);
+        if (it != typedefs.end()) {
+            return it->second;
+        }
+    }
+    return t;
+}
+
+bool Sema::validateType(shared_ptr<Type> t, int line) {
+    if (!t) return true;
+    if (t->kind == TYPE_STRUCT || t->kind == TYPE_UNION) {
+        if (findStruct(t->structName) || findUnion(t->structName)) {
+            return true;
+        }
+        if (typedefs.find(t->structName) != typedefs.end()) {
+            return true;
+        }
+        report(SEM_ERROR, "unknown type `" + t->structName + "`", line, 1,
+               "check the type name or declare it with typedef/struct/union", E_UNKNOWN_TYPE);
+        return false;
+    }
+    if (t->kind == TYPE_PTR || t->kind == TYPE_ARRAY) {
+        return validateType(t->sub, line);
+    }
+    return true;
 }
 
 // ------------------------------------------------------------------
@@ -379,6 +434,7 @@ bool Sema::analyze(shared_ptr<Program> prog) {
 }
 
 bool Sema::analyze(shared_ptr<Program> prog, const string &bp) {
+    program = prog;
     basePath = bp;
     scopeLevel = -1;
     scopes.clear();
@@ -386,15 +442,21 @@ bool Sema::analyze(shared_ptr<Program> prog, const string &bp) {
     errors.clear();
     firstError.clear();
     inLoop = false;
+    inSwitch = false;
+    allowAssign = false;
     structDefs.clear();
     unionDefs.clear();
+    typedefs.clear();
 
-    // Pre-register all struct/union declarations
+    // Pre-register all struct/union/enum/typedef declarations
     for (auto &d : prog->decls) {
         if (d->kind == Decl::DECL_STRUCT) {
             registerStruct(dynamic_pointer_cast<StructDecl>(d));
         } else if (d->kind == Decl::DECL_UNION) {
             registerUnion(dynamic_pointer_cast<UnionDecl>(d));
+        } else if (d->kind == Decl::DECL_TYPEDEF) {
+            auto td = dynamic_pointer_cast<TypedefDecl>(d);
+            typedefs[td->name] = td->targetType;
         }
     }
 
@@ -402,14 +464,26 @@ bool Sema::analyze(shared_ptr<Program> prog, const string &bp) {
     auto intType = make_shared<Type>(Type{TYPE_INT});
     auto voidType = make_shared<Type>(Type{TYPE_VOID});
     declare("putint", Symbol::SYM_FUNC, intType, 0, true);
+    builtinParams["putint"] = {intType};
     declare("putchar", Symbol::SYM_FUNC, voidType, 0, true);
+    builtinParams["putchar"] = {intType};
     auto ptrIntType = make_shared<Type>(Type{TYPE_PTR});
     ptrIntType->sub = make_shared<Type>(Type{TYPE_INT});
     declare("alloc", Symbol::SYM_FUNC, ptrIntType, 0, true);
+    builtinParams["alloc"] = {intType};
     declare("free", Symbol::SYM_FUNC, voidType, 0, true);
+    builtinParams["free"] = {ptrIntType};
     declare("exit", Symbol::SYM_FUNC, voidType, 0, true);
+    builtinParams["exit"] = {intType};
     declare("putstr", Symbol::SYM_FUNC, voidType, 0, true);
+    if (auto s = lookup("putstr")) s->borrowsArgs = true;
+    builtinParams["putstr"] = {ptrIntType, intType};
     declare("sleep", Symbol::SYM_FUNC, voidType, 0, true);
+    builtinParams["sleep"] = {intType};
+    declare("getchar", Symbol::SYM_FUNC, intType, 0, true);
+    builtinParams["getchar"] = {};
+    declare("getint", Symbol::SYM_FUNC, intType, 0, true);
+    builtinParams["getint"] = {};
 
     for (auto &d : prog->decls) {
         checkDecl(d);
@@ -438,20 +512,36 @@ static bool hasReturn(shared_ptr<Stmt> s) {
     if (s->kind == Stmt::STMT_FOR) {
         return hasReturn(dynamic_pointer_cast<ForStmt>(s)->body);
     }
+    if (s->kind == Stmt::STMT_DO_WHILE) {
+        return hasReturn(dynamic_pointer_cast<DoWhileStmt>(s)->body);
+    }
+    if (s->kind == Stmt::STMT_SWITCH) {
+        auto sw = dynamic_pointer_cast<SwitchStmt>(s);
+        // A switch has a return only if all cases (including default) have a return
+        if (sw->cases.empty()) return false;
+        bool hasDefault = false;
+        for (auto &c : sw->cases) {
+            if (!c.value) hasDefault = true;
+            if (!hasReturn(c.body)) return false;
+        }
+        return hasDefault;
+    }
     return false;
 }
 
 bool Sema::checkDecl(shared_ptr<Decl> d) {
     if (d->kind == Decl::DECL_FUNC) {
         auto fd = dynamic_pointer_cast<FuncDecl>(d);
-        auto retType = fd->retType ? fd->retType : make_shared<Type>(Type{TYPE_VOID});
+        auto retType = fd->retType ? resolveTypedef(fd->retType) : make_shared<Type>(Type{TYPE_VOID});
+        if (!validateType(retType, fd->line)) return false;
         if (!declare(fd->name, Symbol::SYM_FUNC, retType, 0, true)) return false;
 
         auto prevRet = curRetType;
         curRetType = retType;
         enterScope();
         for (auto &p : fd->params) {
-            auto pt = p.ptype ? p.ptype : make_shared<Type>(Type{TYPE_INT});
+            auto pt = p.ptype ? resolveTypedef(p.ptype) : make_shared<Type>(Type{TYPE_INT});
+            if (!validateType(pt, fd->line)) return false;
             if (pt->kind == TYPE_VOID) {
                 report(SEM_ERROR, "cannot use `void` as a parameter type", fd->line, 1,
                        "use a concrete type such as `int`, `char`, or `bool`");
@@ -470,10 +560,14 @@ bool Sema::checkDecl(shared_ptr<Decl> d) {
         curRetType = prevRet;
     } else if (d->kind == Decl::DECL_VAR) {
         auto vd = dynamic_pointer_cast<GlobalVarDecl>(d);
-        auto t = vd->varType ? vd->varType : make_shared<Type>(Type{TYPE_INT});
+        auto t = vd->varType ? resolveTypedef(vd->varType) : make_shared<Type>(Type{TYPE_INT});
+        if (!validateType(t, vd->line)) return false;
         if (!declare(vd->name, Symbol::SYM_VAR, t, 0, true)) return false;
         if (vd->init) {
+            bool old = allowAssign;
+            allowAssign = false;
             checkExpr(vd->init);
+            allowAssign = old;
             markInitialized(vd->name);
         }
     } else if (d->kind == Decl::DECL_CONST) {
@@ -502,6 +596,37 @@ bool Sema::checkDecl(shared_ptr<Decl> d) {
                 report(SEM_ERROR, "field `" + f.name + "` cannot have `void` type", ud->line, 1);
                 return false;
             }
+        }
+    } else if (d->kind == Decl::DECL_ENUM) {
+        auto ed = dynamic_pointer_cast<EnumDecl>(d);
+        auto intType = make_shared<Type>(Type{TYPE_INT});
+        // First pass: register all enum member names so they can reference each other
+        for (auto &m : ed->members) {
+            declare(m.first, Symbol::SYM_CONST, intType, 0, true);
+        }
+        // Second pass: evaluate values and update
+        int nextVal = 0;
+        map<string, int> enumValues;
+        for (auto &m : ed->members) {
+            int val = nextVal;
+            if (m.second) {
+                if (m.second->kind == Expr::EXPR_NUMBER) {
+                    val = (int)(long long)dynamic_pointer_cast<NumberExpr>(m.second)->value;
+                } else if (m.second->kind == Expr::EXPR_IDENT) {
+                    auto idExpr = dynamic_pointer_cast<IdentExpr>(m.second);
+                    auto it = enumValues.find(idExpr->name);
+                    if (it != enumValues.end()) {
+                        val = it->second;
+                    } else {
+                        auto sym = lookup(idExpr->name);
+                        if (sym && sym->kind == Symbol::SYM_CONST) {
+                            // Reference to another const; keep nextVal as fallback
+                        }
+                    }
+                }
+            }
+            enumValues[m.first] = val;
+            nextVal = val + 1;
         }
     }
     return true;
@@ -534,24 +659,24 @@ bool Sema::processImport(shared_ptr<ImportDecl> id) {
     Lexer lex;
     if (!lex.tokenize(absPath)) {
         if (id->path.rfind("std/", 0) == 0 || id->path.rfind("std\\", 0) == 0) {
-            report(SEM_ERROR, "cannot find standard library `" + id->path + "`", id->line, 1,
+            report(SEM_ERROR, "cannot find standard library `" + id->path + "`", id->line, id->col,
                    "ensure JVAV is installed correctly and the std/ directory is accessible from the compiler");
         } else {
-            report(SEM_ERROR, "cannot read import file `" + id->path + "`", id->line, 1,
+            report(SEM_ERROR, "cannot read import file `" + id->path + "`", id->line, id->col,
                    "check that the file exists and is readable");
         }
         return false;
     }
     FrontParser par;
     if (!par.parse(lex.getTokens())) {
-        report(SEM_ERROR, "parse error in imported file `" + id->path + "`: " + par.getError(), id->line, 1, "");
+        report(SEM_ERROR, "parse error in imported file `" + id->path + "`: " + par.getError(), id->line, id->col, "");
         return false;
     }
 
     Sema subSema;
     string subBase = fs::path(absPath).parent_path().string();
     if (!subSema.analyze(par.getProgram(), subBase)) {
-        report(SEM_ERROR, "semantic error in imported file `" + id->path + "`: " + subSema.getError(), id->line, 1, "");
+        report(SEM_ERROR, "semantic error in imported file `" + id->path + "`: " + subSema.getError(), id->line, id->col, "");
         return false;
     }
 
@@ -579,9 +704,24 @@ bool Sema::processImport(shared_ptr<ImportDecl> id) {
         } else if (subd->kind == Decl::DECL_CONST) {
             auto cd = dynamic_pointer_cast<GlobalConstDecl>(subd);
             declare(cd->name, Symbol::SYM_CONST, make_shared<Type>(Type{TYPE_INT}), 0, true);
+        } else if (subd->kind == Decl::DECL_ENUM) {
+            auto ed = dynamic_pointer_cast<EnumDecl>(subd);
+            auto intType = make_shared<Type>(Type{TYPE_INT});
+            for (auto &m : ed->members) {
+                declare(m.first, Symbol::SYM_CONST, intType, 0, true);
+            }
         } else if (subd->kind == Decl::DECL_SYSCALL) {
             auto sd = dynamic_pointer_cast<SyscallDecl>(subd);
             declare(sd->name, Symbol::SYM_FUNC, make_shared<Type>(Type{TYPE_INT}), 0, true);
+        }
+    }
+    // Mark all imported functions as borrowing arguments (external functions typically borrow)
+    for (auto &subd : par.getProgram()->decls) {
+        if (subd->kind == Decl::DECL_FUNC || subd->kind == Decl::DECL_SYSCALL) {
+            auto fd = dynamic_pointer_cast<FuncDecl>(subd);
+            if (fd && lookup(fd->name)) {
+                lookup(fd->name)->borrowsArgs = true;
+            }
         }
     }
     id->module = par.getProgram();
@@ -603,16 +743,33 @@ bool Sema::checkStmt(shared_ptr<Stmt> s) {
         }
         case Stmt::STMT_VAR: {
             auto v = dynamic_pointer_cast<VarStmt>(s);
-            auto t = v->varType ? v->varType : make_shared<Type>(Type{TYPE_INT});
-            if (!declare(v->name, Symbol::SYM_VAR, t, scopeLevel, false)) return false;
+            shared_ptr<Type> t;
+            if (v->varType) {
+                t = resolveTypedef(v->varType);
+                if (!validateType(t, v->line)) return false;
+            }
             if (v->init) {
+                if (v->init->kind == Expr::EXPR_STRUCT_LITERAL && t) {
+                    v->init->type = t;
+                }
                 checkExpr(v->init);
+                if (!t && v->init->type) {
+                    t = v->init->type;
+                }
+                // Type compatibility check
+                if (t && v->init->type && !typeCompatible(t, v->init->type, v->init->kind == Expr::EXPR_NUMBER)) {
+                    report(SEM_ERROR, "cannot initialize variable of type `" + typeStr(t) + "` with value of type `" + typeStr(v->init->type) + "`", v->line, 1,
+                           "use an explicit cast or change the variable type");
+                    return false;
+                }
                 if (v->init->kind == Expr::EXPR_IDENT) {
                     auto id = dynamic_pointer_cast<IdentExpr>(v->init);
                     markMoved(id->name, v->line);
                 }
-                markInitialized(v->name);
             }
+            if (!t) t = make_shared<Type>(Type{TYPE_INT});
+            if (!declare(v->name, Symbol::SYM_VAR, t, scopeLevel, false)) return false;
+            if (v->init) markInitialized(v->name);
             break;
         }
         case Stmt::STMT_CONST: {
@@ -623,7 +780,12 @@ bool Sema::checkStmt(shared_ptr<Stmt> s) {
         }
         case Stmt::STMT_EXPR: {
             auto e = dynamic_pointer_cast<ExprStmt>(s);
-            if (!checkExpr(e->expr)) return false;
+            // Top-level expression statements allow assignment
+            bool old = allowAssign;
+            allowAssign = true;
+            bool ok = checkExpr(e->expr);
+            allowAssign = old;
+            if (!ok) return false;
             break;
         }
         case Stmt::STMT_IF: {
@@ -647,7 +809,13 @@ bool Sema::checkStmt(shared_ptr<Stmt> s) {
             enterScope();
             if (f->init) checkStmt(f->init);
             if (f->cond) checkExpr(f->cond);
-            if (f->step) checkExpr(f->step);
+            if (f->step) {
+                // For loop step allows assignment
+                bool old = allowAssign;
+                allowAssign = true;
+                checkExpr(f->step);
+                allowAssign = old;
+            }
             bool prevLoop = inLoop;
             inLoop = true;
             checkStmt(f->body);
@@ -663,6 +831,11 @@ bool Sema::checkStmt(shared_ptr<Stmt> s) {
                     report(SEM_ERROR, "cannot return a value from a function with `void` return type", r->line, 1,
                            "remove the return value or change the function return type");
                 }
+                // Type compatibility check
+                if (curRetType && r->value->type && !typeCompatible(curRetType, r->value->type, r->value->kind == Expr::EXPR_NUMBER)) {
+                    report(SEM_ERROR, "cannot return value of type `" + typeStr(r->value->type) + "` from function returning `" + typeStr(curRetType) + "`", r->line, 1,
+                           "use an explicit cast or change the return type");
+                }
             } else {
                 if (curRetType && curRetType->kind != TYPE_VOID) {
                     report(SEM_ERROR, "missing return value in function with non-void return type", r->line, 1,
@@ -675,6 +848,43 @@ bool Sema::checkStmt(shared_ptr<Stmt> s) {
             // Inline assembly is opaque to semantic analysis
             break;
         }
+        case Stmt::STMT_BREAK: {
+            if (!inLoop && !inSwitch) {
+                report(SEM_ERROR, "`break` outside of loop or switch", s->line, s->col,
+                       "move `break` inside a loop or switch statement");
+                return false;
+            }
+            break;
+        }
+        case Stmt::STMT_CONTINUE: {
+            if (!inLoop) {
+                report(SEM_ERROR, "`continue` outside of loop", s->line, s->col,
+                       "move `continue` inside a `while` or `for` loop");
+                return false;
+            }
+            break;
+        }
+        case Stmt::STMT_SWITCH: {
+            auto sw = dynamic_pointer_cast<SwitchStmt>(s);
+            checkExpr(sw->expr);
+            bool prevSwitch = inSwitch;
+            inSwitch = true;
+            for (auto &c : sw->cases) {
+                if (c.value) checkExpr(c.value);
+                checkStmt(c.body);
+            }
+            inSwitch = prevSwitch;
+            break;
+        }
+        case Stmt::STMT_DO_WHILE: {
+            auto dw = dynamic_pointer_cast<DoWhileStmt>(s);
+            checkExpr(dw->cond);
+            bool prevLoop = inLoop;
+            inLoop = true;
+            checkStmt(dw->body);
+            inLoop = prevLoop;
+            break;
+        }
     }
     return true;
 }
@@ -684,11 +894,19 @@ bool Sema::checkStmt(shared_ptr<Stmt> s) {
 // ------------------------------------------------------------------
 bool Sema::checkExpr(shared_ptr<Expr> e) {
     if (!e) return true;
+    bool oldAllow = allowAssign;
+    if (e->kind != Expr::EXPR_ASSIGN) {
+        allowAssign = false;
+    }
     switch (e->kind) {
         case Expr::EXPR_NUMBER:
-        case Expr::EXPR_CHAR:
-        case Expr::EXPR_BOOL:
             e->type = make_shared<Type>(Type{TYPE_INT});
+            break;
+        case Expr::EXPR_CHAR:
+            e->type = make_shared<Type>(Type{TYPE_CHAR});
+            break;
+        case Expr::EXPR_BOOL:
+            e->type = make_shared<Type>(Type{TYPE_BOOL});
             break;
         case Expr::EXPR_STRING:
             e->type = make_shared<Type>(Type{TYPE_ARRAY});
@@ -698,12 +916,12 @@ bool Sema::checkExpr(shared_ptr<Expr> e) {
             auto id = dynamic_pointer_cast<IdentExpr>(e);
             auto sym = lookup(id->name);
             if (!sym) {
-                report(SEM_ERROR, "cannot find value `" + id->name + "` in this scope", id->line, 1,
+                report(SEM_ERROR, "cannot find value `" + id->name + "` in this scope", id->line, id->col,
                        "declare '" + id->name + "' before use");
                 return false;
             }
             if (sym->kind == Symbol::SYM_FUNC) {
-                report(SEM_ERROR, "cannot use function `" + id->name + "` as a value", id->line, 1,
+                report(SEM_ERROR, "cannot use function `" + id->name + "` as a value", id->line, id->col,
                        "call the function with () instead");
                 return false;
             }
@@ -714,14 +932,69 @@ bool Sema::checkExpr(shared_ptr<Expr> e) {
         }
         case Expr::EXPR_BINARY: {
             auto b = dynamic_pointer_cast<BinaryExpr>(e);
-            checkExpr(b->left);
-            checkExpr(b->right);
+            if (!checkExpr(b->left)) return false;
+            if (!checkExpr(b->right)) return false;
+            auto lt = b->left->type;
+            auto rt = b->right->type;
+            // String is not a numeric type
+            bool leftIsString = lt && lt->kind == TYPE_ARRAY && lt->sub && lt->sub->kind == TYPE_CHAR;
+            bool rightIsString = rt && rt->kind == TYPE_ARRAY && rt->sub && rt->sub->kind == TYPE_CHAR;
+            bool leftIsNumeric = lt && (lt->kind == TYPE_INT || lt->kind == TYPE_CHAR || lt->kind == TYPE_BOOL || lt->kind == TYPE_BYTE || lt->kind == TYPE_UINT);
+            bool rightIsNumeric = rt && (rt->kind == TYPE_INT || rt->kind == TYPE_CHAR || rt->kind == TYPE_BOOL || rt->kind == TYPE_BYTE || rt->kind == TYPE_UINT);
+            if (b->op == "+" || b->op == "-" || b->op == "*" || b->op == "/" || b->op == "%") {
+                if (leftIsString || rightIsString) {
+                    report(SEM_ERROR, "cannot apply operator `" + b->op + "` to string operands", b->line, b->col,
+                           "strings do not support arithmetic operations");
+                    return false;
+                }
+                if (!leftIsNumeric || !rightIsNumeric) {
+                    report(SEM_ERROR, "operator `" + b->op + "` requires numeric operands", b->line, b->col,
+                           "both sides must be of type int, char, bool, byte, or uint");
+                    return false;
+                }
+            } else if (b->op == "&" || b->op == "|" || b->op == "^" || b->op == "<<" || b->op == ">>") {
+                if (!leftIsNumeric || !rightIsNumeric) {
+                    report(SEM_ERROR, "operator `" + b->op + "` requires integer operands", b->line, b->col,
+                           "both sides must be of type int, char, bool, byte, or uint");
+                    return false;
+                }
+            } else if (b->op == "&&" || b->op == "||") {
+                // Logical operators accept any numeric type (weak typing)
+                if (!leftIsNumeric || !rightIsNumeric) {
+                    report(SEM_ERROR, "operator `" + b->op + "` requires boolean-compatible operands", b->line, b->col,
+                           "both sides must be of type int, char, bool, byte, or uint");
+                    return false;
+                }
+            }
+            // Comparison operators: type compatibility check
+            if (b->op == "==" || b->op == "!=" || b->op == "<" || b->op == ">" || b->op == "<=" || b->op == ">=") {
+                if (leftIsString || rightIsString) {
+                    report(SEM_ERROR, "cannot compare strings with operator `" + b->op + "`", b->line, b->col,
+                           "string comparison is not supported");
+                    return false;
+                }
+            }
             b->type = make_shared<Type>(Type{TYPE_INT});
             break;
         }
         case Expr::EXPR_UNARY: {
             auto u = dynamic_pointer_cast<UnaryExpr>(e);
-            checkExpr(u->operand);
+            if (!checkExpr(u->operand)) return false;
+            auto ot = u->operand->type;
+            bool operandIsNumeric = ot && (ot->kind == TYPE_INT || ot->kind == TYPE_CHAR || ot->kind == TYPE_BOOL || ot->kind == TYPE_BYTE || ot->kind == TYPE_UINT);
+            if (u->op == "-" || u->op == "~") {
+                if (!operandIsNumeric) {
+                    report(SEM_ERROR, "operator `" + u->op + "` requires a numeric operand", u->line, u->col,
+                           "the operand must be of type int, char, bool, byte, or uint");
+                    return false;
+                }
+            } else if (u->op == "!") {
+                if (!operandIsNumeric) {
+                    report(SEM_ERROR, "operator `!` requires a boolean-compatible operand", u->line, u->col,
+                           "the operand must be of type int, char, bool, byte, or uint");
+                    return false;
+                }
+            }
             u->type = make_shared<Type>(Type{TYPE_INT});
             break;
         }
@@ -733,22 +1006,49 @@ bool Sema::checkExpr(shared_ptr<Expr> e) {
             }
             auto sym = lookup(fname);
             if (!sym) {
-                report(SEM_ERROR, "cannot find function `" + fname + "` in this scope", c->line, 1,
+                report(SEM_ERROR, "cannot find function `" + fname + "` in this scope", c->line, c->col,
                        "declare '" + fname + "' before calling");
                 return false;
             }
             if (sym->kind != Symbol::SYM_FUNC) {
-                report(SEM_ERROR, "`" + fname + "` is not a function", c->line, 1,
+                report(SEM_ERROR, "`" + fname + "` is not a function", c->line, c->col,
                        "use a function name for the call");
                 return false;
             }
-            for (auto &a : c->args) {
+            // Get parameter types from function declaration or builtins
+            vector<shared_ptr<Type>> paramTypes;
+            for (auto &d : program->decls) {
+                if (d->kind == Decl::DECL_FUNC) {
+                    auto fd = dynamic_pointer_cast<FuncDecl>(d);
+                    if (fd->name == fname) {
+                        for (auto &p : fd->params) {
+                            paramTypes.push_back(p.ptype ? resolveTypedef(p.ptype) : make_shared<Type>(Type{TYPE_INT}));
+                        }
+                        break;
+                    }
+                }
+            }
+            // Fallback to builtin params
+            if (paramTypes.empty()) {
+                auto it = builtinParams.find(fname);
+                if (it != builtinParams.end()) {
+                    paramTypes = it->second;
+                }
+            }
+            for (size_t i = 0; i < c->args.size(); ++i) {
+                auto &a = c->args[i];
                 checkExpr(a);
+                // Type compatibility check
+                if (i < paramTypes.size() && a->type && !typeCompatible(paramTypes[i], a->type, a->kind == Expr::EXPR_NUMBER)) {
+                    report(SEM_ERROR, "cannot pass argument of type `" + typeStr(a->type) + "` to parameter of type `" + typeStr(paramTypes[i]) + "`", c->line, c->col,
+                           "use an explicit cast or change the argument type");
+                    return false;
+                }
                 if (a->kind == Expr::EXPR_IDENT) {
                     auto id = dynamic_pointer_cast<IdentExpr>(a);
                     Symbol *s = lookup(id->name);
                     if (s && !s->isCopy && s->kind == Symbol::SYM_VAR) {
-                        if (fname != "fread" && fname != "fwrite" && fname != "putstr" && fname != "mmap_file") {
+                        if (!sym || !sym->borrowsArgs) {
                             markMoved(id->name, c->line);
                         }
                     }
@@ -776,9 +1076,24 @@ bool Sema::checkExpr(shared_ptr<Expr> e) {
             break;
         }
         case Expr::EXPR_ASSIGN: {
+            if (!allowAssign) {
+                report(SEM_ERROR, "assignment is not allowed in this context", e->line, e->col,
+                       "assignments are only permitted as statement-level expressions or within `for` loop steps");
+                return false;
+            }
             auto a = dynamic_pointer_cast<AssignExpr>(e);
             if (!checkAssignTarget(a->left)) return false;
+            // Infer struct literal type from assignment target
+            if (a->right->kind == Expr::EXPR_STRUCT_LITERAL) {
+                a->right->type = a->left->type;
+            }
             checkExpr(a->right);
+            // Type compatibility check
+            if (a->left->type && a->right->type && !typeCompatible(a->left->type, a->right->type, a->right->kind == Expr::EXPR_NUMBER)) {
+                report(SEM_ERROR, "cannot assign value of type `" + typeStr(a->right->type) + "` to variable of type `" + typeStr(a->left->type) + "`", a->line, 1,
+                       "use an explicit cast or change the variable type");
+                return false;
+            }
             if (a->right->kind == Expr::EXPR_IDENT) {
                 auto id = dynamic_pointer_cast<IdentExpr>(a->right);
                 markMoved(id->name, a->line);
@@ -793,7 +1108,7 @@ bool Sema::checkExpr(shared_ptr<Expr> e) {
         case Expr::EXPR_BORROW: {
             auto b = dynamic_pointer_cast<BorrowExpr>(e);
             if (b->operand->kind != Expr::EXPR_IDENT) {
-                report(SEM_ERROR, "borrow expression must target a variable", b->line, 1,
+                report(SEM_ERROR, "borrow expression must target a variable", b->line, b->col,
                        "use &name or &mut name");
                 return false;
             }
@@ -859,6 +1174,39 @@ bool Sema::checkExpr(shared_ptr<Expr> e) {
             e->type = make_shared<Type>(Type{TYPE_INT});
             break;
         }
+        case Expr::EXPR_TERNARY: {
+            auto t = dynamic_pointer_cast<TernaryExpr>(e);
+            checkExpr(t->cond);
+            checkExpr(t->thenExpr);
+            checkExpr(t->elseExpr);
+            e->type = t->thenExpr->type ? t->thenExpr->type : make_shared<Type>(Type{TYPE_INT});
+            break;
+        }
+        case Expr::EXPR_ARRAY_LITERAL: {
+            auto a = dynamic_pointer_cast<ArrayLiteralExpr>(e);
+            shared_ptr<Type> elemType;
+            for (auto &elem : a->elements) {
+                if (!checkExpr(elem)) return false;
+                if (!elemType) elemType = elem->type;
+            }
+            e->type = make_shared<Type>(Type{TYPE_ARRAY});
+            e->type->sub = elemType ? elemType : make_shared<Type>(Type{TYPE_INT});
+            e->type->arraySize = (int)a->elements.size();
+            break;
+        }
+        case Expr::EXPR_STRUCT_LITERAL: {
+            auto s = dynamic_pointer_cast<StructLiteralExpr>(e);
+            for (auto &f : s->fields) {
+                if (!checkExpr(f.second)) return false;
+            }
+            // Struct literal must have explicit type annotation from context
+            if (!e->type) {
+                report(SEM_ERROR, "struct literal requires explicit type annotation", e->line, e->col,
+                       "use `var name: StructType = { ... }` or assignment to a typed variable");
+                return false;
+            }
+            break;
+        }
         case Expr::EXPR_CAST: {
             auto c = dynamic_pointer_cast<CastExpr>(e);
             checkExpr(c->operand);
@@ -889,6 +1237,7 @@ bool Sema::checkExpr(shared_ptr<Expr> e) {
             break;
         }
     }
+    allowAssign = oldAllow;
     return true;
 }
 
