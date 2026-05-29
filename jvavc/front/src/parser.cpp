@@ -524,6 +524,7 @@ shared_ptr<Expr> FrontParser::parsePrimary() {
     if (check(TOK_LPAREN)) {
         // Check for cast: (type) expr
         auto state = saveState();
+        size_t errSz = errors.size();
         advance(); // consume '('
         auto t = parseType();
         if (t && match(TOK_RPAREN)) {
@@ -531,6 +532,7 @@ shared_ptr<Expr> FrontParser::parsePrimary() {
             if (e) return make_shared<CastExpr>(t, e, CURRENT.line);
         }
         restoreState(state);
+        errors.resize(errSz);
         // Grouped expression
         advance(); // consume '('
         auto e = parseExpr();

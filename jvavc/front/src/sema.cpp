@@ -267,9 +267,14 @@ bool Sema::typeCompatible(shared_ptr<Type> dst, shared_ptr<Type> src, bool isLit
     if (dst->kind == TYPE_BYTE && (src->kind == TYPE_INT || src->kind == TYPE_CHAR || src->kind == TYPE_BOOL || src->kind == TYPE_BYTE || src->kind == TYPE_UINT))
         return true;
     if (dst->kind == TYPE_VOID && src->kind != TYPE_VOID) return false;
-    // Pointer compatibility: same pointee type only
+    // Pointer compatibility: ptr<int> acts as generic pointer (like void*)
     if (dst->kind == TYPE_PTR && src->kind == TYPE_PTR) {
+        if (src->sub->kind == TYPE_INT) return true;
         return typeEqual(dst->sub, src->sub);
+    }
+    // Allow pointer-to-int coercion (e.g., putint(alloc(0)))
+    if (dst->kind == TYPE_INT && src->kind == TYPE_PTR) {
+        return true;
     }
     // Int literal to pointer (for memory-mapped I/O)
     if (dst->kind == TYPE_PTR && src->kind == TYPE_INT && isLiteral) {
@@ -469,6 +474,8 @@ bool Sema::analyze(shared_ptr<Program> prog, const string &bp) {
     builtinParams["putchar"] = {intType};
     auto ptrIntType = make_shared<Type>(Type{TYPE_PTR});
     ptrIntType->sub = make_shared<Type>(Type{TYPE_INT});
+    auto ptrCharType = make_shared<Type>(Type{TYPE_PTR});
+    ptrCharType->sub = make_shared<Type>(Type{TYPE_CHAR});
     declare("alloc", Symbol::SYM_FUNC, ptrIntType, 0, true);
     builtinParams["alloc"] = {intType};
     declare("free", Symbol::SYM_FUNC, voidType, 0, true);
@@ -477,7 +484,7 @@ bool Sema::analyze(shared_ptr<Program> prog, const string &bp) {
     builtinParams["exit"] = {intType};
     declare("putstr", Symbol::SYM_FUNC, voidType, 0, true);
     if (auto s = lookup("putstr")) s->borrowsArgs = true;
-    builtinParams["putstr"] = {ptrIntType, intType};
+    builtinParams["putstr"] = {ptrCharType, intType};
     declare("sleep", Symbol::SYM_FUNC, voidType, 0, true);
     builtinParams["sleep"] = {intType};
     declare("getchar", Symbol::SYM_FUNC, intType, 0, true);
@@ -908,10 +915,13 @@ bool Sema::checkExpr(shared_ptr<Expr> e) {
         case Expr::EXPR_BOOL:
             e->type = make_shared<Type>(Type{TYPE_BOOL});
             break;
-        case Expr::EXPR_STRING:
+        case Expr::EXPR_STRING: {
+            auto str = dynamic_pointer_cast<StringExpr>(e);
             e->type = make_shared<Type>(Type{TYPE_ARRAY});
             e->type->sub = make_shared<Type>(Type{TYPE_CHAR});
+            e->type->arraySize = (int)str->value.length() + 1;
             break;
+        }
         case Expr::EXPR_IDENT: {
             auto id = dynamic_pointer_cast<IdentExpr>(e);
             auto sym = lookup(id->name);

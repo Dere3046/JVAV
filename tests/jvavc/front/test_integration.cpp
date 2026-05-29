@@ -22,7 +22,6 @@ static bool run_file_cases(const string& caseDir) {
     if (!fs::exists(caseDir)) return true;
     for (const auto& entry : fs::directory_iterator(caseDir)) {
         if (entry.is_directory()) {
-            // Handle subdirectories (e.g., import/)
             string subDir = entry.path().string();
             string subName = entry.path().filename().string();
             for (const auto& subEntry : fs::directory_iterator(subDir)) {
@@ -30,17 +29,29 @@ static bool run_file_cases(const string& caseDir) {
                 string path = subEntry.path().string();
                 if (path.size() < 4 || path.substr(path.size() - 4) != ".jvl") continue;
                 string name = subEntry.path().stem().string();
-                if (name != "main") continue; // only run main.jvl in subdirs
-
-                string expectedPath = subDir + "\\expected";
+                if (name != "main") continue;
+                string expectedPath = subDir + "/expected";
                 string outFile = subName + ".out";
                 string errFile = subName + ".err";
                 string binFile = subName + ".bin";
                 string jvavFile = subName + ".jvav";
+                string compErrFile = subName + "_comp.err";
 
                 test_header(("integration_case_" + subName).c_str());
-                int ret = run_cmd((string(JVAVC_FRONT_EXE) + " " + path + " " + jvavFile).c_str());
-                TEST_ASSERT(ret == 0, "front compile failed");
+                int ret = run_cmd((string(JVAVC_FRONT_EXE) + " " + path + " " + jvavFile + " > " + compErrFile + " 2>&1").c_str());
+                if (ret != 0) {
+                    if (fs::exists(expectedPath)) {
+                        string out, expected;
+                        TEST_ASSERT(read_file(compErrFile, out), "read compiler output");
+                        TEST_ASSERT(read_file(expectedPath, expected), "read expected");
+                        TEST_ASSERT(out == expected, "error output mismatch");
+                        remove(compErrFile.c_str());
+                        test_passed(("integration_case_" + subName).c_str());
+                        continue;
+                    }
+                    TEST_ASSERT(ret == 0, "front compile failed");
+                }
+                remove(compErrFile.c_str());
                 ret = run_cmd((string(JVAVC_BACK_EXE) + " " + jvavFile + " " + binFile).c_str());
                 TEST_ASSERT(ret == 0, "back compile failed");
                 ret = run_cmd((string(JVM_EXE) + " " + binFile + " > " + outFile + " 2> " + errFile).c_str());
@@ -71,15 +82,29 @@ static bool run_file_cases(const string& caseDir) {
 
         string name = entry.path().stem().string();
         string base = entry.path().parent_path().string();
-        string expectedPath = base + "\\" + name + ".expected";
+        string expectedPath = base + "/" + name + ".expected";
         string outFile = name + ".out";
         string errFile = name + ".err";
         string binFile = name + ".bin";
         string jvavFile = name + ".jvav";
+        string compErrFile = name + "_comp.err";
 
         test_header(("integration_case_" + name).c_str());
-        int ret = run_cmd((string(JVAVC_FRONT_EXE) + " " + path + " " + jvavFile).c_str());
-        TEST_ASSERT(ret == 0, "front compile failed");
+        int ret = run_cmd((string(JVAVC_FRONT_EXE) + " " + path + " " + jvavFile + " > " + compErrFile + " 2>&1").c_str());
+        if (ret != 0) {
+            if (fs::exists(expectedPath)) {
+                string out, expected;
+                TEST_ASSERT(read_file(compErrFile, out), "read compiler output");
+                TEST_ASSERT(read_file(expectedPath, expected), "read expected");
+                TEST_ASSERT(out == expected, "error output mismatch");
+                remove(compErrFile.c_str());
+                remove(jvavFile.c_str());
+                test_passed(("integration_case_" + name).c_str());
+                continue;
+            }
+            TEST_ASSERT(ret == 0, "front compile failed");
+        }
+        remove(compErrFile.c_str());
         ret = run_cmd((string(JVAVC_BACK_EXE) + " " + jvavFile + " " + binFile).c_str());
         TEST_ASSERT(ret == 0, "back compile failed");
         ret = run_cmd((string(JVM_EXE) + " " + binFile + " > " + outFile + " 2> " + errFile).c_str());
