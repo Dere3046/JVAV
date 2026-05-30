@@ -2,7 +2,11 @@
 #include "jit_arm64.h"
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <sys/mman.h>
+#endif
 
 #define JIT_DT JIT_DT
 #define SYSCALL_BASE 0xFFE0
@@ -484,9 +488,14 @@ int jit_compile(JVM *vm) {
 
     /* ===== Allocate executable memory ===== */
     size_t total = b.len;
+#ifdef _WIN32
+    void *mem = VirtualAlloc(NULL, total, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    if (!mem) { free(offsets); a64_free(&b); return -1; }
+#else
     void *mem = mmap(NULL, total, PROT_READ | PROT_WRITE,
                      MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (mem == MAP_FAILED) { free(offsets); a64_free(&b); return -1; }
+#endif
     memcpy(mem, b.buf, total);
 
     uint64_t base = (uint64_t)mem;
@@ -509,23 +518,19 @@ int jit_compile(JVM *vm) {
 
     /* Patch dispatch table address into the placeholder */
     uint64_t dt_addr = base + dt_off;
-    a64_mov_ri(&b, JIT_DT, dt_addr); /* Recompute the mov sequence */
-    /* Actually, we need to patch the placeholder at dt_addr_patch.
-       The placeholder was a MOV X12, #0 which is 4 bytes.
-       But a64_mov_ri might generate multiple instructions for a 64-bit value.
-       We need to generate the correct sequence and overwrite. */
-    
-    /* For simplicity: overwrite with a proper MOVZ/MOVK sequence */
     uint8_t *patch_p = (uint8_t*)mem + dt_addr_patch;
-    /* Compute mov sequence for dt_addr into JIT_DT */
-    /* Clean approach: generate into a temp buffer, then copy */
     A64Buf tmp;
     a64_init(&tmp);
     a64_mov_ri(&tmp, JIT_DT, dt_addr);
     memcpy(patch_p, tmp.buf, tmp.len);
     a64_free(&tmp);
 
+#ifdef _WIN32
+    DWORD old;
+    VirtualProtect(mem, total, PAGE_EXECUTE_READ, &old);
+#else
     mprotect(mem, total, PROT_READ | PROT_EXEC);
+#endif
     vm->jit_entry = (void (*)(JVM*))mem;
     vm->jit_code = mem;
     vm->jit_size = total;
@@ -537,7 +542,11 @@ int jit_compile(JVM *vm) {
 
 void jit_release(JVM *vm) {
     if (vm->jit_code) {
+#ifdef _WIN32
+        VirtualFree(vm->jit_code, 0, MEM_RELEASE);
+#else
         munmap(vm->jit_code, vm->jit_size);
+#endif
         vm->jit_code = NULL;
         vm->jit_entry = NULL;
     }

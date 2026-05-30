@@ -378,11 +378,7 @@ void jvm_init(JVM *vm) {
 
 void jvm_free(JVM *vm) {
     free(vm->mem);
-    if (vm->jit_code) {
-        munmap(vm->jit_code, vm->jit_size);
-        vm->jit_code = NULL;
-        vm->jit_entry = NULL;
-    }
+    jit_release(vm);
 }
 
 int jvm_load_program(JVM *vm, const char *filename) {

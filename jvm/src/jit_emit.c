@@ -2,7 +2,11 @@
 #include "jit_x86_64.h"
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <sys/mman.h>
+#endif
 
 #define JIT_DT X64_R15
 #define SYSCALL_BASE 0xFFE0
@@ -418,9 +422,14 @@ int jit_compile(JVM *vm) {
     for (size_t i = 0; i < nwords; i++) x64_emit8(&b, 0);
 
     size_t total = b.len;
+#ifdef _WIN32
+    void *mem = VirtualAlloc(NULL, total, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    if (!mem) { free(offsets); x64_free(&b); return -1; }
+#else
     void *mem = mmap(NULL, total, PROT_READ | PROT_WRITE,
                      MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (mem == MAP_FAILED) { free(offsets); x64_free(&b); return -1; }
+#endif
     memcpy(mem, b.buf, total);
 
     uint64_t base = (uint64_t)mem;
@@ -447,7 +456,12 @@ int jit_compile(JVM *vm) {
     p[2] = (uint8_t)((0 << 6) | (x64_lo(JIT_DT) << 3) | 5);
     *(int32_t*)(p + 3) = (int32_t)rel;
 
+#ifdef _WIN32
+    DWORD old;
+    VirtualProtect(mem, total, PAGE_EXECUTE_READ, &old);
+#else
     mprotect(mem, total, PROT_READ | PROT_EXEC);
+#endif
     vm->jit_entry = (void (*)(JVM*))mem;
     vm->jit_code = mem;
     vm->jit_size = total;
@@ -459,7 +473,11 @@ int jit_compile(JVM *vm) {
 
 void jit_release(JVM *vm) {
     if (vm->jit_code) {
+#ifdef _WIN32
+        VirtualFree(vm->jit_code, 0, MEM_RELEASE);
+#else
         munmap(vm->jit_code, vm->jit_size);
+#endif
         vm->jit_code = NULL;
         vm->jit_entry = NULL;
     }
