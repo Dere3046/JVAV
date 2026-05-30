@@ -1491,5 +1491,84 @@ func main(): int {
     }
     test_passed("integration_jvm_load_error_msg");
 
+    // --- JIT tests ---
+#ifdef _WIN32
+    static const char* jit_env = "set JVAV_JIT=1 && ";
+#else
+    static const char* jit_env = "JVAV_JIT=1 ";
+#endif
+
+    test_header("jit_putint");
+    {
+        const char* src = R"(
+func main(): int {
+    putint(42);
+    return 0;
+}
+)";
+        std::ofstream("jit_putint.jvl") << src;
+        string cmd = string(jit_env) + string(JVAVC_FRONT_EXE) + " jit_putint.jvl jit_putint.jvav";
+        int ret = run_cmd(cmd.c_str());
+        TEST_ASSERT(ret == 0, "front");
+        cmd = string(jit_env) + string(JVAVC_BACK_EXE) + " jit_putint.jvav jit_putint.bin";
+        ret = run_cmd(cmd.c_str());
+        TEST_ASSERT(ret == 0, "back");
+        cmd = string(jit_env) + string(JVM_EXE) + " jit_putint.bin > jit_putint.out 2>&1";
+        ret = run_cmd(cmd.c_str());
+        TEST_ASSERT(ret == 0, "run");
+        string out;
+        TEST_ASSERT(read_output("jit_putint.out", out), "read");
+        TEST_ASSERT(out == "42", "putint output");
+        std::remove("jit_putint.jvl"); std::remove("jit_putint.jvav");
+        std::remove("jit_putint.bin"); std::remove("jit_putint.out");
+    }
+    test_passed("jit_putint");
+
+    test_header("jit_ret0");
+    {
+        const char* src = R"(
+func main(): int { return 0; }
+)";
+        std::ofstream("jit_ret0.jvl") << src;
+        string cmd = string(jit_env) + string(JVAVC_FRONT_EXE) + " jit_ret0.jvl jit_ret0.jvav";
+        int ret = run_cmd(cmd.c_str());
+        TEST_ASSERT(ret == 0, "front");
+        cmd = string(jit_env) + string(JVAVC_BACK_EXE) + " jit_ret0.jvav jit_ret0.bin";
+        ret = run_cmd(cmd.c_str());
+        TEST_ASSERT(ret == 0, "back");
+        cmd = string(jit_env) + string(JVM_EXE) + " jit_ret0.bin > jit_ret0.out 2>&1";
+        ret = run_cmd(cmd.c_str());
+        TEST_ASSERT(ret == 0, "run");
+        std::remove("jit_ret0.jvl"); std::remove("jit_ret0.jvav");
+        std::remove("jit_ret0.bin"); std::remove("jit_ret0.out");
+    }
+    test_passed("jit_ret0");
+
+    test_header("jit_hello");
+    {
+        const char* src = R"(
+func main(): int {
+    putchar(72); putchar(105); putchar(33);
+    return 0;
+}
+)";
+        std::ofstream("jit_hello.jvl") << src;
+        string cmd = string(jit_env) + string(JVAVC_FRONT_EXE) + " jit_hello.jvl jit_hello.jvav";
+        int ret = run_cmd(cmd.c_str());
+        TEST_ASSERT(ret == 0, "front");
+        cmd = string(jit_env) + string(JVAVC_BACK_EXE) + " jit_hello.jvav jit_hello.bin";
+        ret = run_cmd(cmd.c_str());
+        TEST_ASSERT(ret == 0, "back");
+        cmd = string(jit_env) + string(JVM_EXE) + " jit_hello.bin > jit_hello.out 2>&1";
+        ret = run_cmd(cmd.c_str());
+        TEST_ASSERT(ret == 0, "run");
+        string out;
+        TEST_ASSERT(read_output("jit_hello.out", out), "read");
+        TEST_ASSERT(out == "Hi!", "hello output");
+        std::remove("jit_hello.jvl"); std::remove("jit_hello.jvav");
+        std::remove("jit_hello.bin"); std::remove("jit_hello.out");
+    }
+    test_passed("jit_hello");
+
     return 0;
 }
