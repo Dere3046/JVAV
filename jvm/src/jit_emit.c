@@ -462,9 +462,15 @@ int jit_compile(JVM *vm) {
 
 #ifdef _WIN32
     DWORD old;
-    VirtualProtect(mem, total, PAGE_EXECUTE_READ, &old);
+    if (!VirtualProtect(mem, total, PAGE_EXECUTE_READ, &old)) {
+        VirtualFree(mem, 0, MEM_RELEASE);
+        free(offsets); x64_free(&b); return -1;
+    }
 #else
-    mprotect(mem, total, PROT_READ | PROT_EXEC);
+    if (mprotect(mem, total, PROT_READ | PROT_EXEC) != 0) {
+        munmap(mem, total);
+        free(offsets); x64_free(&b); return -1;
+    }
 #endif
     vm->jit_entry = (void (*)(JVM*))mem;
     vm->jit_code = mem;

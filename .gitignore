@@ -59,3 +59,4 @@ desktop.ini
 core
 core.*
 *.stackdump
+build_rel
