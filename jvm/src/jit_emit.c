@@ -77,6 +77,10 @@ static size_t record_jcc(X64Buf *b, int cond, JITPatch *patches, int *np) {
 }
 
 int jit_compile(JVM *vm) {
+#if !defined(__x86_64__) && !defined(_WIN64)
+    /* 32-bit x86 not supported; fall back to interpreter */
+    return -1;
+#endif
     JVM dummy; memset(&dummy, 0, sizeof(dummy));
     size_t rb = (size_t)&dummy.reg[0] - (size_t)&dummy;
     size_t mem_off = (size_t)&dummy.mem - (size_t)&dummy;

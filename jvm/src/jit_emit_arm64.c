@@ -115,6 +115,9 @@ static void emit_sdiv(A64Buf *b, int rd, int rn, int rm) {
 }
 
 int jit_compile(JVM *vm) {
+#if !defined(__aarch64__) && !defined(_M_ARM64)
+    return -1;
+#endif
     JVM dummy; memset(&dummy, 0, sizeof(dummy));
     size_t rb = (size_t)&dummy.reg[0] - (size_t)&dummy;
     size_t mem_off = (size_t)&dummy.mem - (size_t)&dummy;
