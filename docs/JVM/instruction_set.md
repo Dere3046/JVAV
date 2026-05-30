@@ -1,6 +1,6 @@
 # JVAV Instruction Set Reference
 
-The JVAV instruction set consists of 30 opcodes, operating on 128-bit signed integer values. All arithmetic, logical, and control flow operations are performed register-to-register, with memory access provided by explicit load/store instructions.
+The JVAV instruction set consists of 31 opcodes (0x00–0x1D), operating on 128-bit signed integer values. All arithmetic, logical, and control flow operations are performed register-to-register, with memory access provided by explicit load/store instructions.
 
 ## Instruction encoding
 

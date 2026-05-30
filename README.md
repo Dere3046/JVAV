@@ -68,9 +68,10 @@ JVAV/
 │   ├── back/        # Backend assembler & linker (.jvav -> .bin), C++17
 │   └── tools/       # Disassembler (static + trace), C99
 ├── jvm/             # Virtual machine executor, C99
+│   └── JIT backends: x86-64 (default), ARM64, ARM32 stub
 ├── std/             # Standard library (io, math, mem, string, file)
 ├── benchmark/       # Performance benchmark suite (Python)
-├── tests/           # Automated tests (back: 130, front: 179, 21 snapshots)
+├── tests/           # Automated tests (back: 116, front: 155, 21 snapshots)
 │   └── snapshots/   # Expected codegen / diagnostic outputs for snapshot testing
 └── docs/            # Detailed documentation (compiler/, JVM/)
 ```
@@ -88,7 +89,8 @@ JVAV/
 - **Import system** — Recursive module imports with duplicate detection
 - **Disassembler** — Static disassembly and dynamic trace mode
 - **Rust-style diagnostics** — Error codes, source snippets with context lines, and help messages
-- **Cross-platform** — Linux, Windows & Android (x86, x64, ARM, ARM64); statically linked binaries; GitHub Actions CI with multi-arch matrix
+- **JIT compilation** — x86-64 JIT with all 31 opcodes and syscall support; ARM64 backend available; enable via `JVAV_JIT=1`
+- **Cross-platform** — Linux, Windows & Android (x86, x64, ARM, ARM64); statically linked binaries; GitHub Actions CI with multi-arch matrix including QEMU for ARM
 - **PATH-ready** — `std/` directory ships alongside `bin/`; add `bin/` to PATH and use `jvlc`/`jvavc`/`jvm`/`disasm` from anywhere
 - **Version flag** — All tools support `-v` / `--version`
 
@@ -137,8 +139,8 @@ All documentation lives in the `docs/` directory on GitHub (no separate website)
 ctest --output-on-failure
 
 # Or run individual test binaries directly
-./test_back    # 130 backend unit + integration tests
-./test_front   # 179 frontend unit + integration tests
+./build/bin/test_back    # 116 backend unit + integration tests
+./build/bin/test_front   # 155 frontend unit + integration tests (incl. 3 JIT tests)
 
 # Update snapshots after intentional codegen changes
 ./test_front --update-snapshots
@@ -151,6 +153,7 @@ Tests cover:
 - **Code generation**: prologue/epilogue, locals, calls, control flow, pointers, strings *(snapshot-tested: full assembly diff)*
 - **Backend**: all instructions, EQU, .global/.extern, DB/DW/DT, #include, encoding, linking
 - **Integration**: end-to-end compile & run for arithmetic, bitwise ops, control flow, heap, recursion, imports, global variables, standard library, file I/O, version flags, missing-stdlib diagnostics
+- **JIT**: putint, function call/return, putchar sequence (x86-64, `JVAV_JIT=1`)
 - **Diagnostics**: Rust-style error messages with exact body + help text matching; context lines, caret position, first/last line edge cases *(snapshot-tested)*
 - **Data-driven**: new codegen or diagnostic tests require only adding one row to a case table
 

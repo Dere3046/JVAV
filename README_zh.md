@@ -68,9 +68,10 @@ JVAV/
 │   ├── back/        # 后端汇编器与链接器 (.jvav -> .bin), C++17
 │   └── tools/       # 反汇编器 (静态 + trace), C99
 ├── jvm/             # 虚拟机执行引擎, C99
+│   └── JIT 后端: x86-64 (默认), ARM64, ARM32 stub
 ├── std/             # 标准库 (io, math, mem, string, file)
 ├── benchmark/       # 性能基准测试套件 (Python)
-├── tests/           # 自动化测试 (后端: 130, 前端: 179, 21 个快照)
+├── tests/           # 自动化测试 (后端: 116, 前端: 155, 21 个快照)
 │   └── snapshots/   # 快照测试的预期输出 (codegen / 诊断格式)
 └── docs/            # 详细文档 (compiler/, JVM/)
 ```
@@ -88,7 +89,8 @@ JVAV/
 - **导入系统** — 递归模块导入，带重复导入去重
 - **反汇编器** — 支持静态反汇编与动态 trace 模式
 - **Rust 风格诊断信息** — 错误代码、带上下文行的源代码片段、帮助提示
-- **跨平台** — Linux、Windows 与 Android（x86、x64、ARM、ARM64）；静态链接二进制文件；GitHub Actions 多架构矩阵 CI
+- **JIT 编译** — x86-64 JIT 实现全部 31 条 opcode 及 syscall；ARM64 后端可用；通过 `JVAV_JIT=1` 启用
+- **跨平台** — Linux、Windows 与 Android（x86、x64、ARM、ARM64）；静态链接二进制文件；GitHub Actions 多架构矩阵 CI 含 QEMU ARM 测试
 - **PATH 就绪** — `std/` 目录与 `bin/` 一起分发；将 `bin/` 加入 PATH 即可从任意位置使用 `jvlc`/`jvavc`/`jvm`/`disasm`
 - **版本号标志** — 所有工具均支持 `-v` / `--version`
 
@@ -137,8 +139,8 @@ JVAV/
 ctest --output-on-failure
 
 # 或直接运行测试二进制文件
-./test_back    # 130 项后端单元 + 集成测试
-./test_front   # 179 项前端单元 + 集成测试
+./build/bin/test_back    # 116 项后端单元 + 集成测试
+./build/bin/test_front   # 155 项前端单元 + 集成测试 (含 3 项 JIT 测试)
 
 # 修改 codegen 后刷新快照预期
 ./test_front --update-snapshots
@@ -151,6 +153,7 @@ ctest --output-on-failure
 - **代码生成**：函数序言/尾声、局部变量、调用、控制流、指针、字符串 *(快照测试：完整汇编 diff)*
 - **后端**：所有指令、EQU、.global/.extern、DB/DW/DT、#include、编码、链接
 - **集成测试**：端到端编译运行，覆盖算术、位运算、控制流、堆内存、递归、导入、全局变量、标准库、文件 I/O、版本号标志、缺失标准库诊断
+- **JIT**：putint、函数调用/返回、putchar 序列 (x86-64, `JVAV_JIT=1`)
 - **诊断信息**：Rust 风格错误信息，精确匹配消息体 + help 文本；上下文行、插入符位置、首行/末行边界情况 *(快照测试)*
 - **数据驱动**：新增 codegen 或诊断测试只需在数据表中添加一行
 

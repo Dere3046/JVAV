@@ -4,10 +4,17 @@ This document describes the execution model of the JVAV Virtual Machine, includi
 
 ## The Execution Loop
 
-The JVM implements a classic interpreter loop:
+The JVM uses a JIT-first execution strategy with interpreter fallback:
 
 ```c
 void jvm_run(JVM *vm) {
+    if (JVAV_JIT is set) {
+        jit_compile(vm);
+        vm->jit_entry(vm);  // run JIT-compiled code
+        return;
+    }
+    // fallback interpreter ...
+```
     vm->running = 1;
     while (vm->running) {
         // Fetch
