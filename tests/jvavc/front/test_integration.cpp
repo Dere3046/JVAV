@@ -1491,7 +1491,27 @@ func main(): int {
     }
     test_passed("integration_jvm_load_error_msg");
 
-    // --- JIT tests ---
+    // --- JIT tests (x86-64 only) ---
+#if defined(__x86_64__) && !defined(__arm__) && !defined(__aarch64__)
+    /* Quick check: JVM must run with JIT enabled */
+    int jit_ok = 0;
+    {
+        std::ofstream("_jitcheck.jvav") << "    .global _start\n_start:\n    HALT\n";
+#ifdef _WIN32
+        string jc = "set JVAV_JIT=1 && ";
+#else
+        string jc = "JVAV_JIT=1 ";
+#endif
+        string cmd = jc + string(JVAVC_BACK_EXE) + " _jitcheck.jvav _jitcheck.bin";
+        int r = run_cmd(cmd.c_str());
+        if (r == 0) {
+            cmd = jc + string(JVM_EXE) + " _jitcheck.bin > _jitcheck.out 2>&1";
+            r = run_cmd(cmd.c_str());
+            if (r == 0) jit_ok = 1;
+        }
+        std::remove("_jitcheck.jvav"); std::remove("_jitcheck.bin"); std::remove("_jitcheck.out");
+    }
+    if (jit_ok) {
 #ifdef _WIN32
     static const char* jit_env = "set JVAV_JIT=1 && ";
 #else
@@ -1569,6 +1589,8 @@ func main(): int {
         std::remove("jit_hello.bin"); std::remove("jit_hello.out");
     }
     test_passed("jit_hello");
+    } /* if (jit_ok) */
+#endif /* __x86_64__ */
 
     return 0;
 }
