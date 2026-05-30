@@ -1496,20 +1496,36 @@ func main(): int {
     /* Quick check: JVM must run with JIT enabled */
     int jit_ok = 0;
     {
-        std::ofstream("_jitcheck.jvav") << "    .global _start\n_start:\n    HALT\n";
+        /* Run a comprehensive JIT sanity check: call+ret+putint */
+        std::ofstream("_jitcheck.jvl") << R"(
+func main(): int {
+    putint(42);
+    return 0;
+}
+)";
 #ifdef _WIN32
         string jc = "set JVAV_JIT=1 && ";
 #else
         string jc = "JVAV_JIT=1 ";
 #endif
-        string cmd = jc + string(JVAVC_BACK_EXE) + " _jitcheck.jvav _jitcheck.bin";
+        string cmd = jc + string(JVAVC_FRONT_EXE) + " _jitcheck.jvl _jitcheck.jvav 2> _jitcheck.err";
         int r = run_cmd(cmd.c_str());
         if (r == 0) {
-            cmd = jc + string(JVM_EXE) + " _jitcheck.bin > _jitcheck.out 2>&1";
+            cmd = jc + string(JVAVC_BACK_EXE) + " _jitcheck.jvav _jitcheck.bin 2>> _jitcheck.err";
             r = run_cmd(cmd.c_str());
-            if (r == 0) jit_ok = 1;
         }
-        std::remove("_jitcheck.jvav"); std::remove("_jitcheck.bin"); std::remove("_jitcheck.out");
+        if (r == 0) {
+            cmd = jc + string(JVM_EXE) + " _jitcheck.bin > _jitcheck.out 2>> _jitcheck.err";
+            r = run_cmd(cmd.c_str());
+            if (r == 0) {
+                string out;
+                if (read_output("_jitcheck.out", out) && out == "42")
+                    jit_ok = 1;
+            }
+        }
+        std::remove("_jitcheck.jvl"); std::remove("_jitcheck.jvav");
+        std::remove("_jitcheck.bin"); std::remove("_jitcheck.out");
+        std::remove("_jitcheck.err");
     }
     if (jit_ok) {
 #ifdef _WIN32
