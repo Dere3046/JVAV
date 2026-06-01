@@ -269,7 +269,7 @@ bool Sema::typeCompatible(shared_ptr<Type> dst, shared_ptr<Type> src, bool isLit
     if (dst->kind == TYPE_VOID && src->kind != TYPE_VOID) return false;
     // Pointer compatibility: ptr<int> acts as generic pointer (like void*)
     if (dst->kind == TYPE_PTR && src->kind == TYPE_PTR) {
-        if (src->sub->kind == TYPE_INT) return true;
+        if (dst->sub->kind == TYPE_INT || src->sub->kind == TYPE_INT) return true;
         return typeEqual(dst->sub, src->sub);
     }
     // Allow pointer-to-int coercion (e.g., putint(alloc(0)))
@@ -680,14 +680,22 @@ bool Sema::processImport(shared_ptr<ImportDecl> id) {
         return false;
     }
 
+    // Save parent's struct/union definitions before sub-analyze clears them
+    auto savedStructs = structDefs;
+    auto savedUnions = unionDefs;
+
     Sema subSema;
     string subBase = fs::path(absPath).parent_path().string();
     if (!subSema.analyze(par.getProgram(), subBase)) {
+        structDefs = savedStructs;
+        unionDefs = savedUnions;
         report(SEM_ERROR, "semantic error in imported file `" + id->path + "`: " + subSema.getError(), id->line, id->col, "");
         return false;
     }
 
-    // Import struct/union definitions
+    // Restore parent's definitions, then merge in imported ones
+    structDefs = savedStructs;
+    unionDefs = savedUnions;
     for (auto &subd : par.getProgram()->decls) {
         if (subd->kind == Decl::DECL_STRUCT) {
             auto sd = dynamic_pointer_cast<StructDecl>(subd);
