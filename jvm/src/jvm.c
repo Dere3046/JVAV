@@ -6,7 +6,6 @@
 #include <windows.h>
 #else
 #include <unistd.h>
-#include <sys/mman.h>
 #endif
 
 static int ensure_mem(JVM *vm, var addr) {
@@ -340,25 +339,6 @@ static void io_write(JVM *vm, var addr, var val) {
     }
 }
 
-/* ---------- public API ---------- */
-
-void jit_syscall_io(JVM *vm, int64_t addr, int64_t val) {
-    if (addr >= 0xFFE0 && addr <= 0xFFE7) {
-        var vaddr = (var)(unsigned long long)addr;
-        var vval = (var)(unsigned long long)(unsigned long long)val;
-        io_write(vm, vaddr, vval);
-    }
-}
-
-int64_t jit_syscall_read(JVM *vm, int64_t addr) {
-    if (addr == 0xFFE0) return 0;
-    if (addr == 0xFFE1) return (int64_t)vm->syscall_arg0;
-    if (addr == 0xFFE2) return (int64_t)vm->syscall_arg1;
-    if (addr == 0xFFE3) return (int64_t)vm->syscall_arg2;
-    if (addr == 0xFFE4) return (int64_t)vm->syscall_ret;
-    return 0;
-}
-
 void jvm_init(JVM *vm) {
     vm->mem = (var *)calloc(MEM_INITIAL, sizeof(var));
     vm->mem_capacity = MEM_INITIAL;
@@ -371,14 +351,10 @@ void jvm_init(JVM *vm) {
     memset(vm->mmap_table, 0, sizeof(vm->mmap_table));
     memset(vm->fd_table, 0, sizeof(vm->fd_table));
     vm->exit_code = 0;
-    vm->jit_entry = NULL;
-    vm->jit_code = NULL;
-    vm->jit_size = 0;
 }
 
 void jvm_free(JVM *vm) {
     free(vm->mem);
-    jit_release(vm);
 }
 
 int jvm_load_program(JVM *vm, const char *filename) {
@@ -409,24 +385,6 @@ int jvm_load_program(JVM *vm, const char *filename) {
 }
 
 void jvm_run(JVM *vm) {
-    /* JIT mode: enabled when JVAV_JIT=1 */
-    static int use_jit = -1;
-    if (use_jit < 0) {
-        const char *s = getenv("JVAV_JIT");
-        use_jit = (s && s[0] == '1') ? 1 : 0;
-    }
-    if (use_jit) {
-        if (!vm->jit_entry) {
-            if (jit_compile(vm) == 0 && vm->jit_entry) {
-                vm->jit_entry(vm);
-                return;
-            }
-        } else {
-            vm->jit_entry(vm);
-            return;
-        }
-    }
-    /* Fall back to interpreter */
     vm->running = 1;
     while (vm->running) {
         var raw;

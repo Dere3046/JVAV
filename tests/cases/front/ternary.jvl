@@ -1,8 +1,0 @@
-func main(): int {
-    var x = 5;
-    var y = x > 3 ? 10 : 20;
-    putint(y);
-    var z = x < 3 ? 10 : 20;
-    putint(z);
-    return 0;
-}

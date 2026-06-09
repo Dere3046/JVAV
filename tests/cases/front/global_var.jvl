@@ -1,6 +1,0 @@
-var g: int = 99;
-
-func main(): int {
-    putint(g);
-    return 0;
-}

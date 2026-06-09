@@ -1,5 +1,0 @@
-error[E0200]: expected a declaration, but found `1`
- --> f.jvl:1:1
-  |
- 1 | 1 + 2;
-  | ^

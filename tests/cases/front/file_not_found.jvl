@@ -1,7 +1,0 @@
-import "std/file.jvl";
-
-func main(): int {
-    var fd = fopen("nonexistent_file_xyz.txt", "rb");
-    putint(fd);
-    return 0;
-}

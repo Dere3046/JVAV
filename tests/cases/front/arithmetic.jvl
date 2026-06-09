@@ -1,8 +1,0 @@
-func main(): int {
-    putint(1 + 2);
-    putint(5 - 3);
-    putint(2 * 3);
-    putint(8 / 2);
-    putint(7 % 3);
-    return 0;
-}

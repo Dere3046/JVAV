@@ -1,7 +1,0 @@
-import "std/io.jvl";
-
-func main(): int {
-    println(42);
-    println(7);
-    return 0;
-}

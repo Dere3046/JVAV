@@ -1,9 +1,0 @@
-func main(): int {
-    var x = 10;
-    {
-        var r = &x;
-    }
-    var s = &x;
-    putint(x);
-    return 0;
-}

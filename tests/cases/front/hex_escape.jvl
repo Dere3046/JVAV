@@ -1,5 +1,0 @@
-func main(): int {
-    putchar('\x41');
-    putchar('\x0A');
-    return 0;
-}

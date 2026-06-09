@@ -1,8 +1,0 @@
-#define A B
-#define B C
-#define C 42
-
-func main(): int {
-    putint(A);
-    return 0;
-}

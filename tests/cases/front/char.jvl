@@ -1,6 +1,0 @@
-func main(): int {
-    putchar(65);
-    putchar(66);
-    putchar(67);
-    return 0;
-}

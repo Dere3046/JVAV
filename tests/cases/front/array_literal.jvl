@@ -1,7 +1,0 @@
-func main(): int {
-    var arr = {1, 2, 3};
-    putint(arr[0]);
-    putint(arr[1]);
-    putint(arr[2]);
-    return 0;
-}

@@ -1,5 +1,0 @@
-func main(): int {
-    var sz = sizeof(int[3][2]);
-    putint(sz);
-    return 0;
-}

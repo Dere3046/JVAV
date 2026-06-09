@@ -1,5 +1,0 @@
-func main(): int {
-    var x: uint = 42;
-    putint(x);
-    return 0;
-}

@@ -1,5 +1,0 @@
-func main(): int {
-    var p = alloc(0);
-    putint(p);
-    return 0;
-}

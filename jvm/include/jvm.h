@@ -108,20 +108,12 @@ typedef struct JVM {
     FILE *fd_table[MAX_FD];
     /* program exit code (set by SYS_EXIT) */
     int exit_code;
-    /* JIT state */
-    void (*jit_entry)(struct JVM*);
-    void *jit_code;
-    size_t jit_size;
 } JVM;
 
 void jvm_init(JVM *vm);
 void jvm_free(JVM *vm);
 int jvm_load_program(JVM *vm, const char *filename);
 void jvm_run(JVM *vm);
-int jit_compile(JVM *vm);
-void jit_release(JVM *vm);
-void jit_syscall_io(JVM *vm, int64_t addr, int64_t val);
-int64_t jit_syscall_read(JVM *vm, int64_t addr);
 
 #define ZF (vm->reg[FLAGS] & 1)
 #endif

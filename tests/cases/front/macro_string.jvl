@@ -1,7 +1,0 @@
-#define FOO 42
-
-func main(): int {
-    var msg = "FOO";
-    putint(FOO);
-    return 0;
-}

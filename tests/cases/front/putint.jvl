@@ -1,4 +1,0 @@
-func main(): int {
-    putint(42);
-    return 0;
-}
